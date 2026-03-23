@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir=no --import-alias=\"@/*\" --yes)",
+      "Read(//Users/an-yeonsu/Desktop/vivecoding/**)",
+      "Bash(npx create-next-app@latest me-website --typescript --tailwind --eslint --app --src-dir=no --import-alias=\"@/*\" --yes)",
+      "Bash(mv /Users/an-yeonsu/Desktop/vivecoding/me-website/* /Users/an-yeonsu/Desktop/vivecoding/ME_website/)",
+      "Bash(mv /Users/an-yeonsu/Desktop/vivecoding/me-website/.* /Users/an-yeonsu/Desktop/vivecoding/ME_website/)",
+      "Bash(rm -rf /Users/an-yeonsu/Desktop/vivecoding/me-website)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx shadcn@latest init --yes --base-color zinc)",
+      "Bash(npx shadcn@latest init --yes)",
+      "Bash(printf '\\\\n\\\\n')",
+      "Bash(npx shadcn@latest init --help)"
+    ]
+  }
+}
