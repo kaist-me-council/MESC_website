@@ -41,7 +41,15 @@ function parseICalDate(dateStr: string): Date {
 function parseICalendar(text: string): CalendarEvent[] {
   const events: CalendarEvent[] = [];
   const lines = text.split(/\r?\n/);
-  let currentEvent: Partial<CalendarEvent> | null = null;
+    interface RawEvent {
+    DTSTART?: string;
+    DTEND?: string;
+    SUMMARY?: string;
+    DESCRIPTION?: string;
+    LOCATION?: string;
+    UID?: string;
+  }
+  let currentEvent: RawEvent | null = null;
   let inEvent = false;
 
   for (const line of lines) {
@@ -52,7 +60,7 @@ function parseICalendar(text: string): CalendarEvent[] {
       currentEvent = {};
     } else if (trimmed === "END:VEVENT") {
       if (inEvent && currentEvent) {
-        const event = currentEvent as any;
+        const event = currentEvent;
         if (event.DTSTART) {
           const startDate = event.DTSTART;
           const endDate = event.DTEND || startDate;
