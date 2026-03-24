@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { auth, signOut } from "@/lib/auth";
-import { Settings, Bell, BookOpen, DollarSign, Users, Home, ExternalLink, ShieldCheck, LogOut } from "lucide-react";
+import { Settings, Bell, BookOpen, Users, Home, ExternalLink, ShieldCheck, LogOut } from "lucide-react";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -22,13 +22,6 @@ export default async function AdminPage() {
       icon: BookOpen,
       desc: "자료 업로드·삭제",
       color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
-    },
-    {
-      href: "/admin/budget",
-      label: "예산 관리",
-      icon: DollarSign,
-      desc: "수입·지출 항목 입력·삭제",
-      color: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
     },
     {
       href: "/admin/members",

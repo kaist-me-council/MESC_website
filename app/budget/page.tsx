@@ -65,6 +65,7 @@ export default function BudgetPage() {
   const hasEmbed = EMBED_URL.length > 0;
   const hasData = summary && (summary.income > 0 || summary.expense > 0);
   const expensePercentage = hasData ? calculatePercentage(summary.expense, summary.income) : 0;
+  const summaryLoaded = !loading && summary !== null && !error;
 
   return (
     <div className="min-h-screen bg-background">
@@ -216,6 +217,21 @@ export default function BudgetPage() {
         {loading && (
           <div className="text-center py-16 text-muted-foreground font-medium">
             {t("notices.loading")}
+          </div>
+        )}
+
+        {/* 데이터가 0원일 때 안내 */}
+        {summaryLoaded && !hasData && (
+          <div className="mb-10 flex items-start gap-3 text-sm bg-amber-500/5 border border-amber-500/20 rounded-xl p-5">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div className="space-y-1">
+              <p className="font-bold text-amber-700 dark:text-amber-300">예산 데이터를 파싱하지 못했습니다</p>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                CSV 시트의 헤더 행에 <code className="bg-muted px-1 rounded font-bold">수입</code> 또는{" "}
+                <code className="bg-muted px-1 rounded font-bold">지출</code> 컬럼이 있는지 확인해주세요.
+                (현재 시트 형식: 사업일 / 담당자 / 집행내용 / 코드 / 거래형태 / 수입 / 지출 / 잔액)
+              </p>
+            </div>
           </div>
         )}
 

@@ -131,9 +131,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ found: false, count: 0 });
     }
 
-    // 납부 횟수 컬럼 값 파싱 (없으면 0)
+    // 납부 횟수 컬럼 값 파싱 (소수점 포함, 없으면 0)
     const rawCount = paymentColumnIndex >= 0 ? matchedRow[paymentColumnIndex] ?? "0" : "0";
-    const paymentCount = parseInt(rawCount.replace(/\s/g, ""), 10);
+    const paymentCount = parseFloat(rawCount.replace(/\s/g, ""));
     const count = isNaN(paymentCount) ? 0 : paymentCount;
 
     // 개인정보 전혀 미포함 — count만 반환

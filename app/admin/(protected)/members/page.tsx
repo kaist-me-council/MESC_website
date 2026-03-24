@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Image from "next/image";
 
 interface Member {
@@ -24,6 +25,7 @@ export default function AdminMembersPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [order, setOrder] = useState("0");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   async function loadMembers() {
     const res = await fetch("/api/members");
@@ -36,14 +38,25 @@ export default function AdminMembersPage() {
   async function handleSubmit() {
     if (!name.trim() || !role.trim()) return;
     setSubmitting(true);
-    await fetch("/api/members", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, role, bureau, imageUrl: imageUrl || null, order: Number(order) }),
-    });
-    setName(""); setRole(""); setBureau(""); setImageUrl(""); setOrder("0");
+    setSubmitError("");
+    try {
+      const res = await fetch("/api/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, role, bureau, imageUrl: imageUrl || null, order: Number(order) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSubmitError(data.error ?? `오류가 발생했습니다. (${res.status})`);
+        setSubmitting(false);
+        return;
+      }
+      setName(""); setRole(""); setBureau(""); setImageUrl(""); setOrder("0");
+      loadMembers();
+    } catch (e) {
+      setSubmitError("네트워크 오류가 발생했습니다.");
+    }
     setSubmitting(false);
-    loadMembers();
   }
 
   async function handleDelete(id: number) {
@@ -91,6 +104,11 @@ export default function AdminMembersPage() {
           <Button onClick={handleSubmit} disabled={submitting} className="w-full">
             {submitting ? "추가 중..." : "멤버 추가"}
           </Button>
+          {submitError && (
+            <Alert variant="destructive">
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 

@@ -11,6 +11,7 @@ import { useLanguage } from "@/lib/language-context";
 export default function CheckFeePage() {
   const [studentId, setStudentId] = useState("");
   const [result, setResult] = useState<{ found: boolean; count: number } | null>(null);
+  // count는 소수점 포함 가능 (e.g. 1.5)
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { t } = useLanguage();
@@ -97,7 +98,7 @@ export default function CheckFeePage() {
                     {t("checkFee.fullyPaid")}
                   </p>
                 </>
-              ) : result.count === 1 ? (
+              ) : result.count > 0 ? (
                 <>
                   <div className="text-4xl mb-2">⚠️</div>
                   <p className="text-lg font-semibold">

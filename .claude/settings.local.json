@@ -29,7 +29,13 @@
       "Bash(npx tsc:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(kill 45621)"
+      "Bash(kill 45621)",
+      "Bash(curl -s \"https://docs.google.com/spreadsheets/d/e/2PACX-1vQFgQ0AnsHdRB0DrA22NvUkCNUQVTyOCLqYG9725TSBwAKyNbU0vVXghv16IkqdcAiRf3aDuGGzjbgs/pub?gid=1048214979&single=true&output=csv\")",
+      "Bash(curl -s http://localhost:3000/api/members -X POST -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"테스트\"\",\"\"role\"\":\"\"테스트역할\"\",\"\"bureau\"\":\"\"\"\",\"\"order\"\":0}')",
+      "Bash(curl -sL \"https://docs.google.com/spreadsheets/d/e/2PACX-1vQFgQ0AnsHdRB0DrA22NvUkCNUQVTyOCLqYG9725TSBwAKyNbU0vVXghv16IkqdcAiRf3aDuGGzjbgs/pub?gid=1048214979&single=true&output=csv\")",
+      "Bash(cat /Users/an-yeonsu/Desktop/vivecoding/ME_website/app/api/members/[id]/route.ts)",
+      "Bash(pkill -f \"turbopack\")",
+      "Bash(curl -s http://localhost:3000/api/budget-summary)"
     ]
   }
 }
