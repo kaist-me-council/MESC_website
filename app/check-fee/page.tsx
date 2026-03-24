@@ -69,38 +69,51 @@ export default function CheckFeePage() {
           {result && (
             <div
               className={`rounded-lg p-6 text-center border-2 ${
-                result.found
-                  ? result.count >= 2
-                    ? "border-green-500 bg-green-50 dark:bg-green-950"
-                    : "border-yellow-500 bg-yellow-50 dark:bg-yellow-950"
-                  : "border-red-300 bg-red-50 dark:bg-red-950"
+                !result.found
+                  ? "border-red-300 bg-red-50 dark:bg-red-950"
+                  : result.count >= 2
+                  ? "border-green-500 bg-green-50 dark:bg-green-950"
+                  : result.count === 1
+                  ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950"
+                  : "border-red-400 bg-red-50 dark:bg-red-950"
               }`}
             >
-              {result.found ? (
-                <>
-                  <div className="text-4xl mb-2">
-                    {result.count >= 2 ? "✅" : "⚠️"}
-                  </div>
-                  <p className="text-lg font-semibold">
-                    {t("checkFee.paidCount")}:{" "}
-                    <span className="text-2xl font-bold">{result.count}회</span>
-                  </p>
-                  {result.count >= 2 ? (
-                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                      {t("checkFee.fullyPaid")}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                      {t("checkFee.partialPaid")}
-                    </p>
-                  )}
-                </>
-              ) : (
+              {!result.found ? (
                 <>
                   <div className="text-4xl mb-2">❌</div>
                   <p className="text-lg font-semibold">{t("checkFee.notFound")}</p>
                   <p className="text-sm text-red-700 dark:text-red-300 mt-1">
                     {t("checkFee.notFoundDesc")}
+                  </p>
+                </>
+              ) : result.count >= 2 ? (
+                <>
+                  <div className="text-4xl mb-2">✅</div>
+                  <p className="text-lg font-semibold">
+                    {t("checkFee.paidCount")}:{" "}
+                    <span className="text-2xl font-bold">{result.count}회</span>
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                    {t("checkFee.fullyPaid")}
+                  </p>
+                </>
+              ) : result.count === 1 ? (
+                <>
+                  <div className="text-4xl mb-2">⚠️</div>
+                  <p className="text-lg font-semibold">
+                    {t("checkFee.paidCount")}:{" "}
+                    <span className="text-2xl font-bold">{result.count}회</span>
+                  </p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                    {t("checkFee.partialPaid")}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="text-4xl mb-2">❌</div>
+                  <p className="text-lg font-semibold">{t("checkFee.paidCount")}: <span className="text-2xl font-bold">0회</span></p>
+                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                    {t("checkFee.notPaid")}
                   </p>
                 </>
               )}

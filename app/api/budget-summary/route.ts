@@ -53,9 +53,14 @@ async function fetchBudgetSummary(): Promise<BudgetSummary> {
   const dataRows = rows.slice(1);
 
   // 컬럼 인덱스 자동 감지
-  const dateIdx = header.findIndex((h) => h.includes("날짜") || h.includes("date"));
-  const incomeIdx = header.findIndex((h) => h.includes("수입") || h.includes("income"));
-  const expenseIdx = header.findIndex((h) => h.includes("지출") || h.includes("expense"));
+  const dateIdx = header.findIndex((h) => h.includes("날짜") || h.includes("일자") || h.includes("date"));
+  const incomeIdx = header.findIndex((h) => h.includes("수입") || h.includes("income") || h.includes("입금"));
+  const expenseIdx = header.findIndex((h) => h.includes("지출") || h.includes("expense") || h.includes("출금"));
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[budget-summary] 헤더: ${header.join(", ")}`);
+    console.log(`[budget-summary] 날짜:${dateIdx}, 수입:${incomeIdx}, 지출:${expenseIdx}`);
+  }
 
   let totalIncome = 0;
   let totalExpense = 0;

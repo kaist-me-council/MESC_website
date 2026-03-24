@@ -162,12 +162,13 @@ export const translations = {
       partialPaid: "일부 납부 내역이 있습니다. 학생회에 문의해주세요.",
       notFound: "납부 내역 없음",
       notFoundDesc: "학번을 다시 확인하거나 학생회에 문의해주세요.",
+      notPaid: "미납 상태입니다. 학생회에 문의해주세요.",
       privacyNote: "입력한 학번은 납부 횟수 조회에만 사용되며, 서버에 저장되지 않습니다.",
     },
     // Members Page
     members: {
       title: "학생회 소개",
-      subtitle: "KAIST 기계공학과 학생회 임원진을 소개합니다.",
+      subtitle: "KAIST 기계공학과 학생회 회장단 및 구성원을 소개합니다.",
       noMembers: "학생회 멤버 정보가 아직 등록되지 않았습니다.",
       importantLinks: "주요 링크",
       community: "커뮤니티 & SNS",
@@ -326,6 +327,7 @@ export const translations = {
       partialPaid: "Partial payment found. Please contact the student council.",
       notFound: "No Payment Record",
       notFoundDesc: "Please verify your student ID or contact the student council.",
+      notPaid: "No payment made. Please contact the student council.",
       privacyNote: "Your student ID is used only for payment lookup and is never stored on the server.",
     },
     // Members Page

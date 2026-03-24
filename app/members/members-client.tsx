@@ -40,18 +40,18 @@ function MemberCard({ member }: { member: Member }) {
 export function MembersClient({ members }: { members: Member[] }) {
   const { t, lang } = useLanguage();
 
-  // 국별로 그룹화 (bureau가 없는 멤버는 '임원진'으로)
+  // 국별로 그룹화 (bureau가 없는 멤버는 '회장단'으로)
   const grouped = members.reduce<Record<string, Member[]>>((acc, m) => {
-    const key = m.bureau && m.bureau.trim() ? m.bureau.trim() : "임원진";
+    const key = m.bureau && m.bureau.trim() ? m.bureau.trim() : "회장단";
     if (!acc[key]) acc[key] = [];
     acc[key].push(m);
     return acc;
   }, {});
 
-  // '임원진'을 맨 앞에, 나머지는 가나다순
+  // '회장단'을 맨 앞에, 나머지는 가나다순
   const groupOrder = Object.keys(grouped).sort((a, b) => {
-    if (a === "임원진") return -1;
-    if (b === "임원진") return 1;
+    if (a === "회장단") return -1;
+    if (b === "회장단") return 1;
     return a.localeCompare(b, "ko");
   });
 

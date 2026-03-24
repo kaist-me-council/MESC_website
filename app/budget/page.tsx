@@ -47,6 +47,7 @@ export default function BudgetPage() {
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [iframeError, setIframeError] = useState(false);
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -243,20 +244,64 @@ export default function BudgetPage() {
 
           {hasEmbed ? (
             <div className="space-y-4">
-              <Card className="border-border/60 shadow-2xl shadow-primary/5 overflow-hidden rounded-2xl">
-                <iframe
-                  src={EMBED_URL}
-                  className="w-full"
-                  style={{ height: "750px", border: 0 }}
-                  scrolling="yes"
-                />
-              </Card>
-              <div className="flex items-start gap-3 text-xs text-muted-foreground bg-muted/30 p-4 rounded-xl border border-border/40">
-                <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary/60 font-bold" />
-                <p className="font-medium leading-relaxed">
-                  위 내역은 구글 스프레드시트와 실시간 연동되어 관리자가 수정 시 즉시 업데이트됩니다.
-                  지출 증빙 영수증 확인이 필요하신 경우 학생회실을 방문해 주시기 바랍니다.
-                </p>
+              {iframeError ? (
+                <Card className="border-border/60 rounded-2xl overflow-hidden">
+                  <CardContent className="py-16 text-center flex flex-col items-center gap-4">
+                    <FileSpreadsheet className="h-12 w-12 text-muted-foreground/40" />
+                    <div>
+                      <p className="font-bold text-lg mb-1">임베드를 표시할 수 없습니다</p>
+                      <p className="text-muted-foreground text-sm">구글 시트를 직접 열어서 확인하세요.</p>
+                    </div>
+                    <a
+                      href={EMBED_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      구글 스프레드시트에서 전체 내역 보기
+                    </a>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-border/60 shadow-2xl shadow-primary/5 overflow-hidden rounded-2xl">
+                  <iframe
+                    src={EMBED_URL}
+                    className="w-full"
+                    style={{ height: "750px", border: 0 }}
+                    scrolling="yes"
+                    onError={() => setIframeError(true)}
+                    onLoad={(e) => {
+                      // 구글 시트가 X-Frame-Options로 차단된 경우 감지 (빈 body)
+                      try {
+                        const iframe = e.currentTarget as HTMLIFrameElement;
+                        if (iframe.contentDocument && iframe.contentDocument.body.innerHTML === "") {
+                          setIframeError(true);
+                        }
+                      } catch {
+                        // cross-origin 접근 불가 → 정상 로드된 것으로 간주
+                      }
+                    }}
+                  />
+                </Card>
+              )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-start gap-3 text-xs text-muted-foreground bg-muted/30 p-4 rounded-xl border border-border/40 flex-1 mr-3">
+                  <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary/60 font-bold" />
+                  <p className="font-medium leading-relaxed">
+                    위 내역은 구글 스프레드시트와 실시간 연동되어 관리자가 수정 시 즉시 업데이트됩니다.
+                    지출 증빙 영수증 확인이 필요하신 경우 학생회실을 방문해 주시기 바랍니다.
+                  </p>
+                </div>
+                <a
+                  href={EMBED_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  새 탭으로 열기
+                </a>
               </div>
             </div>
           ) : (

@@ -4,7 +4,7 @@ import { MembersClient } from "./members-client";
 export const dynamic = "force-dynamic";
 
 async function getMembers() {
-  return prisma.member.findMany({ orderBy: [{ bureau: "asc" }, { order: "asc" }] });
+  return prisma.member.findMany({ orderBy: [{ order: "asc" }] });
 }
 
 export default async function MembersPage() {

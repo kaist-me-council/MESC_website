@@ -74,9 +74,9 @@ export default function AdminResourcesPage() {
             <Select value={category} onValueChange={(v) => v && setCategory(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="200">200레벨</SelectItem>
-                <SelectItem value="300">300레벨</SelectItem>
-                <SelectItem value="400">400레벨</SelectItem>
+                <SelectItem value="200">200번대</SelectItem>
+                <SelectItem value="300">300번대</SelectItem>
+                <SelectItem value="400">400번대</SelectItem>
                 <SelectItem value="기타">기타</SelectItem>
               </SelectContent>
             </Select>
