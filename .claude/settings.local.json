@@ -36,7 +36,27 @@
       "Bash(cat /Users/an-yeonsu/Desktop/vivecoding/ME_website/app/api/members/[id]/route.ts)",
       "Bash(pkill -f \"turbopack\")",
       "Bash(curl -s http://localhost:3000/api/budget-summary)",
-      "Bash(npx shadcn@latest add checkbox --yes)"
+      "Bash(npx shadcn@latest add checkbox --yes)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)",
+      "Bash(curl -sSfL https://get.tur.so/install.sh)",
+      "Bash(bash)",
+      "Bash(export PATH=\"$HOME/.turso:$PATH\")",
+      "Read(//Users/an-yeonsu/.turso/**)",
+      "Read(//Users/an-yeonsu/bin/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(brew install:*)",
+      "Bash(~/.turso/turso --version)",
+      "Bash(~/.turso/turso auth:*)",
+      "Bash(~/.turso/turso db:*)",
+      "Bash(sqlite3 dev.db 'PRAGMA journal_mode = WAL;')",
+      "Bash(npx vercel:*)",
+      "Read(//Users/an-yeonsu/.local/share/com.vercel.cli/**)",
+      "Read(//Users/an-yeonsu/.vercel/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://mesc-website.vercel.app/api/members)",
+      "Bash(curl -s https://mesc-website.vercel.app/api/members)",
+      "Bash(curl -sv https://mesc-website.vercel.app/api/members)",
+      "Bash(curl -s https://mesc-website.vercel.app/api/debug)"
     ]
   }
 }
