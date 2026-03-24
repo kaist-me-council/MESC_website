@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,8 @@ export default function AdminResourcesPage() {
   const [fileUrl, setFileUrl] = useState("");
   const [category, setCategory] = useState("200");
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   async function loadResources() {
     const res = await fetch("/api/resources");
@@ -34,15 +36,38 @@ export default function AdminResourcesPage() {
 
   useEffect(() => { loadResources(); }, []);
 
+  function resetForm() {
+    setTitle(""); setDescription(""); setFileUrl(""); setCategory("200"); setEditingId(null);
+  }
+
+  function startEdit(r: Resource) {
+    setEditingId(r.id);
+    setTitle(r.title);
+    setDescription(r.description ?? "");
+    setFileUrl(r.fileUrl);
+    setCategory(r.category);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function handleSubmit() {
     if (!title.trim() || !fileUrl.trim()) return;
     setSubmitting(true);
-    await fetch("/api/resources", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, fileUrl, category }),
-    });
-    setTitle(""); setDescription(""); setFileUrl("");
+
+    if (editingId !== null) {
+      await fetch(`/api/resources/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, fileUrl, category }),
+      });
+    } else {
+      await fetch("/api/resources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, fileUrl, category }),
+      });
+    }
+
+    resetForm();
     setSubmitting(false);
     loadResources();
   }
@@ -50,6 +75,7 @@ export default function AdminResourcesPage() {
   async function handleDelete(id: number) {
     if (!confirm("정말 삭제하시겠습니까?")) return;
     await fetch(`/api/resources/${id}`, { method: "DELETE" });
+    if (editingId === id) resetForm();
     loadResources();
   }
 
@@ -60,45 +86,58 @@ export default function AdminResourcesPage() {
         <h1 className="text-2xl font-bold">학습자료 관리</h1>
       </div>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="text-base">새 자료 등록</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>제목</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="자료 이름" />
-          </div>
-          <div className="space-y-2">
-            <Label>카테고리</Label>
-            <Select value={category} onValueChange={(v) => v && setCategory(v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="200">200번대</SelectItem>
-                <SelectItem value="300">300번대</SelectItem>
-                <SelectItem value="400">400번대</SelectItem>
-                <SelectItem value="기타">기타</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>파일 URL (Google Drive, Dropbox 등 공유 링크)</Label>
-            <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://..." />
-          </div>
-          <div className="space-y-2">
-            <Label>설명 (선택)</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
-          </div>
-          <Button onClick={handleSubmit} disabled={submitting} className="w-full">
-            {submitting ? "등록 중..." : "자료 등록"}
-          </Button>
-        </CardContent>
-      </Card>
+      <div ref={formRef}>
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center justify-between">
+              {editingId !== null ? (
+                <span className="text-primary">✏️ 자료 수정 중</span>
+              ) : "새 자료 등록"}
+              {editingId !== null && (
+                <Button variant="ghost" size="sm" onClick={resetForm} className="text-muted-foreground">
+                  취소
+                </Button>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>제목</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="자료 이름" />
+            </div>
+            <div className="space-y-2">
+              <Label>카테고리</Label>
+              <Select value={category} onValueChange={(v) => v && setCategory(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="200">200번대</SelectItem>
+                  <SelectItem value="300">300번대</SelectItem>
+                  <SelectItem value="400">400번대</SelectItem>
+                  <SelectItem value="기타">기타</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>파일 URL (Google Drive, Dropbox 등 공유 링크)</Label>
+              <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://..." />
+            </div>
+            <div className="space-y-2">
+              <Label>설명 (선택)</Label>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+            </div>
+            <Button onClick={handleSubmit} disabled={submitting} className="w-full">
+              {submitting
+                ? (editingId !== null ? "저장 중..." : "등록 중...")
+                : (editingId !== null ? "수정 저장" : "자료 등록")}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
       <h2 className="text-lg font-semibold mb-4">등록된 자료 ({resources.length}건)</h2>
       <div className="space-y-2">
         {resources.map((r) => (
-          <Card key={r.id}>
+          <Card key={r.id} className={editingId === r.id ? "ring-2 ring-primary" : ""}>
             <CardContent className="p-4 flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -113,9 +152,19 @@ export default function AdminResourcesPage() {
                   {r.fileUrl}
                 </a>
               </div>
-              <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>
-                삭제
-              </Button>
+              <div className="flex gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => startEdit(r)}
+                  disabled={editingId === r.id}
+                >
+                  수정
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>
+                  삭제
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
