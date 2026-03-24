@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Settings, MapPin, Mail, Phone, ExternalLink } from "lucide-react";
+import { Settings, MapPin, Mail, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 
 export default function Footer() {
@@ -34,10 +34,9 @@ export default function Footer() {
     { icon: MapPin, label: "N7동 학생회실", href: null },
     {
       icon: Mail,
-      label: "i_love_mesc@kaist.ac.kr",
-      href: "mailto:i_love_mesc@kaist.ac.kr",
+      label: "kaist.mesc@gmail.com",
+      href: "mailto:kaist.mesc@gmail.com",
     },
-    { icon: Phone, label: "042-350-3002", href: "tel:042-350-3002" },
   ];
 
   const snsLinks = [

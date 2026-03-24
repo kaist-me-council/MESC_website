@@ -36,11 +36,13 @@ export async function POST(req: NextRequest) {
   }
 
   const order = typeof b.order === "number" ? Math.floor(b.order) : 0;
+  const bureau = typeof b.bureau === "string" ? b.bureau.trim() : "";
 
   const member = await prisma.member.create({
     data: {
       name: (b.name as string).trim(),
       role: (b.role as string).trim(),
+      bureau,
       imageUrl: b.imageUrl ? String(b.imageUrl) : null,
       order,
     },

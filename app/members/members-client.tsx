@@ -9,12 +9,51 @@ interface Member {
   id: number;
   name: string;
   role: string;
+  bureau: string;
   imageUrl: string | null;
   order: number;
 }
 
+function MemberCard({ member }: { member: Member }) {
+  return (
+    <div className="flex flex-col items-center text-center group">
+      <div className="relative w-20 h-20 rounded-full overflow-hidden bg-muted mb-3 ring-2 ring-border group-hover:ring-primary transition-all">
+        {member.imageUrl ? (
+          <Image
+            src={member.imageUrl}
+            alt={member.name}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-3xl text-muted-foreground">
+            👤
+          </div>
+        )}
+      </div>
+      <p className="font-semibold text-sm">{member.name}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{member.role}</p>
+    </div>
+  );
+}
+
 export function MembersClient({ members }: { members: Member[] }) {
   const { t, lang } = useLanguage();
+
+  // 국별로 그룹화 (bureau가 없는 멤버는 '임원진'으로)
+  const grouped = members.reduce<Record<string, Member[]>>((acc, m) => {
+    const key = m.bureau && m.bureau.trim() ? m.bureau.trim() : "임원진";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(m);
+    return acc;
+  }, {});
+
+  // '임원진'을 맨 앞에, 나머지는 가나다순
+  const groupOrder = Object.keys(grouped).sort((a, b) => {
+    if (a === "임원진") return -1;
+    if (b === "임원진") return 1;
+    return a.localeCompare(b, "ko");
+  });
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -28,25 +67,18 @@ export function MembersClient({ members }: { members: Member[] }) {
             {t("members.noMembers")}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {members.map((member) => (
-              <div key={member.id} className="flex flex-col items-center text-center group">
-                <div className="relative w-20 h-20 rounded-full overflow-hidden bg-muted mb-3 ring-2 ring-border group-hover:ring-primary transition-all">
-                  {member.imageUrl ? (
-                    <Image
-                      src={member.imageUrl}
-                      alt={member.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl text-muted-foreground">
-                      👤
-                    </div>
-                  )}
+          <div className="space-y-10">
+            {groupOrder.map((bureauName) => (
+              <div key={bureauName}>
+                <h2 className="text-lg font-bold mb-4 pb-2 border-b border-border/60 flex items-center gap-2">
+                  <span className="w-1.5 h-5 rounded-full bg-primary inline-block" />
+                  {bureauName}
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                  {grouped[bureauName].map((member) => (
+                    <MemberCard key={member.id} member={member} />
+                  ))}
                 </div>
-                <p className="font-semibold text-sm">{member.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{member.role}</p>
               </div>
             ))}
           </div>

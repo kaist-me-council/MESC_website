@@ -11,6 +11,7 @@ interface Member {
   id: number;
   name: string;
   role: string;
+  bureau: string;
   imageUrl: string | null;
   order: number;
 }
@@ -19,6 +20,7 @@ export default function AdminMembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
+  const [bureau, setBureau] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [order, setOrder] = useState("0");
   const [submitting, setSubmitting] = useState(false);
@@ -37,9 +39,9 @@ export default function AdminMembersPage() {
     await fetch("/api/members", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, role, imageUrl: imageUrl || null, order: Number(order) }),
+      body: JSON.stringify({ name, role, bureau, imageUrl: imageUrl || null, order: Number(order) }),
     });
-    setName(""); setRole(""); setImageUrl(""); setOrder("0");
+    setName(""); setRole(""); setBureau(""); setImageUrl(""); setOrder("0");
     setSubmitting(false);
     loadMembers();
   }
@@ -68,9 +70,13 @@ export default function AdminMembersPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="홍길동" />
             </div>
             <div className="space-y-2">
-              <Label>역할</Label>
-              <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="회장" />
+              <Label>직위 (직책)</Label>
+              <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="회장, 국장, 국원 등" />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>국 (선택) — 없으면 비워두세요</Label>
+            <Input value={bureau} onChange={(e) => setBureau(e.target.value)} placeholder="사무국, 홍보미디어국, 학술국, 복지국 등" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -103,6 +109,7 @@ export default function AdminMembersPage() {
               <div>
                 <p className="font-semibold text-sm">{member.name}</p>
                 <p className="text-xs text-muted-foreground">{member.role}</p>
+                {member.bureau && <p className="text-xs text-primary/70">{member.bureau}</p>}
                 <p className="text-xs text-muted-foreground">순서: {member.order}</p>
               </div>
               <Button

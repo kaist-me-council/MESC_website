@@ -23,7 +23,7 @@ export default function AdminResourcesPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [fileUrl, setFileUrl] = useState("");
-  const [category, setCategory] = useState("강의자료");
+  const [category, setCategory] = useState("200");
   const [submitting, setSubmitting] = useState(false);
 
   async function loadResources() {
@@ -74,8 +74,9 @@ export default function AdminResourcesPage() {
             <Select value={category} onValueChange={(v) => v && setCategory(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="강의자료">강의자료</SelectItem>
-                <SelectItem value="시험족보">시험족보</SelectItem>
+                <SelectItem value="200">200레벨</SelectItem>
+                <SelectItem value="300">300레벨</SelectItem>
+                <SelectItem value="400">400레벨</SelectItem>
                 <SelectItem value="기타">기타</SelectItem>
               </SelectContent>
             </Select>

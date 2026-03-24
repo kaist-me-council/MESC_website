@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isValidString, isValidUrl, isAllowedCategory } from "@/lib/validation";
 
-const ALLOWED_CATEGORIES = ["강의자료", "시험족보", "기타"];
+const ALLOWED_CATEGORIES = ["200", "300", "400", "기타"];
 
 export async function GET() {
   const resources = await prisma.resource.findMany({

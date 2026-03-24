@@ -17,8 +17,9 @@ interface Resource {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  강의자료: "📚",
-  시험족보: "📝",
+  "200": "📗",
+  "300": "📘",
+  "400": "📙",
   기타: "📁",
 };
 
@@ -36,8 +37,9 @@ export default function ResourcesPage() {
 
   const CATEGORIES = [
     { ko: "전체", label: t("resources.all") },
-    { ko: "강의자료", label: lang === "ko" ? "강의자료" : "Lecture Notes" },
-    { ko: "시험족보", label: lang === "ko" ? "시험족보" : "Past Exams" },
+    { ko: "200", label: "200레벨" },
+    { ko: "300", label: "300레벨" },
+    { ko: "400", label: "400레벨" },
     { ko: "기타", label: lang === "ko" ? "기타" : "Other" },
   ];
 
