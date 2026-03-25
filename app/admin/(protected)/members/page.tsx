@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import Image from "next/image";
+import { Loader2, Upload } from "lucide-react";
 
 interface Member {
   id: number;
@@ -28,9 +29,11 @@ export default function AdminMembersPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [order, setOrder] = useState("0");
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadMembers() {
     const res = await fetch("/api/members");
@@ -43,6 +46,28 @@ export default function AdminMembersPage() {
   function resetForm() {
     setName(""); setRole(""); setBureau(""); setCouncil(false);
     setImageUrl(""); setOrder("0"); setEditingId(null); setSubmitError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setSubmitError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setSubmitError(data.error ?? "업로드 실패");
+      } else {
+        setImageUrl(data.url);
+      }
+    } catch {
+      setSubmitError("업로드 중 네트워크 오류가 발생했습니다.");
+    }
+    setUploading(false);
   }
 
   function startEdit(m: Member) {
@@ -145,8 +170,37 @@ export default function AdminMembersPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>사진 URL (선택)</Label>
-                <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
+                <Label>사진 (선택)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="URL 직접 입력 또는 파일 업로드"
+                    className="flex-1 text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+                {imageUrl && (
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden bg-muted mt-1">
+                    <Image src={imageUrl} alt="미리보기" fill className="object-cover" />
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>정렬 순서 (낮을수록 앞)</Label>

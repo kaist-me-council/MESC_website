@@ -72,7 +72,9 @@
       "Bash(cat /Users/an-yeonsu/Desktop/vivecoding/ME_website/app/admin/\\\\\\(protected\\\\\\)/layout.tsx)",
       "Bash(cat /Users/an-yeonsu/Desktop/vivecoding/ME_website/app/api/auth/[...nextauth]/route.ts)",
       "Bash(npx shadcn@latest add tabs --yes)",
-      "Bash(curl -s https://mesc-website.vercel.app/api/debug-auth)"
+      "Bash(curl -s https://mesc-website.vercel.app/api/debug-auth)",
+      "Bash(__NEW_LINE_9276562421b38981__ node -e \":*)",
+      "Bash(node -e \":*)"
     ]
   }
 }
