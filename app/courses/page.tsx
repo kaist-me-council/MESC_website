@@ -45,7 +45,7 @@ export default function CoursesPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-5xl">
       <div className="mb-10">
-        <div className="line-accent mb-4" />
+
         <h1 className="text-4xl font-black tracking-tight mb-2">
           {language === "ko" ? "수업 정보" : "Courses"}
         </h1>

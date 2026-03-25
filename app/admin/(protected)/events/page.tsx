@@ -83,16 +83,16 @@ export default function AdminEventsPage() {
     load();
   }
 
-  async function uploadPhoto(file: File) {
+  async function uploadPhotos(files: FileList) {
     if (!selectedEvent) return;
     setPhotoUploading(true);
-    const form = new FormData(); form.append("file", file);
-    const res = await fetch(`/api/events/${selectedEvent.id}/photos`, { method: "POST", body: form });
-    if (res.ok) {
-      const updated = await fetch(`/api/events/${selectedEvent.id}`).then(r => r.json());
-      setSelectedEvent(updated);
-      load();
+    for (const file of Array.from(files)) {
+      const form = new FormData(); form.append("file", file);
+      await fetch(`/api/events/${selectedEvent.id}/photos`, { method: "POST", body: form });
     }
+    const updated = await fetch(`/api/events/${selectedEvent.id}`).then(r => r.json());
+    setSelectedEvent(updated);
+    load();
     setPhotoUploading(false);
     if (photoInputRef.current) photoInputRef.current.value = "";
   }
@@ -185,8 +185,8 @@ export default function AdminEventsPage() {
                 {photoUploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Upload className="h-6 w-6" /><span className="text-xs">업로드</span></>}
               </button>
             </div>
-            <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); }} />
+            <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden"
+              onChange={(e) => { const files = e.target.files; if (files?.length) uploadPhotos(files); }} />
           </CardContent>
         </Card>
       )}
