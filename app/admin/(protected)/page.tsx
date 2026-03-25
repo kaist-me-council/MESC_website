@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { auth, signOut } from "@/lib/auth";
-import { Settings, Bell, BookOpen, Users, Home, ExternalLink, ShieldCheck, LogOut } from "lucide-react";
+import { Settings, Bell, BookOpen, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera } from "lucide-react";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -29,6 +29,20 @@ export default async function AdminPage() {
       icon: Users,
       desc: "학생회 임원진 등록·삭제",
       color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+    },
+    {
+      href: "/admin/courses",
+      label: "수업 정보 관리",
+      icon: GraduationCap,
+      desc: "전공 과목·전공서·강의 영상 등록",
+      color: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+    },
+    {
+      href: "/admin/events",
+      label: "행사 관리",
+      icon: Camera,
+      desc: "행사 갤러리·사진 업로드",
+      color: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
     },
   ];
 

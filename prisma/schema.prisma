@@ -23,6 +23,7 @@ model Resource {
   description String?
   fileUrl     String
   category    String   @default("기타")
+  courseCode  String?
   createdAt   DateTime @default(now())
 }
 
@@ -45,4 +46,51 @@ model Member {
   council  Boolean @default(false)
   imageUrl String?
   order    Int     @default(0)
+}
+
+model Course {
+  id                Int     @id @default(autoincrement())
+  code              String  @unique
+  name              String
+  level             String  @default("기타")
+  description       String?
+  textbook          String?
+  textbookAvailable Boolean @default(false)
+  youtubeUrl        String?
+  order             Int     @default(0)
+}
+
+model Event {
+  id          Int             @id @default(autoincrement())
+  title       String
+  date        DateTime
+  description String?
+  coverImage  String?
+  createdAt   DateTime        @default(now())
+  photos      EventPhoto[]
+  feedbacks   EventFeedback[]
+}
+
+model EventPhoto {
+  id       Int     @id @default(autoincrement())
+  eventId  Int
+  event    Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  imageUrl String
+  caption  String?
+  order    Int     @default(0)
+}
+
+model EventFeedback {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  content   String
+  rating    Int      @default(3)
+  createdAt DateTime @default(now())
+}
+
+model SnackWish {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
 }

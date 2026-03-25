@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
   }
 
   const category = isAllowedCategory(b.category, ALLOWED_CATEGORIES) ? b.category : "기타";
+  const courseCode = typeof b.courseCode === "string" && b.courseCode.trim() ? b.courseCode.trim() : null;
 
   const resource = await prisma.resource.create({
     data: {
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
       description: b.description ? String(b.description).trim() : null,
       fileUrl: b.fileUrl as string,
       category,
+      courseCode,
     },
   });
   return NextResponse.json(resource);

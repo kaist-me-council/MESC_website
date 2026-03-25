@@ -15,15 +15,24 @@ interface Resource {
   description: string | null;
   fileUrl: string;
   category: string;
+  courseCode: string | null;
   createdAt: string;
+}
+
+interface Course {
+  id: number;
+  code: string;
+  name: string;
 }
 
 export default function AdminResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [category, setCategory] = useState("200");
+  const [courseCode, setCourseCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -34,10 +43,13 @@ export default function AdminResourcesPage() {
     setResources(data);
   }
 
-  useEffect(() => { loadResources(); }, []);
+  useEffect(() => {
+    loadResources();
+    fetch("/api/courses").then(r => r.json()).then(setCourses);
+  }, []);
 
   function resetForm() {
-    setTitle(""); setDescription(""); setFileUrl(""); setCategory("200"); setEditingId(null);
+    setTitle(""); setDescription(""); setFileUrl(""); setCategory("200"); setCourseCode(""); setEditingId(null);
   }
 
   function startEdit(r: Resource) {
@@ -46,6 +58,7 @@ export default function AdminResourcesPage() {
     setDescription(r.description ?? "");
     setFileUrl(r.fileUrl);
     setCategory(r.category);
+    setCourseCode(r.courseCode ?? "");
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -57,13 +70,13 @@ export default function AdminResourcesPage() {
       await fetch(`/api/resources/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, fileUrl, category }),
+        body: JSON.stringify({ title, description, fileUrl, category, courseCode: courseCode || null }),
       });
     } else {
       await fetch("/api/resources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, fileUrl, category }),
+        body: JSON.stringify({ title, description, fileUrl, category, courseCode: courseCode || null }),
       });
     }
 
@@ -120,6 +133,18 @@ export default function AdminResourcesPage() {
             <div className="space-y-2">
               <Label>파일 URL (Google Drive, Dropbox 등 공유 링크)</Label>
               <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://..." />
+            </div>
+            <div className="space-y-2">
+              <Label>연결 과목 (선택) — 수업 정보 페이지에서 표시됨</Label>
+              <Select value={courseCode || "__none__"} onValueChange={(v) => setCourseCode(v != null && v !== "__none__" ? v : "")}>
+                <SelectTrigger><SelectValue placeholder="과목 선택 안 함" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">과목 연결 안 함</SelectItem>
+                  {courses.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>{c.code} — {c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>설명 (선택)</Label>

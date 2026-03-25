@@ -33,6 +33,7 @@ export async function PUT(
   }
 
   const category = isAllowedCategory(b.category, ALLOWED_CATEGORIES) ? b.category : "기타";
+  const courseCode = typeof b.courseCode === "string" && b.courseCode.trim() ? b.courseCode.trim() : null;
 
   const resource = await prisma.resource.update({
     where: { id: numId },
@@ -41,6 +42,7 @@ export async function PUT(
       description: b.description ? String(b.description).trim() : null,
       fileUrl: String(b.fileUrl).trim(),
       category,
+      courseCode,
     },
   });
   return NextResponse.json(resource);

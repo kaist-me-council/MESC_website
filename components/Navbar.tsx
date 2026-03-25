@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, Home, Bell, BookOpen, Calendar, PieChart, CreditCard, Users, Settings } from "lucide-react";
+import { Menu, X, Home, Bell, BookOpen, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { useLanguage } from "@/lib/language-context";
@@ -19,6 +19,8 @@ export default function Navbar() {
     { href: "/budget", label: t("navbar.budget"), icon: PieChart },
     { href: "/check-fee", label: t("navbar.checkFee"), icon: CreditCard },
     { href: "/members", label: t("navbar.members"), icon: Users },
+    { href: "/courses", label: t("navbar.courses"), icon: GraduationCap },
+    { href: "/community", label: t("navbar.community"), icon: MessageSquare },
   ];
 
   return (
