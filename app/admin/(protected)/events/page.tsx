@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Camera, Loader2, Upload, X } from "lucide-react";
+import { Camera, Loader2, MessageSquare, Star, Upload, X } from "lucide-react";
 import Image from "next/image";
 
 interface EventPhoto { id: number; imageUrl: string; caption: string | null; }
+interface Feedback { id: number; content: string; rating: number; createdAt: string; }
 interface Event {
   id: number; title: string; date: string; description: string | null;
   coverImage: string | null; photos: EventPhoto[];
@@ -28,6 +29,8 @@ export default function AdminEventsPage() {
   const [submitError, setSubmitError] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [feedbackEvent, setFeedbackEvent] = useState<Event | null>(null);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const formRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +83,7 @@ export default function AdminEventsPage() {
     await fetch(`/api/events/${id}`, { method: "DELETE" });
     if (editingId === id) reset();
     if (selectedEvent?.id === id) setSelectedEvent(null);
+    if (feedbackEvent?.id === id) setFeedbackEvent(null);
     load();
   }
 
@@ -105,6 +109,24 @@ export default function AdminEventsPage() {
     });
     const updated = await fetch(`/api/events/${selectedEvent.id}`).then(r => r.json());
     setSelectedEvent(updated);
+    load();
+  }
+
+  async function openFeedbacks(e: Event) {
+    setFeedbackEvent(e);
+    setSelectedEvent(null);
+    const res = await fetch(`/api/events/${e.id}/feedback`);
+    setFeedbacks(await res.json());
+  }
+
+  async function deleteFeedback(feedbackId: number) {
+    if (!feedbackEvent) return;
+    if (!confirm("피드백을 삭제하시겠습니까?")) return;
+    await fetch(`/api/events/${feedbackEvent.id}/feedback`, {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedbackId }),
+    });
+    setFeedbacks(prev => prev.filter(f => f.id !== feedbackId));
     load();
   }
 
@@ -191,6 +213,49 @@ export default function AdminEventsPage() {
         </Card>
       )}
 
+      {/* 피드백 관리 패널 */}
+      {feedbackEvent && (
+        <Card className="mb-8 border-amber-500/30">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-amber-500" />
+                {feedbackEvent.title} 피드백 관리
+                <Badge variant="outline" className="text-xs">{feedbacks.length}개</Badge>
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setFeedbackEvent(null)}>닫기</Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {feedbacks.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">등록된 피드백이 없습니다.</p>
+            ) : (
+              <div className="space-y-2">
+                {feedbacks.map((f) => (
+                  <div key={f.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1 mb-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star key={i} className={`h-3 w-3 ${i < f.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
+                        ))}
+                        <span className="text-xs text-muted-foreground ml-1">
+                          {new Date(f.createdAt).toLocaleDateString("ko-KR")}
+                        </span>
+                      </div>
+                      <p className="text-sm">{f.content}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive shrink-0 h-7 px-2"
+                      onClick={() => deleteFeedback(f.id)}>
+                      삭제
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <h2 className="text-lg font-semibold mb-4">등록된 행사 ({events.length}개)</h2>
       <div className="space-y-3">
         {events.map((e) => (
@@ -211,11 +276,13 @@ export default function AdminEventsPage() {
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs text-muted-foreground">{new Date(e.date).toLocaleDateString("ko-KR")}</span>
                     <Badge variant="outline" className="text-xs gap-1"><Camera className="h-3 w-3" />{e.photos.length}</Badge>
+                    <Badge variant="outline" className="text-xs gap-1"><MessageSquare className="h-3 w-3" />{e._count.feedbacks}</Badge>
                   </div>
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
                 <Button variant="outline" size="sm" onClick={() => setSelectedEvent(e)}>사진</Button>
+                <Button variant="outline" size="sm" onClick={() => openFeedbacks(e)}>피드백</Button>
                 <Button variant="outline" size="sm" onClick={() => startEdit(e)} disabled={editingId === e.id}>수정</Button>
                 <Button variant="destructive" size="sm" onClick={() => handleDelete(e.id)}>삭제</Button>
               </div>

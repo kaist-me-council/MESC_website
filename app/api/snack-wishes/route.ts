@@ -22,7 +22,8 @@ export async function POST(req: Request) {
   if (!checkRateLimit(ip)) return NextResponse.json({ error: "잠시 후 다시 시도해주세요." }, { status: 429 });
 
   const body = await req.json();
-  const content = typeof body.content === "string" ? body.content.trim() : "";
+  const raw = typeof body.content === "string" ? body.content.trim() : "";
+  const content = raw.replace(/<[^>]*>/g, "").trim(); // HTML 태그 제거
   if (!content || content.length > 100) return NextResponse.json({ error: "간식 이름을 입력해주세요. (최대 100자)" }, { status: 400 });
 
   const wish = await prisma.snackWish.create({ data: { content } });

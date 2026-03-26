@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { parseId } from "@/lib/validation";
 
 // IP 기반 rate limit (10분에 5회)
@@ -38,7 +39,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const body = await req.json();
-  const content = typeof body.content === "string" ? body.content.trim() : "";
+  const raw = typeof body.content === "string" ? body.content.trim() : "";
+  const content = raw.replace(/<[^>]*>/g, "").trim(); // HTML 태그 제거
   const rating = typeof body.rating === "number" ? Math.min(5, Math.max(1, Math.floor(body.rating))) : 3;
 
   if (!content || content.length > 500) return NextResponse.json({ error: "피드백 내용을 입력해주세요. (최대 500자)" }, { status: 400 });
@@ -47,4 +49,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     data: { eventId: id, content, rating },
   });
   return NextResponse.json(feedback, { status: 201 });
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id: idStr } = await params;
+  const eventId = parseId(idStr);
+  if (!eventId) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const { feedbackId } = await req.json();
+  if (!feedbackId) return NextResponse.json({ error: "feedbackId required" }, { status: 400 });
+
+  await prisma.eventFeedback.delete({
+    where: { id: Number(feedbackId), eventId },
+  });
+  return NextResponse.json({ ok: true });
 }
