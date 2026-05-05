@@ -9,6 +9,7 @@ import {
   Zap, Clock, ArrowUpRight
 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
+import HomePopupModal from "@/components/HomePopupModal";
 
 interface Notice {
   id: number;
@@ -58,6 +59,7 @@ export function HomeClient({ notices }: HomeClientProps) {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <HomePopupModal />
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-28 md:pt-32 md:pb-40">
         {/* Background Elements */}
@@ -152,7 +154,7 @@ export function HomeClient({ notices }: HomeClientProps) {
                 <h2 className="text-2xl font-black tracking-tight">{t("home.latestNotices")}</h2>
               </div>
               <Link href="/notices" className="group flex items-center text-sm font-bold text-primary hover:gap-2 transition-all">
-                {t("home.viewAll")}
+                {t("home.viewAllNotices")}
                 <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </div>

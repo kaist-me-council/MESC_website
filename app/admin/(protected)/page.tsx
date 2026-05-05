@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { auth, signOut } from "@/lib/auth";
-import { Settings, Bell, BookOpen, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera, Cookie } from "lucide-react";
+import { Settings, Bell, BookOpen, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera, Cookie, Megaphone, Building2, UserSquare } from "lucide-react";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -50,6 +50,27 @@ export default async function AdminPage() {
       icon: Cookie,
       desc: "위시리스트 조회·삭제",
       color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    },
+    {
+      href: "/admin/popup",
+      label: "홈화면 팝업",
+      icon: Megaphone,
+      desc: "방문자 팝업 ON/OFF + 링크 관리",
+      color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+    },
+    {
+      href: "/admin/buildings",
+      label: "건물·평면도 관리",
+      icon: Building2,
+      desc: "건물·층·평면도 업로드",
+      color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+    },
+    {
+      href: "/admin/professors",
+      label: "교수님 관리",
+      icon: UserSquare,
+      desc: "교수님 정보·오피스 등록",
+      color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
     },
   ];
 

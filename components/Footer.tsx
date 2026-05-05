@@ -41,6 +41,10 @@ export default function Footer() {
 
   const snsLinks = [
     {
+      label: lang === "ko" ? "카카오톡 채널" : "KakaoTalk",
+      href: "http://pf.kakao.com/_fHXxkn/chat",
+    },
+    {
       label: lang === "ko" ? "인스타 (학생회)" : "Instagram (Council)",
       href: "https://www.instagram.com/i_love_mesc/",
     },

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, Home, Bell, BookOpen, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare } from "lucide-react";
+import { Menu, X, Home, Bell, BookOpen, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin } from "lucide-react";
 import { useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { useLanguage } from "@/lib/language-context";
@@ -19,6 +19,7 @@ export default function Navbar() {
     { href: "/budget", label: t("navbar.budget"), icon: PieChart },
     { href: "/check-fee", label: t("navbar.checkFee"), icon: CreditCard },
     { href: "/members", label: t("navbar.members"), icon: Users },
+    { href: "/department-info", label: t("navbar.deptInfo"), icon: MapPin },
     { href: "/courses", label: t("navbar.courses"), icon: GraduationCap },
     { href: "/community", label: t("navbar.community"), icon: MessageSquare },
   ];
@@ -35,7 +36,7 @@ export default function Navbar() {
             </div>
             <div className="flex flex-col leading-tight">
               <span className="font-black text-base tracking-tight text-foreground">ME Council</span>
-              <span className="text-xs text-muted-foreground font-bold">{t("navbar.subtitle")}</span>
+              <span className="hidden sm:inline text-xs text-muted-foreground font-bold">{t("navbar.subtitle")}</span>
             </div>
           </Link>
 

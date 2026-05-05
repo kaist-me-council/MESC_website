@@ -94,3 +94,67 @@ model SnackWish {
   content   String
   createdAt DateTime @default(now())
 }
+
+// 홈화면 자동 팝업 설정 (단일 행)
+model PopupSettings {
+  id        Int      @id @default(1)
+  enabled   Boolean  @default(false)
+  title     String   @default("기계공학과 학생회")
+  message   String?
+  updatedAt DateTime @updatedAt
+}
+
+// 팝업에 표시할 링크
+model PopupLink {
+  id        Int      @id @default(autoincrement())
+  label     String
+  labelEn   String?
+  url       String
+  icon      String?
+  order     Int      @default(0)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// 학과 건물
+model Building {
+  id          Int             @id @default(autoincrement())
+  code        String          @unique
+  name        String
+  nameEn      String?
+  description String?
+  order       Int             @default(0)
+  floors      BuildingFloor[]
+  professors  Professor[]
+}
+
+// 층별 평면도
+model BuildingFloor {
+  id          Int         @id @default(autoincrement())
+  buildingId  Int
+  building    Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  level       Int
+  imageUrl    String?
+  description String?
+  professors  Professor[]
+  @@unique([buildingId, level])
+}
+
+// 교수님 오피스 정보
+model Professor {
+  id           Int            @id @default(autoincrement())
+  name         String
+  nameEn       String?
+  title        String         @default("교수")
+  buildingId   Int?
+  building     Building?      @relation(fields: [buildingId], references: [id])
+  floorId      Int?
+  floor        BuildingFloor? @relation(fields: [floorId], references: [id])
+  roomNumber   String?
+  email        String?
+  phone        String?
+  researchArea String?
+  websiteUrl   String?
+  imageUrl     String?
+  order        Int            @default(0)
+}
