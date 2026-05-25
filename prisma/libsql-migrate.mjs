@@ -39,7 +39,6 @@ const applied = new Set(appliedRes.rows.map((r) => r.id));
 
 // 최초 실행: 기존 마이그레이션은 이미 DB 에 반영돼 있을 가능성이 높음.
 // 마지막(가장 새로운) 마이그레이션 하나만 실행하고 나머지는 기록만 남긴다.
-// 이후 신규 마이그레이션은 정상 흐름으로 추가됨.
 if (applied.size === 0 && folders.length > 1) {
   const preApplied = folders.slice(0, -1);
   console.log(`[libsql-migrate] 첫 실행: ${preApplied.length}개 기존 마이그레이션을 적용 완료로 기록`);
@@ -49,8 +48,33 @@ if (applied.size === 0 && folders.length > 1) {
   }
 }
 
+// 1회용 force-reapply: split 로직 버그로 일부 statement 가 누락된 채 적용된 마이그레이션 재실행.
+// 다음 신규 마이그레이션 추가 시 이 배열을 비우거나 항목을 제거하면 된다.
+const FORCE_REAPPLY = ["20260525162123_add_drive_sync"];
+for (const id of FORCE_REAPPLY) {
+  if (applied.has(id)) {
+    console.log(`[libsql-migrate] force-reapply: ${id} 기록 삭제`);
+    await db.execute({ sql: "DELETE FROM _libsql_migrations WHERE id = ?", args: [id] });
+    applied.delete(id);
+  }
+}
+
 const isAlreadyExistsError = (msg) =>
   /already exists|duplicate column|duplicate index/i.test(String(msg));
+
+// SQL 파일을 statement 단위로 분리.
+// 1) 라인별로 주석 제거 후 합치고 2) `;` 로 분리.
+function parseStatements(rawSql) {
+  const stripped = rawSql
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("--"))
+    .join(" ");
+  return stripped
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 let appliedCount = 0;
 for (const folder of folders) {
@@ -60,10 +84,7 @@ for (const folder of folders) {
   if (!existsSync(sqlPath)) continue;
 
   const sql = readFileSync(sqlPath, "utf8");
-  const statements = sql
-    .split(/;\s*(?:\r?\n|$)/)
-    .map((s) => s.trim())
-    .filter((s) => s && !s.startsWith("--"));
+  const statements = parseStatements(sql);
 
   console.log(`[libsql-migrate] 적용: ${folder} (${statements.length} statements)`);
   for (const stmt of statements) {
