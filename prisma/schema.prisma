@@ -61,23 +61,27 @@ model Course {
 }
 
 model Event {
-  id          Int             @id @default(autoincrement())
-  title       String
-  date        DateTime
-  description String?
-  coverImage  String?
-  createdAt   DateTime        @default(now())
-  photos      EventPhoto[]
-  feedbacks   EventFeedback[]
+  id            Int             @id @default(autoincrement())
+  title         String
+  date          DateTime
+  description   String?
+  coverImage    String?
+  createdAt     DateTime        @default(now())
+  driveFolderId String?         @unique
+  lastSyncedAt  DateTime?
+  photos        EventPhoto[]
+  feedbacks     EventFeedback[]
 }
 
 model EventPhoto {
-  id       Int     @id @default(autoincrement())
-  eventId  Int
-  event    Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  imageUrl String
-  caption  String?
-  order    Int     @default(0)
+  id          Int     @id @default(autoincrement())
+  eventId     Int
+  event       Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  imageUrl    String
+  caption     String?
+  order       Int     @default(0)
+  source      String  @default("blob")
+  driveFileId String? @unique
 }
 
 model EventFeedback {

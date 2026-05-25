@@ -7,15 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Camera, Download, Loader2, MessageSquare, Star, Upload, X } from "lucide-react";
+import { Camera, Download, FolderSync, Loader2, MessageSquare, RefreshCw, Star, Upload, X } from "lucide-react";
 import Image from "next/image";
 import JSZip from "jszip";
 
-interface EventPhoto { id: number; imageUrl: string; caption: string | null; }
+interface EventPhoto { id: number; imageUrl: string; caption: string | null; source?: string; driveFileId?: string | null; }
 interface Feedback { id: number; content: string; rating: number; createdAt: string; }
 interface Event {
   id: number; title: string; date: string; description: string | null;
   coverImage: string | null; photos: EventPhoto[];
+  driveFolderId?: string | null; lastSyncedAt?: string | null;
   _count: { feedbacks: number };
 }
 
@@ -33,6 +34,10 @@ export default function AdminEventsPage() {
   const [zipDownloading, setZipDownloading] = useState(false);
   const [feedbackEvent, setFeedbackEvent] = useState<Event | null>(null);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [driveFolderUrl, setDriveFolderUrl] = useState("");
+  const [driveSyncing, setDriveSyncing] = useState(false);
+  const [driveMessage, setDriveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [resyncingId, setResyncingId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -147,6 +152,55 @@ export default function AdminEventsPage() {
     }
   }
 
+  async function handleDriveSync() {
+    if (!driveFolderUrl.trim()) return;
+    setDriveSyncing(true); setDriveMessage(null);
+    try {
+      const res = await fetch("/api/events/sync-drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderUrl: driveFolderUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDriveMessage({ type: "error", text: data.error ?? "동기화에 실패했습니다." });
+      } else {
+        setDriveMessage({
+          type: "success",
+          text: `"${data.title}" 동기화 완료 — 사진 ${data.added}개 추가, ${data.skipped}개 스킵 (총 ${data.totalFiles}개)`,
+        });
+        setDriveFolderUrl("");
+        load();
+      }
+    } catch {
+      setDriveMessage({ type: "error", text: "네트워크 오류가 발생했습니다." });
+    } finally {
+      setDriveSyncing(false);
+    }
+  }
+
+  async function handleResync(eventId: number) {
+    setResyncingId(eventId);
+    try {
+      const res = await fetch(`/api/events/${eventId}/resync`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "재동기화에 실패했습니다.");
+      } else {
+        alert(`재동기화 완료 — ${data.added}개 추가, ${data.skipped}개 스킵`);
+        if (selectedEvent?.id === eventId) {
+          const updated = await fetch(`/api/events/${eventId}`).then(r => r.json());
+          setSelectedEvent(updated);
+        }
+        load();
+      }
+    } catch {
+      alert("네트워크 오류가 발생했습니다.");
+    } finally {
+      setResyncingId(null);
+    }
+  }
+
   async function openFeedbacks(e: Event) {
     setFeedbackEvent(e);
     setSelectedEvent(null);
@@ -171,6 +225,39 @@ export default function AdminEventsPage() {
         <a href="/admin" className="text-sm text-muted-foreground hover:text-foreground">← 대시보드</a>
         <h1 className="text-2xl font-bold">행사 관리</h1>
       </div>
+
+      {/* Google Drive 폴더 일괄 등록 */}
+      <Card className="mb-6 border-blue-500/30 bg-blue-500/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FolderSync className="h-4 w-4 text-blue-500" />
+            Google Drive 폴더로 일괄 등록
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            폴더명은 <code className="px-1 py-0.5 rounded bg-muted">YYYY-MM-DD-행사명</code> 형식 (예: <code className="px-1 py-0.5 rounded bg-muted">2026-05-10-신입생 환영회</code>).
+            <br />폴더 공유 설정을 <strong>&quot;링크가 있는 모든 사용자가 보기&quot;</strong>로 변경한 뒤 URL을 붙여넣어 주세요.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              value={driveFolderUrl}
+              onChange={(e) => setDriveFolderUrl(e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/..."
+              className="flex-1 text-xs"
+              disabled={driveSyncing}
+            />
+            <Button onClick={handleDriveSync} disabled={driveSyncing || !driveFolderUrl.trim()} className="gap-2">
+              {driveSyncing ? <><Loader2 className="h-4 w-4 animate-spin" />동기화 중...</> : <><FolderSync className="h-4 w-4" />동기화</>}
+            </Button>
+          </div>
+          {driveMessage && (
+            <Alert variant={driveMessage.type === "error" ? "destructive" : "default"}>
+              <AlertDescription className="text-xs">{driveMessage.text}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
       <div ref={formRef}>
         <Card className="mb-8">
@@ -244,16 +331,24 @@ export default function AdminEventsPage() {
             </div>
             <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden"
               onChange={(e) => { const files = e.target.files; if (files?.length) uploadPhotos(files); }} />
-            {selectedEvent.photos.length > 0 && (
-              <div className="flex justify-end">
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              {selectedEvent.driveFolderId ? (
+                <Button variant="outline" size="sm" onClick={() => handleResync(selectedEvent.id)}
+                  disabled={resyncingId === selectedEvent.id} className="gap-2">
+                  {resyncingId === selectedEvent.id
+                    ? <><Loader2 className="h-4 w-4 animate-spin" />재동기화 중...</>
+                    : <><RefreshCw className="h-4 w-4" />Drive 재동기화</>}
+                </Button>
+              ) : <span />}
+              {selectedEvent.photos.length > 0 && (
                 <Button variant="outline" size="sm" onClick={handleDownloadPhotos}
                   disabled={zipDownloading || photoUploading} className="gap-2">
                   {zipDownloading
                     ? <><Loader2 className="h-4 w-4 animate-spin" />ZIP 생성 중...</>
                     : <><Download className="h-4 w-4" />ZIP 다운로드</>}
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -318,10 +413,15 @@ export default function AdminEventsPage() {
                 )}
                 <div className="min-w-0">
                   <p className="font-semibold truncate">{e.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-xs text-muted-foreground">{new Date(e.date).toLocaleDateString("ko-KR")}</span>
                     <Badge variant="outline" className="text-xs gap-1"><Camera className="h-3 w-3" />{e.photos.length}</Badge>
                     <Badge variant="outline" className="text-xs gap-1"><MessageSquare className="h-3 w-3" />{e._count.feedbacks}</Badge>
+                    {e.driveFolderId && (
+                      <Badge variant="outline" className="text-xs gap-1 border-blue-500/40 text-blue-600 dark:text-blue-400">
+                        <FolderSync className="h-3 w-3" />Drive
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
