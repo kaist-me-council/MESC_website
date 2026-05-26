@@ -48,9 +48,8 @@ if (applied.size === 0 && folders.length > 1) {
   }
 }
 
-// 1회용 force-reapply: split 로직 버그로 일부 statement 가 누락된 채 적용된 마이그레이션 재실행.
-// 다음 신규 마이그레이션 추가 시 이 배열을 비우거나 항목을 제거하면 된다.
-const FORCE_REAPPLY = ["20260525162123_add_drive_sync"];
+// (과거 디버깅: 잘못 적용된 마이그레이션 강제 재실행 — 모두 처리되어 비움)
+const FORCE_REAPPLY = [];
 for (const id of FORCE_REAPPLY) {
   if (applied.has(id)) {
     console.log(`[libsql-migrate] force-reapply: ${id} 기록 삭제`);
