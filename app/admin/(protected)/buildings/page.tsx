@@ -79,6 +79,66 @@ export default function AdminBuildingsPage() {
     );
   }
 
+  function FloorplanBulkUpload({ buildingCode, onUploaded }: { buildingCode: string; onUploaded: () => void }) {
+    const [busy, setBusy] = useState(false);
+    const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+    const [result, setResult] = useState<{ uploaded: { fileName: string; level: number }[]; skipped: { fileName: string; reason: string }[] } | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    async function handleFiles(files: FileList) {
+      setBusy(true); setResult(null);
+      setProgress({ done: 0, total: files.length });
+      const fd = new FormData();
+      for (const f of Array.from(files)) fd.append("files", f);
+      const r = await fetch(`/api/admin/buildings/${encodeURIComponent(buildingCode)}/upload-floorplans-bulk`, { method: "POST", body: fd });
+      const data = await r.json();
+      setProgress(null);
+      if (r.ok) {
+        setResult(data);
+        onUploaded();
+      } else {
+        alert(data.error ?? "일괄 업로드 실패");
+      }
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+
+    return (
+      <div className="p-3 rounded-lg border-2 border-dashed border-blue-500/30 bg-blue-500/5 space-y-2">
+        <p className="text-xs font-semibold">📦 도면 여러 장 한 번에 업로드</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          파일명에 <strong>&quot;N층&quot;</strong> 이 들어있어야 자동으로 해당 층으로 매핑됩니다 (예: <code className="px-1 rounded bg-muted">기계공학동 3층.pdf</code> → 3F).
+          PDF·PNG·JPG·WebP 지원. 각 파일 최대 30MB.
+        </p>
+        <Button size="sm" onClick={() => inputRef.current?.click()} disabled={busy} className="gap-2 w-full">
+          {busy ? (
+            <><Loader2 className="h-4 w-4 animate-spin" />
+              {progress ? `업로드 중... ${progress.done}/${progress.total}` : "처리 중..."}
+            </>
+          ) : (
+            <><Upload className="h-4 w-4" />여러 평면도 한 번에 선택 + 자동 업로드</>
+          )}
+        </Button>
+        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" multiple className="hidden"
+          onChange={(e) => { const f = e.target.files; if (f && f.length) handleFiles(f); }} />
+        {result && (
+          <div className="text-xs space-y-1">
+            {result.uploaded.length > 0 && (
+              <p className="text-green-700 dark:text-green-400">
+                ✅ {result.uploaded.length}개 업로드: {result.uploaded.map(u => `${u.level}F`).join(", ")}
+              </p>
+            )}
+            {result.skipped.length > 0 && (
+              <p className="text-amber-700 dark:text-amber-400">
+                ⚠️ {result.skipped.length}개 스킵: {result.skipped.map(s => `${s.fileName} (${s.reason})`).join("; ")}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   async function savePin(professorId: number, posX: number | null, posY: number | null) {
     await fetch(`/api/professors/${professorId}`, {
       method: "PATCH",
@@ -313,6 +373,9 @@ export default function AdminBuildingsPage() {
                 <Plus className="h-4 w-4" /> 층 추가
               </Button>
             </div>
+
+            {/* 일괄 업로드 */}
+            <FloorplanBulkUpload buildingCode={selectedBuilding.code} onUploaded={load} />
 
             {/* 등록된 층 목록 */}
             <div className="space-y-3">
