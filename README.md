@@ -29,6 +29,10 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## 인수인계 / 개발·운영 가이드
+
+다음 운영진/개발자를 위한 자세한 가이드는 **[docs/HANDOVER.md](docs/HANDOVER.md)** 를 읽어주세요. 큰 그림 + 자주 하는 작업 + 트러블슈팅 + 알려진 TODO 가 모두 정리되어 있습니다.
+
 ## 환경 변수
 
 `.env.example` 을 참고하여 `.env.local` 을 생성합니다. Vercel 배포 시에는 동일한 키를 대시보드 **Settings → Environment Variables** 에 입력합니다.
