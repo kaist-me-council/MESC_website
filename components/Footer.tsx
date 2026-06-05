@@ -1,12 +1,51 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Settings, MapPin, Mail, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 
+const FALLBACK_CONTACT = {
+  locationKo: "N7동 학생회실",
+  locationEn: "Student Council Room, N7",
+  email: "kaist.mesc@gmail.com",
+};
+
+type SnsLink = {
+  label: string;
+  labelEn: string | null;
+  url: string;
+  icon: string | null;
+};
+
+const FALLBACK_SNS: SnsLink[] = [
+  { label: "카카오톡 채널", labelEn: "KakaoTalk", url: "http://pf.kakao.com/_fHXxkn/chat", icon: null },
+  { label: "인스타 (학생회)", labelEn: "Instagram (Council)", url: "https://www.instagram.com/i_love_mesc/", icon: null },
+  { label: "인스타 (학과)", labelEn: "Instagram (ME)", url: "https://www.instagram.com/kaist_me/", icon: null },
+  { label: "네이버 카페", labelEn: "Naver Cafe", url: "https://cafe.naver.com/kaistme", icon: null },
+];
+
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const { t, lang } = useLanguage();
+
+  const [contact, setContact] = useState(FALLBACK_CONTACT);
+  const [sns, setSns] = useState<SnsLink[]>(FALLBACK_SNS);
+
+  useEffect(() => {
+    fetch("/api/site-settings")
+      .then((r) => r.json())
+      .then((d) =>
+        setContact({ locationKo: d.locationKo, locationEn: d.locationEn, email: d.email })
+      )
+      .catch(() => {});
+    fetch("/api/site-links?category=community")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d) && d.length) setSns(d);
+      })
+      .catch(() => {});
+  }, []);
 
   const quickLinks = [
     { label: t("navbar.notices"), href: "/notices" },
@@ -31,32 +70,22 @@ export default function Footer() {
   ];
 
   const contactInfo = [
-    { icon: MapPin, label: "N7동 학생회실", href: null },
+    {
+      icon: MapPin,
+      label: lang === "ko" ? contact.locationKo : contact.locationEn,
+      href: null,
+    },
     {
       icon: Mail,
-      label: "kaist.mesc@gmail.com",
-      href: "mailto:kaist.mesc@gmail.com",
+      label: contact.email,
+      href: `mailto:${contact.email}`,
     },
   ];
 
-  const snsLinks = [
-    {
-      label: lang === "ko" ? "카카오톡 채널" : "KakaoTalk",
-      href: "http://pf.kakao.com/_fHXxkn/chat",
-    },
-    {
-      label: lang === "ko" ? "인스타 (학생회)" : "Instagram (Council)",
-      href: "https://www.instagram.com/i_love_mesc/",
-    },
-    {
-      label: lang === "ko" ? "인스타 (학과)" : "Instagram (ME)",
-      href: "https://www.instagram.com/kaist_me/",
-    },
-    {
-      label: lang === "ko" ? "네이버 카페" : "Naver Cafe",
-      href: "https://cafe.naver.com/kaistme",
-    },
-  ];
+  const snsLinks = sns.map((s) => ({
+    label: lang === "ko" ? s.label : s.labelEn || s.label,
+    href: s.url,
+  }));
 
   const title = t("footer.title");
   const subtitle = lang === "ko" ? "KAIST Mechanical Engineering Student Council" : "KAIST 기계공학과 학생회";
