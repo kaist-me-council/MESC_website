@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { auth, signOut } from "@/lib/auth";
-import { Settings, Bell, BookOpen, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera, Cookie, Megaphone, Building2, UserSquare, MessageSquare } from "lucide-react";
+import { Settings, Bell, BookOpen, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera, Cookie, Megaphone, Building2, UserSquare, MessageSquare, Wrench } from "lucide-react";
 import { AdminGuide } from "@/components/admin-guide";
 
 export default async function AdminPage() {
@@ -79,6 +79,13 @@ export default async function AdminPage() {
       icon: MessageSquare,
       desc: "건의 답변·게시글 신고 처리",
       color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
+    },
+    {
+      href: "/admin/site",
+      label: "사이트 설정",
+      icon: Wrench,
+      desc: "운영시간·연락처·외부링크·동아리 관리",
+      color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
     },
   ];
 
