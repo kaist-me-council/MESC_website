@@ -1,3 +1,7 @@
+// [DEPRECATED as live source] 이 상수들은 이제 DB(SiteLink)로 이관되었습니다.
+// 남겨둔 이유: 시드 스크립트(scripts/seed-site-settings.mjs)의 출처 기록 및 fallback 참고용.
+// 공개 페이지는 /api/site-links 또는 서버 조회 결과를 사용합니다. 이 파일을 수정해도 사이트에 반영되지 않습니다.
+
 export interface SiteLink {
   label: string;
   labelEn: string;
@@ -7,7 +11,7 @@ export interface SiteLink {
   icon: string;
 }
 
-// 주요 링크 — 필요에 따라 이 파일을 직접 수정하세요
+// 주요 링크 — (DB 이관됨) 실제 수정은 /admin/site 에서. 아래는 시드/fallback 출처.
 export const IMPORTANT_LINKS: SiteLink[] = [
   {
     label: "기계공학과 홈페이지",

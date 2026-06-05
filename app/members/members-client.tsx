@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useLanguage } from "@/lib/language-context";
-import { IMPORTANT_LINKS, COMMUNITY_LINKS } from "@/lib/links";
+import { getClubColor } from "@/lib/site-settings";
 import { ExternalLink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -28,43 +28,18 @@ interface Club {
   url: string;
   urlLabel: "site" | "insta";
   emoji: string;
-  color: string;
+  colorPreset: string;
 }
 
-const CLUBS: Club[] = [
-  {
-    name: "MR",
-    nameEn: "MR (Microrobot Research)",
-    tagKo: "로봇 연구",
-    tagEn: "Robotics Research",
-    descKo:
-      "KAIST 유일의 로봇 동아리로, 다양한 종류의 로봇을 직접 설계하고 제작하며 연구합니다. 전공과 관계없이 로봇에 관심 있는 누구나 참여할 수 있으며, 3D 프린터·각종 공구 등 풍부한 장비를 갖춘 동아리방에서 활동합니다. 제작한 로봇으로 대회 참가와 방송 출연 등 활발한 대외 활동을 이어가고 있습니다.",
-    descEn:
-      "MR (Microrobot Research) is KAIST's only robot club, where members design, build, and research all kinds of robots. Open to all students regardless of major, the club provides foundational robotics education and access to 3D printers and various tools. Members actively participate in robot competitions and media appearances.",
-    activitiesKo: ["로봇 설계 및 제작 프로젝트", "신입부원 기초 교육 (아두이노, 회로설계)", "대회 참가 및 방송 출연", "자체 학생 로봇 대회 운영"],
-    activitiesEn: ["Robot design & fabrication projects", "Foundational education (Arduino, circuit design)", "Competition participation & media appearances", "Student robotics competition hosting"],
-    url: "https://mr.kaist.ac.kr/",
-    urlLabel: "site",
-    emoji: "🤖",
-    color: "from-blue-500/10 to-cyan-500/10 border-blue-500/20",
-  },
-  {
-    name: "질주",
-    nameEn: "ZILZU",
-    tagKo: "자작자동차",
-    tagEn: "Built-Car Racing",
-    descKo:
-      "1998년 창설된 KAIST 기계공학과 자작자동차 동아리입니다. 엔진·타이어 등 완제품을 제외한 설계, 용접, 프레임, 전기 배선까지 오프로드 경주용 자동차를 처음부터 끝까지 직접 제작합니다. 매년 KSAE 대학생 자작자동차 대회(C-Baja / E-Baja)에 참가하며 실전 엔지니어링 경험을 쌓습니다.",
-    descEn:
-      "ZILZU is KAIST's student-built automobile club under the Department of Mechanical Engineering, founded in 1998. Members independently design and fabricate off-road racing vehicles from scratch — handling everything from frame welding and suspension to electrical wiring. The team competes annually in the KSAE Student Built-Car Competition in both C-Baja and E-Baja categories.",
-    activitiesKo: ["오프로드 경주용 자동차 설계·제작 (CAD, 정적/유동해석)", "KSAE 대학생 자작자동차 대회 참가", "C-Baja (내연기관) · E-Baja (전기차) 부문 출전", "설계부터 용접·전기 배선까지 전 과정 직접 수행"],
-    activitiesEn: ["Off-road vehicle design & fabrication (CAD, FEA)", "KSAE Student Built-Car Competition", "C-Baja (combustion) & E-Baja (electric) categories", "Full in-house production: welding, wiring & more"],
-    url: "https://www.instagram.com/kaist_zilzu/?hl=ko",
-    urlLabel: "insta",
-    emoji: "🏎️",
-    color: "from-orange-500/10 to-red-500/10 border-orange-500/20",
-  },
-];
+interface LinkRow {
+  id: number;
+  label: string;
+  labelEn: string | null;
+  url: string;
+  description: string | null;
+  descriptionEn: string | null;
+  icon: string | null;
+}
 
 function MemberCard({ member }: { member: Member }) {
   return (
@@ -84,7 +59,17 @@ function MemberCard({ member }: { member: Member }) {
   );
 }
 
-export function MembersClient({ members }: { members: Member[] }) {
+export function MembersClient({
+  members,
+  clubs,
+  importantLinks,
+  communityLinks,
+}: {
+  members: Member[];
+  clubs: Club[];
+  importantLinks: LinkRow[];
+  communityLinks: LinkRow[];
+}) {
   const { t, lang } = useLanguage();
 
   // 그룹화 로직
@@ -147,10 +132,10 @@ export function MembersClient({ members }: { members: Member[] }) {
         <TabsContent value="clubs">
           <p className="text-muted-foreground mb-6">{t("members.clubsSubtitle")}</p>
           <div className="grid md:grid-cols-2 gap-6">
-            {CLUBS.map((club) => (
+            {clubs.map((club) => (
               <div
                 key={club.name}
-                className={`rounded-2xl border bg-gradient-to-br ${club.color} p-6 flex flex-col gap-4`}
+                className={`rounded-2xl border bg-gradient-to-br ${getClubColor(club.colorPreset)} p-6 flex flex-col gap-4`}
               >
                 {/* 헤더 */}
                 <div className="flex items-start gap-4">
@@ -210,9 +195,9 @@ export function MembersClient({ members }: { members: Member[] }) {
       <section className="mb-12">
         <h2 className="text-xl font-bold mb-4">{t("members.importantLinks")}</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {IMPORTANT_LINKS.map((link) => (
+          {importantLinks.map((link) => (
             <a
-              key={link.label}
+              key={link.id}
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
@@ -238,9 +223,9 @@ export function MembersClient({ members }: { members: Member[] }) {
       <section>
         <h2 className="text-xl font-bold mb-4">{t("members.community")}</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {COMMUNITY_LINKS.map((link) => (
+          {communityLinks.map((link) => (
             <a
-              key={link.label}
+              key={link.id}
               href={link.url}
               target={link.url !== "#" ? "_blank" : undefined}
               rel="noopener noreferrer"

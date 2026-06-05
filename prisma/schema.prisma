@@ -261,3 +261,52 @@ model Report {
   createdAt  DateTime @default(now())
   @@index([targetType, targetId])
 }
+
+// ── 사이트 설정 ──────────────────────────────────────────
+// 싱글톤: 운영시간 + 연락처 (PopupSettings 패턴)
+model SiteSettings {
+  id         Int      @id @default(1)
+  locationKo String   @default("N7동 학생회실")
+  locationEn String   @default("Student Council Room, N7")
+  email      String   @default("kaist.mesc@gmail.com")
+  phone      String?
+  hoursJson  String?
+  updatedAt  DateTime @updatedAt
+}
+
+// 리스트: 외부링크·SNS (PopupLink 패턴 + category)
+model SiteLink {
+  id            Int      @id @default(autoincrement())
+  category      String   @default("important") // "important" | "community"
+  label         String
+  labelEn       String?
+  url           String
+  description   String?
+  descriptionEn String?
+  icon          String?
+  order         Int      @default(0)
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([category, order])
+}
+
+// 리스트: 동아리 (Member 패턴)
+model Club {
+  id           Int      @id @default(autoincrement())
+  name         String
+  nameEn       String?
+  tagKo        String?
+  tagEn        String?
+  descKo       String
+  descEn       String?
+  activitiesKo String?
+  activitiesEn String?
+  url          String?
+  urlLabel     String?
+  emoji        String?
+  colorPreset  String?
+  order        Int      @default(0)
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
