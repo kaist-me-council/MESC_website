@@ -9,11 +9,11 @@ import { floorplanFilename } from "@/lib/filename";
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
 const MAX_SIZE = 30 * 1024 * 1024; // 30MB — 평면도는 큼
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ floorId: string }> }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id: idStr } = await params;
+  const { floorId: idStr } = await params;
   const id = parseId(idStr);
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
