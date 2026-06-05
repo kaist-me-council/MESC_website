@@ -24,7 +24,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (typeof body.description === "string") data.description = body.description.trim().slice(0, 200) || null;
   if (typeof body.descriptionEn === "string") data.descriptionEn = body.descriptionEn.trim().slice(0, 200) || null;
   if (typeof body.icon === "string") data.icon = body.icon.trim().slice(0, 20) || null;
-  if (typeof body.order === "number") data.order = body.order;
+  if (typeof body.order === "number") data.order = Math.max(0, Math.trunc(body.order));
   if (typeof body.enabled === "boolean") data.enabled = body.enabled;
 
   const link = await prisma.siteLink.update({ where: { id }, data });

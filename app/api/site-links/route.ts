@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const description = typeof body.description === "string" ? body.description.trim().slice(0, 200) || null : null;
   const descriptionEn = typeof body.descriptionEn === "string" ? body.descriptionEn.trim().slice(0, 200) || null : null;
   const icon = typeof body.icon === "string" ? body.icon.trim().slice(0, 20) || null : null;
-  const order = typeof body.order === "number" ? body.order : 0;
+  const order = typeof body.order === "number" ? Math.max(0, Math.trunc(body.order)) : 0;
   const enabled = body.enabled !== false;
 
   if (!label || !url) return NextResponse.json({ error: "라벨과 URL은 필수입니다." }, { status: 400 });

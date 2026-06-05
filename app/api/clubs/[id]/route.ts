@@ -28,7 +28,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (typeof body.urlLabel === "string") data.urlLabel = body.urlLabel.trim().slice(0, 20) || null;
   if (typeof body.emoji === "string") data.emoji = body.emoji.trim().slice(0, 10) || null;
   if (typeof body.colorPreset === "string") data.colorPreset = body.colorPreset.trim().slice(0, 20) || null;
-  if (typeof body.order === "number") data.order = body.order;
+  if (typeof body.order === "number") data.order = Math.max(0, Math.trunc(body.order));
   if (typeof body.enabled === "boolean") data.enabled = body.enabled;
 
   const club = await prisma.club.update({ where: { id }, data });

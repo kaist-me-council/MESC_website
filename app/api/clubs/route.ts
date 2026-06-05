@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       urlLabel: typeof body.urlLabel === "string" ? body.urlLabel.trim().slice(0, 20) || null : null,
       emoji: typeof body.emoji === "string" ? body.emoji.trim().slice(0, 10) || null : null,
       colorPreset: typeof body.colorPreset === "string" ? body.colorPreset.trim().slice(0, 20) || null : null,
-      order: typeof body.order === "number" ? body.order : 0,
+      order: typeof body.order === "number" ? Math.max(0, Math.trunc(body.order)) : 0,
       enabled: body.enabled !== false,
     },
   });
