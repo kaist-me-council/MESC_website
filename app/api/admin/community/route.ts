@@ -10,6 +10,18 @@ export async function GET() {
   const [suggestions, posts] = await Promise.all([
     prisma.suggestion.findMany({
       orderBy: [{ reportCount: "desc" }, { createdAt: "desc" }],
+      // ipHash 는 클라이언트로 보내지 않는다 (불필요한 식별자 노출 방지)
+      select: {
+        id: true,
+        category: true,
+        content: true,
+        contactInfo: true,
+        response: true,
+        respondedAt: true,
+        hidden: true,
+        reportCount: true,
+        createdAt: true,
+      },
       take: 200,
     }),
     prisma.post.findMany({

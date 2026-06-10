@@ -28,21 +28,37 @@ export interface SvgInfo {
 /* ─────────── XSS 정화 ─────────── */
 
 /**
- * SVG에서 위험한 요소/속성 제거.
- * admin 전용 업로드라 신뢰도는 높지만 defense-in-depth.
+ * SVG에서 위험한 요소/속성 제거 (defense-in-depth).
+ *
+ * 주의: 정규식 새니타이저는 단독 XSS 방어수단으로 신뢰하지 않는다.
+ * 실제 렌더링은 `svgToDataUri()` 로 만든 data-URI 를 <img> 로 띄워
+ * 스크립트가 실행되지 않는 컨텍스트에서 표시한다(=주 방어선).
+ * 이 함수는 저장 시점 위생 처리 + viewBox/텍스트 파싱용 보조 방어다.
  */
 export function sanitizeSvg(svgContent: string): string {
   return svgContent
-    // <script> 태그 제거
+    // 위험 요소 제거: script / foreignObject / style / use / a / 애니메이션(SMIL)
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    // <foreignObject> 제거 (HTML 임베드 가능)
     .replace(/<foreignObject\b[^<]*(?:(?!<\/foreignObject>)<[^<]*)*<\/foreignObject>/gi, "")
-    // 이벤트 핸들러 속성 제거 (onClick, onLoad 등)
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+    .replace(/<\/?(?:use|a|animate|animatetransform|animatemotion|set|handler)\b[^>]*>/gi, "")
+    // 이벤트 핸들러 속성 제거 — 따옴표/무따옴표 모두 (onClick, onLoad 등)
     .replace(/\s+on[a-z]+\s*=\s*"[^"]*"/gi, "")
     .replace(/\s+on[a-z]+\s*=\s*'[^']*'/gi, "")
-    // javascript: URL 제거
-    .replace(/(href|xlink:href)\s*=\s*"javascript:[^"]*"/gi, '$1=""')
-    .replace(/(href|xlink:href)\s*=\s*'javascript:[^']*'/gi, "$1=''");
+    .replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, "")
+    // 위험 URL 스킴 제거 — javascript:, data: (따옴표/무따옴표)
+    .replace(/(href|xlink:href)\s*=\s*"(?:javascript|data):[^"]*"/gi, '$1=""')
+    .replace(/(href|xlink:href)\s*=\s*'(?:javascript|data):[^']*'/gi, "$1=''")
+    .replace(/(href|xlink:href)\s*=\s*(?:javascript|data):[^\s>]+/gi, '$1=""');
+}
+
+/**
+ * SVG 문자열을 <img src> 에 안전하게 넣을 수 있는 data-URI 로 변환.
+ * <img> 로 로드된 SVG 는 스크립트/외부 리소스가 실행되지 않으므로
+ * (저장된 내용이 무엇이든) XSS 싱크가 제거된다. 한글 등 유니코드 보존.
+ */
+export function svgToDataUri(svgContent: string): string {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svgContent)}`;
 }
 
 /* ─────────── viewBox 추출 ─────────── */

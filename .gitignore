@@ -48,3 +48,7 @@ next-env.d.ts
 /app/generated/prisma
 dev.db-shm
 dev.db-wal
+
+# local sqlite db (may contain tokens/PII — never commit)
+dev.db
+prisma/*.db

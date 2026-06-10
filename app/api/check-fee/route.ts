@@ -8,20 +8,36 @@ let cachedData: string[][] | null = null;
 let cacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
 
-// Simple in-memory rate limiter (IP당 분당 10회)
+// Simple in-memory rate limiter (IP당 분당 5회) — 학번 열거 완화
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 10;
+const RATE_LIMIT = 5;
 const RATE_WINDOW = 60 * 1000;
+
+// 전역 일일 조회 상한 — 단일 IP 다수화(분산 열거) 완화
+const GLOBAL_DAILY_LIMIT = 5000;
+const GLOBAL_WINDOW = 24 * 60 * 60 * 1000;
+let globalCount = 0;
+let globalResetAt = 0;
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
+
+  // 전역 상한 체크
+  if (now > globalResetAt) {
+    globalCount = 0;
+    globalResetAt = now + GLOBAL_WINDOW;
+  }
+  if (globalCount >= GLOBAL_DAILY_LIMIT) return false;
+
   const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW });
+    globalCount++;
     return true;
   }
   if (entry.count >= RATE_LIMIT) return false;
   entry.count++;
+  globalCount++;
   return true;
 }
 

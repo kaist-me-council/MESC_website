@@ -10,7 +10,7 @@ import {
   Loader2, Upload, Save, Trash2, Plus, Link2, MousePointer, Map, FileCode, Sparkles
 } from "lucide-react";
 import { polygonCentroid } from "@/lib/pathfinding";
-import { detectRoomsAndFacilities, detectedRoomsToRegions, sanitizeSvg, extractViewBox } from "@/lib/svg-parser";
+import { detectRoomsAndFacilities, detectedRoomsToRegions, sanitizeSvg, extractViewBox, svgToDataUri } from "@/lib/svg-parser";
 
 /* ─────────── 타입 ─────────── */
 interface Room {
@@ -656,10 +656,12 @@ export default function FloorMapEditor({
           ) : (
             <div className="relative inline-block" style={{ maxWidth: "100%" }}>
               {svgContent ? (
-                <div
-                  className="block select-none [&>svg]:block [&>svg]:max-w-full [&>svg]:h-auto"
+                <img
+                  src={svgToDataUri(sanitizeSvg(svgContent))}
+                  alt="평면도"
+                  className="block select-none max-w-full h-auto"
+                  draggable={false}
                   style={{ maxWidth: "100%" }}
-                  dangerouslySetInnerHTML={{ __html: svgContent }}
                 />
               ) : (
                 <img

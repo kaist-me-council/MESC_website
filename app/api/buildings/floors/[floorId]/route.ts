@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { parseId } from "@/lib/validation";
+import { sanitizeSvg } from "@/lib/svg-parser";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ floorId: string }> }) {
   const session = await auth();
@@ -22,7 +23,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ floorId:
   if (body.regionsJson === null) data.regionsJson = null;
   if (typeof body.graphJson === "string") data.graphJson = body.graphJson || null;
   if (body.graphJson === null) data.graphJson = null;
-  if (typeof body.svgContent === "string") data.svgContent = body.svgContent || null;
+  if (typeof body.svgContent === "string") data.svgContent = body.svgContent ? sanitizeSvg(body.svgContent) : null;
   if (body.svgContent === null) data.svgContent = null;
 
   const floor = await prisma.buildingFloor.update({ where: { id }, data });

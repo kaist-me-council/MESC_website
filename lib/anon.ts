@@ -13,8 +13,21 @@ import { createHash } from "node:crypto";
 
 const FALLBACK_SALT = "mesc-anon-salt-please-set-ANON_SALT";
 
+let warnedMissingSalt = false;
+
 export function getAnonSalt(): string {
-  return process.env.ANON_SALT || FALLBACK_SALT;
+  const salt = process.env.ANON_SALT;
+  if (salt) return salt;
+  // 프로덕션에서 하드코딩 fallback salt 사용은 익명성 보장을 약화시킨다.
+  // 게시판을 중단시키진 않되(가용성 우선), 1회 경고 로그로 운영자에게 알린다.
+  if (process.env.NODE_ENV === "production" && !warnedMissingSalt) {
+    warnedMissingSalt = true;
+    console.warn(
+      "[anon] ANON_SALT 미설정 — 추측 가능한 fallback salt 사용 중. " +
+        "익명성 보장을 위해 Vercel 환경변수에 ANON_SALT 를 설정하세요 (openssl rand -hex 32)."
+    );
+  }
+  return FALLBACK_SALT;
 }
 
 /**

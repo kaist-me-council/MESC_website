@@ -15,7 +15,7 @@ import {
   type GraphNode,
   type FloorGraph,
 } from "@/lib/pathfinding";
-import { sanitizeSvg, extractViewBox } from "@/lib/svg-parser";
+import { sanitizeSvg, extractViewBox, svgToDataUri } from "@/lib/svg-parser";
 
 interface ProfessorFull {
   id: number;
@@ -193,12 +193,15 @@ export function FloorMapViewer({ imageUrl, imageWidth, imageHeight, svgContent, 
                 contentStyle={{ width: "100%" }}
               >
                 <div className="relative w-full">
-                  {/* 평면도: SVG 인라인 우선, 없으면 이미지 fallback */}
+                  {/* 평면도: SVG 인라인 우선, 없으면 이미지 fallback.
+                      SVG 는 data-URI <img> 로 렌더 → 스크립트 미실행(XSS 차단) */}
                   {sanitizedSvg && svgViewBox ? (
-                    <div
-                      className="w-full block select-none [&>svg]:w-full [&>svg]:h-auto [&>svg]:block"
+                    <img
+                      src={svgToDataUri(sanitizedSvg)}
+                      alt="평면도"
+                      className="w-full h-auto block select-none"
+                      draggable={false}
                       style={{ maxWidth: "100%" }}
-                      dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
                     />
                   ) : imageUrl ? (
                     <img
