@@ -143,7 +143,7 @@ export default function BudgetPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-3xl font-black tracking-tight text-green-600 dark:text-green-400">
+                    <p className="text-3xl font-black tracking-tight tabular-nums text-green-600 dark:text-green-400">
                       {formatKRW(summary.income)}
                     </p>
                   </CardContent>
@@ -157,7 +157,7 @@ export default function BudgetPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-3xl font-black tracking-tight text-red-600 dark:text-red-400">
+                    <p className="text-3xl font-black tracking-tight tabular-nums text-red-600 dark:text-red-400">
                       {formatKRW(summary.expense)}
                     </p>
                     <div className="pt-2 flex items-center justify-between">
@@ -175,7 +175,7 @@ export default function BudgetPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className={`text-3xl font-black tracking-tight ${summary.balance >= 0 ? "text-primary" : "text-orange-600 dark:text-orange-400"}`}>
+                    <p className={`text-3xl font-black tracking-tight tabular-nums ${summary.balance >= 0 ? "text-primary" : "text-orange-600 dark:text-orange-400"}`}>
                       {formatKRW(summary.balance)}
                     </p>
                     <div className="pt-2 flex items-center gap-2">
@@ -312,8 +312,8 @@ export default function BudgetPage() {
                                 </div>
                               </div>
                               <div className="text-right shrink-0">
-                                {tx.income > 0 && <p className="text-sm font-black text-green-600 dark:text-green-400">+{formatKRW(tx.income)}</p>}
-                                {tx.expense > 0 && <p className="text-sm font-black text-red-600 dark:text-red-400">-{formatKRW(tx.expense)}</p>}
+                                {tx.income > 0 && <p className="text-sm font-black tabular-nums text-green-600 dark:text-green-400">+{formatKRW(tx.income)}</p>}
+                                {tx.expense > 0 && <p className="text-sm font-black tabular-nums text-red-600 dark:text-red-400">-{formatKRW(tx.expense)}</p>}
                               </div>
                             </CardContent>
                           </Card>
@@ -332,7 +332,7 @@ export default function BudgetPage() {
                           >
                             <ChevronLeft className="h-4 w-4 mr-2" /> {t("common.previous")}
                           </Button>
-                          <span className="text-xs font-bold text-muted-foreground">
+                          <span className="text-xs font-bold tabular-nums text-muted-foreground">
                             {currentPage} / {totalPages}
                           </span>
                           <Button

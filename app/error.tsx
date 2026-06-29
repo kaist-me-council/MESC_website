@@ -43,14 +43,14 @@ export default function Error({
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-bold transition-all hover:bg-primary/80 active:translate-y-px"
+            className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-bold transition duration-150 hover:bg-primary/80 active:translate-y-px active:scale-[0.96]"
           >
             <RotateCcw className="h-4 w-4" />
             다시 시도
           </button>
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg border border-border bg-background text-sm font-bold transition-all hover:bg-muted active:translate-y-px"
+            className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg border border-border bg-background text-sm font-bold transition duration-150 hover:bg-muted active:translate-y-px active:scale-[0.96]"
           >
             <Home className="h-4 w-4" />
             홈으로

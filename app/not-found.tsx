@@ -24,7 +24,7 @@ export default function NotFound() {
         </div>
         <Link
           href="/"
-          className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-bold transition-all hover:bg-primary/80 active:translate-y-px"
+          className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-bold transition duration-150 hover:bg-primary/80 active:translate-y-px active:scale-[0.96]"
         >
           <Home className="h-4 w-4" />
           홈으로 돌아가기
