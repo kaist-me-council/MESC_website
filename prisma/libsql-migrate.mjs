@@ -37,16 +37,9 @@ const folders = readdirSync(migDir, { withFileTypes: true })
 const appliedRes = await db.execute("SELECT id FROM _libsql_migrations");
 const applied = new Set(appliedRes.rows.map((r) => r.id));
 
-// 최초 실행: 기존 마이그레이션은 이미 DB 에 반영돼 있을 가능성이 높음.
-// 마지막(가장 새로운) 마이그레이션 하나만 실행하고 나머지는 기록만 남긴다.
-if (applied.size === 0 && folders.length > 1) {
-  const preApplied = folders.slice(0, -1);
-  console.log(`[libsql-migrate] 첫 실행: ${preApplied.length}개 기존 마이그레이션을 적용 완료로 기록`);
-  for (const id of preApplied) {
-    await db.execute({ sql: "INSERT OR IGNORE INTO _libsql_migrations(id) VALUES (?)", args: [id] });
-    applied.add(id);
-  }
-}
+// 기록되지 않은 모든 마이그레이션을 순서대로 적용한다.
+// 이미 존재하는 객체(테이블/컬럼/인덱스)는 isAlreadyExistsError 로 건너뛰므로
+// 빈 DB / 부분 적용 DB 어느 쪽이든 안전하게 수렴한다.
 
 // (과거 디버깅: 잘못 적용된 마이그레이션 강제 재실행 — 모두 처리되어 비움)
 const FORCE_REAPPLY = [];
