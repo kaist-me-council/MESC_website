@@ -26,6 +26,9 @@ export const translations = {
       admin: "관리",
       adminSystem: "관리자 시스템",
       subtitle: "KAIST 기계공학과",
+      groupLectures: "강의 관련",
+      groupSchedule: "일정·재정",
+      groupHelper: "학과 도우미",
     },
     // Common
     common: {
@@ -250,6 +253,9 @@ export const translations = {
       admin: "Admin",
       adminSystem: "Admin System",
       subtitle: "KAIST Mechanical Engineering",
+      groupLectures: "Lectures",
+      groupSchedule: "Schedule & Finance",
+      groupHelper: "ME Helper",
     },
     // Common
     common: {
