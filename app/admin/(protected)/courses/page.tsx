@@ -16,8 +16,10 @@ interface Course {
   id: number;
   code: string;
   name: string;
+  nameEn: string | null;
   level: string;
   description: string | null;
+  descriptionEn: string | null;
   textbook: string | null;
   textbookAvailable: boolean;
   youtubeUrl: string | null;
@@ -30,8 +32,10 @@ export default function AdminCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [nameEn, setNameEn] = useState("");
   const [level, setLevel] = useState("200");
   const [description, setDescription] = useState("");
+  const [descriptionEn, setDescriptionEn] = useState("");
   const [textbook, setTextbook] = useState("");
   const [textbookAvailable, setTextbookAvailable] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -46,17 +50,21 @@ export default function AdminCoursesPage() {
     setCourses(await res.json());
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    fetch("/api/courses")
+      .then((res) => res.json())
+      .then((data) => setCourses(data));
+  }, []);
 
   function reset() {
-    setCode(""); setName(""); setLevel("200"); setDescription("");
+    setCode(""); setName(""); setNameEn(""); setLevel("200"); setDescription(""); setDescriptionEn("");
     setTextbook(""); setTextbookAvailable(false); setYoutubeUrl(""); setOrder("0");
     setEditingId(null); setSubmitError("");
   }
 
   function startEdit(c: Course) {
-    setEditingId(c.id); setCode(c.code); setName(c.name); setLevel(c.level);
-    setDescription(c.description ?? ""); setTextbook(c.textbook ?? "");
+    setEditingId(c.id); setCode(c.code); setName(c.name); setNameEn(c.nameEn ?? ""); setLevel(c.level);
+    setDescription(c.description ?? ""); setDescriptionEn(c.descriptionEn ?? ""); setTextbook(c.textbook ?? "");
     setTextbookAvailable(c.textbookAvailable); setYoutubeUrl(c.youtubeUrl ?? "");
     setOrder(String(c.order)); setSubmitError("");
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -65,7 +73,7 @@ export default function AdminCoursesPage() {
   async function handleSubmit() {
     if (!code.trim() || !name.trim()) return;
     setSubmitting(true); setSubmitError("");
-    const payload = { code, name, level, description, textbook, textbookAvailable, youtubeUrl, order: Number(order) };
+    const payload = { code, name, nameEn, level, description, descriptionEn, textbook, textbookAvailable, youtubeUrl, order: Number(order) };
     try {
       const res = editingId !== null
         ? await fetch(`/api/courses/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
@@ -94,7 +102,7 @@ export default function AdminCoursesPage() {
       <AdminGuide id="courses" title="수업 정보 관리 사용법">
         <ol className="list-decimal pl-5 space-y-1">
           <li>과목 코드(예: ME200) / 이름 / 레벨(200·300·400·기타)을 입력합니다.</li>
-          <li>전공서가 있다면 책 이름을 적고, <strong>학생회 보유 여부</strong> 체크 시 공개 페이지에서 "대여 가능" 배지로 표시됩니다.</li>
+          <li>전공서가 있다면 책 이름을 적고, <strong>학생회 보유 여부</strong> 체크 시 공개 페이지에서 &quot;대여 가능&quot; 배지로 표시됩니다.</li>
           <li><strong>YouTube URL</strong>(강의 영상)을 넣으면 학생들이 바로 시청할 수 있습니다.</li>
           <li>순서 값으로 공개 페이지에서의 표시 순서를 조절합니다.</li>
         </ol>
@@ -132,8 +140,16 @@ export default function AdminCoursesPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="동역학" />
             </div>
             <div className="space-y-2">
+              <Label>영문 과목명 (선택)</Label>
+              <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="Dynamics" />
+            </div>
+            <div className="space-y-2">
               <Label>수업 설명 (선택)</Label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="수업에 대한 간략한 설명" />
+            </div>
+            <div className="space-y-2">
+              <Label>영문 수업 설명 (선택)</Label>
+              <Input value={descriptionEn} onChange={(e) => setDescriptionEn(e.target.value)} placeholder="A brief course description" />
             </div>
             <div className="space-y-2">
               <Label>전공서 (선택)</Label>
@@ -177,6 +193,7 @@ export default function AdminCoursesPage() {
                   {c.textbook && <Badge variant="outline" className="text-xs gap-1"><BookMarked className="h-3 w-3" /></Badge>}
                 </div>
                 <p className="font-semibold">{c.name}</p>
+                {c.nameEn && <p className="text-xs text-muted-foreground mt-0.5">{c.nameEn}</p>}
               </div>
               <div className="flex gap-2 shrink-0">
                 <Button variant="outline" size="sm" onClick={() => startEdit(c)} disabled={editingId === c.id}>수정</Button>

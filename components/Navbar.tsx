@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, Home, Bell, BookOpen, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin } from "lucide-react";
+import { Menu, X, Home, Bell, BookOpen, BookMarked, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin } from "lucide-react";
 import { useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { useLanguage } from "@/lib/language-context";
@@ -15,6 +15,7 @@ export default function Navbar() {
     { href: "/", label: t("navbar.home"), icon: Home },
     { href: "/notices", label: t("navbar.notices"), icon: Bell },
     { href: "/resources", label: t("navbar.resources"), icon: BookOpen },
+    { href: "/library", label: t("navbar.library"), icon: BookMarked },
     { href: "/calendar", label: t("navbar.calendar"), icon: Calendar },
     { href: "/budget", label: t("navbar.budget"), icon: PieChart },
     { href: "/check-fee", label: t("navbar.checkFee"), icon: CreditCard },

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { auth, signOut } from "@/lib/auth";
-import { Settings, Bell, BookOpen, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera, Cookie, Megaphone, Building2, UserSquare, MessageSquare, Wrench } from "lucide-react";
+import { Settings, Bell, BookOpen, BookMarked, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera, Cookie, Megaphone, Building2, UserSquare, MessageSquare, Wrench } from "lucide-react";
 import { AdminGuide } from "@/components/admin-guide";
 
 export default async function AdminPage() {
@@ -37,6 +37,13 @@ export default async function AdminPage() {
       icon: GraduationCap,
       desc: "전공 과목·전공서·강의 영상 등록",
       color: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+    },
+    {
+      href: "/admin/books",
+      label: "전공서적 서재 관리",
+      icon: BookMarked,
+      desc: "보유 전공서·표지·분류 등록",
+      color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
     },
     {
       href: "/admin/events",

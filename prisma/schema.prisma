@@ -52,12 +52,34 @@ model Course {
   id                Int     @id @default(autoincrement())
   code              String  @unique
   name              String
+  nameEn            String?
   level             String  @default("기타")
   description       String?
+  descriptionEn     String?
   textbook          String?
   textbookAvailable Boolean @default(false)
   youtubeUrl        String?
   order             Int     @default(0)
+  books             Book[]
+}
+
+model Book {
+  id         Int      @id @default(autoincrement())
+  title      String
+  titleEn    String?
+  author     String?
+  publisher  String?
+  coverImage String?
+  isbn       String?
+  quantity   Int      @default(1)
+  available  Boolean  @default(true)
+  category   String?
+  courseId   Int?
+  course     Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  @@index([courseId])
+  @@index([category])
 }
 
 model Event {
