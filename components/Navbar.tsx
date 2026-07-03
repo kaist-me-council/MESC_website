@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, Home, Bell, BookOpen, BookMarked, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, type LucideIcon } from "lucide-react";
+import { Menu, X, Bell, BookOpen, BookMarked, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { useLanguage } from "@/lib/language-context";
@@ -23,7 +23,6 @@ export default function Navbar() {
   const { lang, setLang, t } = useLanguage();
 
   const navItems: NavItem[] = [
-    { type: "link", href: "/", label: t("navbar.home"), icon: Home },
     { type: "link", href: "/notices", label: t("navbar.notices"), icon: Bell },
     {
       type: "group",
