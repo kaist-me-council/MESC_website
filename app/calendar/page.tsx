@@ -232,7 +232,7 @@ export default function CalendarPage() {
                     <CardTitle className="text-xl font-black">날짜 선택</CardTitle>
                     <button
                       onClick={() => setShowModal(false)}
-                      className="p-1 hover:bg-muted rounded-lg transition-colors"
+                      className="p-2.5 hover:bg-muted rounded-lg transition-colors"
                       title="닫기"
                     >
                       <X className="h-5 w-5" />

@@ -75,7 +75,7 @@ export default function ResourcesPage() {
       <Tabs value={activeCategory} onValueChange={setActiveCategory} className="mb-6">
         <TabsList>
           {CATEGORIES.map((cat) => (
-            <TabsTrigger key={cat.ko} value={cat.ko}>
+            <TabsTrigger key={cat.ko} value={cat.ko} className="min-h-10">
               {cat.label}
             </TabsTrigger>
           ))}

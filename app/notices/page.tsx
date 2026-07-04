@@ -84,7 +84,7 @@ function NoticesContent() {
       <Tabs value={activeCategory} onValueChange={handleCategoryChange} className="mb-6">
         <TabsList>
           {CATEGORIES.map((cat) => (
-            <TabsTrigger key={cat.ko} value={cat.ko}>
+            <TabsTrigger key={cat.ko} value={cat.ko} className="min-h-10">
               {cat.label}
             </TabsTrigger>
           ))}

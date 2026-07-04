@@ -277,12 +277,12 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
               }
 
               return (
-                <div key={item.label} className="space-y-3">
-                  <div className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                <div key={item.label} className="space-y-1.5">
+                  <div className="flex items-center gap-2 px-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
                     <item.icon className="h-3.5 w-3.5" />
                     <span>{item.label}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="flex flex-col">
                     {item.items.map((link) => {
                       const Icon = link.icon;
                       const isActive = isSubActive(link, item.items);
@@ -292,20 +292,20 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
                           href={link.href}
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
-                            "relative flex flex-col items-center justify-center p-4 rounded-xl border transition-[color,background-color,border-color,box-shadow] duration-300 group",
+                            "relative flex items-center gap-3 min-h-11 px-3 py-2.5 rounded-lg transition-[color,background-color] duration-200 group",
                             isActive
-                              ? "bg-primary/10 border-primary/30 text-primary shadow-md shadow-primary/10"
-                              : "border-border/40 text-muted-foreground hover:bg-muted/50 hover:border-border/60 hover:text-foreground"
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground active:bg-muted/60"
                           )}
                         >
-                          {isActive && (
-                            <span className="absolute top-2 right-2 size-1.5 rounded-full bg-primary shadow-sm shadow-primary/40" />
-                          )}
                           <Icon className={cn(
-                            "h-6 w-6 mb-2 transition-transform duration-300",
-                            isActive ? "scale-110" : "group-hover:scale-110"
+                            "h-4 w-4 shrink-0 transition-colors duration-200",
+                            isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                           )} />
-                          <span className="text-xs font-semibold text-center leading-tight">{link.label}</span>
+                          <span className="text-sm font-semibold leading-tight">{link.label}</span>
+                          {isActive && (
+                            <span className="ml-auto size-1.5 shrink-0 rounded-full bg-primary shadow-sm shadow-primary/40" />
+                          )}
                         </Link>
                       );
                     })}

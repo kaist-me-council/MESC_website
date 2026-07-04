@@ -118,7 +118,7 @@ export function FloorplanViewer({ floor, professors }: Props) {
           >
             <button
               type="button"
-              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+              className="absolute top-3 right-3 -m-2 h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground"
               onClick={() => setSelected(null)}
               aria-label="닫기"
             >
@@ -160,7 +160,7 @@ export function FloorplanViewer({ floor, professors }: Props) {
               {selected.websiteUrl && (
                 <p className="flex items-center gap-2">
                   <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <a href={selected.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                  <a href={selected.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate min-w-0">
                     {selected.websiteUrl}
                   </a>
                 </p>

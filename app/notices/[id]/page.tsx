@@ -47,7 +47,7 @@ export default function NoticeDetailPage() {
         <p className="text-muted-foreground">
           {lang === "ko" ? "공지사항을 찾을 수 없습니다." : "Notice not found."}
         </p>
-        <Button className="mt-4" onClick={() => router.push("/notices")}>
+        <Button className="mt-4 min-h-10" onClick={() => router.push("/notices")}>
           {lang === "ko" ? "목록으로" : "Back to list"}
         </Button>
       </div>
@@ -79,7 +79,7 @@ export default function NoticeDetailPage() {
           )}
         </p>
         <div className="border-t pt-6">
-          <div className="whitespace-pre-wrap leading-relaxed">{notice.content}</div>
+          <div className="whitespace-pre-wrap break-words leading-relaxed">{notice.content}</div>
         </div>
       </article>
     </div>

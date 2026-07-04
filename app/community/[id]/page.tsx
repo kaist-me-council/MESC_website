@@ -23,7 +23,7 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
   return (
     <div className="flex gap-1">
       {[1,2,3,4,5].map((s) => (
-        <button key={s} type="button" onClick={() => onChange?.(s)} className="focus:outline-none">
+        <button key={s} type="button" onClick={() => onChange?.(s)} className="focus:outline-none p-2 -m-2">
           <Star className={`h-5 w-5 transition-colors ${s <= value ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground/40"}`} />
         </button>
       ))}
@@ -67,7 +67,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   if (!event) return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
       <div className="skeleton h-8 w-48 rounded mb-4" />
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
         {[1,2,3].map(i => <div key={i} className="skeleton h-32 rounded-xl" />)}
       </div>
     </div>

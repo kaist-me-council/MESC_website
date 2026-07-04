@@ -127,7 +127,7 @@ export function SuggestionsTab() {
                       {new Date(s.createdAt).toLocaleDateString("ko-KR")}
                     </span>
                   </div>
-                  <button onClick={() => report(s.id)} className="text-muted-foreground hover:text-destructive" title="신고">
+                  <button onClick={() => report(s.id)} className="p-2 -m-2 text-muted-foreground hover:text-destructive" title="신고">
                     <Flag className="h-3.5 w-3.5" />
                   </button>
                 </div>

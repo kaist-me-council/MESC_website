@@ -94,7 +94,7 @@ export function HomeClient({ notices, hours }: HomeClientProps) {
 
             {/* Main Headline */}
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.1] text-balance">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.1] text-balance">
                 {lang === "ko" ? (
                   <>
                     KAIST {t("home.title")}<br />
@@ -190,11 +190,11 @@ export function HomeClient({ notices, hours }: HomeClientProps) {
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-center gap-2">
                             {notice.pinned && (
-                              <Badge className="badge-premium text-[10px] px-1.5 py-0 h-4 flex items-center gap-1">
+                              <Badge className="badge-premium text-[11px] px-1.5 py-0 h-4 flex items-center gap-1">
                                 <Pin className="h-2.5 w-2.5 fill-current" /> {t("home.pinned")}
                               </Badge>
                             )}
-                            <Badge variant="secondary" className="text-[10px] px-2 py-0 h-4 font-bold">
+                            <Badge variant="secondary" className="text-[11px] px-2 py-0 h-4 font-bold">
                               {notice.category}
                             </Badge>
                           </div>

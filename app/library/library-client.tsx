@@ -93,7 +93,7 @@ export default function LibraryClient({ books }: { books: LibraryBook[] }) {
           <p>{t("library.empty")}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {filteredBooks.map((book) => {
             const title = pick(lang, book.title, book.titleEn);
             const cardClass = "group block h-full rounded-lg hover-lift-premium";

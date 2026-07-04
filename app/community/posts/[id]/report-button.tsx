@@ -19,7 +19,7 @@ export function ReportButton({ targetType, targetId }: { targetType: "post" | "c
   }
 
   return (
-    <button onClick={handleClick} className="text-muted-foreground hover:text-destructive" title="신고">
+    <button onClick={handleClick} className="p-2 -m-2 text-muted-foreground hover:text-destructive" title="신고">
       <Flag className="h-3.5 w-3.5" />
     </button>
   );

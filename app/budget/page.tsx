@@ -209,8 +209,7 @@ export default function BudgetPage() {
                 <Card className="border-border/60 shadow-2xl overflow-hidden rounded-2xl">
                   <iframe
                     src={EMBED_URL}
-                    className="w-full"
-                    style={{ height: "600px", border: 0 }}
+                    className="w-full h-[70vh] sm:h-[600px] border-0"
                     scrolling="yes"
                   />
                 </Card>

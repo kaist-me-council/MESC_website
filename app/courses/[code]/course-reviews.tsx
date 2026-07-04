@@ -44,7 +44,7 @@ function StarInput({
             onClick={() => onChange(s)}
             onMouseEnter={() => setHover(s)}
             onMouseLeave={() => setHover(0)}
-            className="rounded transition-transform active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="p-1.5 rounded transition-transform active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Star
               className={`h-6 w-6 transition-colors ${
@@ -266,6 +266,7 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
               onChange={(e) => setNickname(e.target.value)}
               placeholder={t("courses.reviewsNicknamePlaceholder")}
               maxLength={20}
+              className="h-10"
             />
             <Input
               type="password"
@@ -273,6 +274,7 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("courses.reviewsPasswordPlaceholder")}
               maxLength={50}
+              className="h-10"
             />
           </div>
           <Textarea
@@ -288,7 +290,7 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
               onClick={submit}
               disabled={submitting || !nickname.trim() || !password.trim() || !content.trim()}
               size="sm"
-              className="gap-2"
+              className="min-h-10 gap-2"
             >
               <Send className="h-3 w-3" />
               {submitting ? t("courses.reviewsSubmitting") : t("courses.reviewsSubmit")}
@@ -340,6 +342,7 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
                       onChange={(e) => setEditPassword(e.target.value)}
                       placeholder={t("courses.reviewsPasswordPlaceholder")}
                       maxLength={50}
+                      className="h-10"
                     />
                     {editError && (
                       <Alert variant="destructive">
@@ -347,13 +350,14 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
                       </Alert>
                     )}
                     <div className="flex items-center gap-2 justify-end">
-                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={editSubmitting}>
+                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={editSubmitting} className="min-h-10">
                         {t("courses.reviewsCancel")}
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => saveEdit(review.id)}
                         disabled={editSubmitting || !editContent.trim()}
+                        className="min-h-10"
                       >
                         {t("courses.reviewsSave")}
                       </Button>
@@ -372,7 +376,7 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => startEdit(review)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          className="p-2 -m-1 rounded text-muted-foreground hover:text-foreground transition-colors"
                           title={t("courses.reviewsEdit")}
                           aria-label={t("courses.reviewsEdit")}
                         >
@@ -380,7 +384,7 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
                         </button>
                         <button
                           onClick={() => remove(review.id)}
-                          className="text-muted-foreground hover:text-destructive transition-colors"
+                          className="p-2 -m-1 rounded text-muted-foreground hover:text-destructive transition-colors"
                           title={t("courses.reviewsDelete")}
                           aria-label={t("courses.reviewsDelete")}
                         >
@@ -388,7 +392,7 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
                         </button>
                         <button
                           onClick={() => report(review.id)}
-                          className="text-muted-foreground hover:text-destructive transition-colors"
+                          className="p-2 -m-1 rounded text-muted-foreground hover:text-destructive transition-colors"
                           title={t("courses.reviewsReport")}
                           aria-label={t("courses.reviewsReport")}
                         >
@@ -396,7 +400,7 @@ export default function CourseReviews({ courseId }: { courseId: number }) {
                         </button>
                       </div>
                     </div>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{review.content}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{review.content}</p>
                   </>
                 )}
               </CardContent>

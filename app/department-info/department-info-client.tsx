@@ -231,7 +231,7 @@ export function DepartmentInfoClient({ buildings, professors }: Props) {
                                 <div className="flex flex-wrap gap-1.5">
                                   {rooms.map((r) => (
                                     <div key={r.id} className="group relative">
-                                      <Badge variant="outline" className="gap-1 cursor-default">
+                                      <Badge variant="outline" className="gap-1 cursor-default whitespace-normal break-words h-auto max-w-full text-left">
                                         <span className="font-mono">{r.code}</span>
                                         {r.name && <span className="text-muted-foreground">— {r.name}</span>}
                                         {r.professors.length > 0 && (
@@ -321,7 +321,7 @@ export function DepartmentInfoClient({ buildings, professors }: Props) {
                         {p.email && (
                           <a href={`mailto:${p.email}`} className="text-muted-foreground hover:text-primary flex items-center gap-1.5 truncate">
                             <Mail className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{p.email}</span>
+                            <span className="truncate min-w-0">{p.email}</span>
                           </a>
                         )}
                         {p.phone && (
