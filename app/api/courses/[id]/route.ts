@@ -5,6 +5,28 @@ import { isValidString, isValidUrl, isAllowedCategory, parseId } from "@/lib/val
 
 const ALLOWED_LEVELS = ["200", "300", "400", "기타"];
 
+// 공개: 과목 1개 + 평균 별점·리뷰 수
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id: idStr } = await params;
+  const id = parseId(idStr);
+  if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const course = await prisma.course.findUnique({ where: { id } });
+  if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const agg = await prisma.courseReview.aggregate({
+    where: { courseId: id, hidden: false },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+
+  return NextResponse.json({
+    ...course,
+    averageRating: agg._avg.rating ?? null,
+    reviewCount: agg._count._all,
+  });
+}
+
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

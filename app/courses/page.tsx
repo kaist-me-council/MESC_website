@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/language-context";
 import { pick } from "@/lib/bilingual";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Youtube, BookMarked, FileText, ChevronRight } from "lucide-react";
+import { BookOpen, Youtube, BookMarked, FileText, ChevronRight, Star } from "lucide-react";
 import Link from "next/link";
 
 interface Course {
@@ -20,6 +20,8 @@ interface Course {
   textbookAvailable: boolean;
   youtubeUrl: string | null;
   order: number;
+  averageRating: number | null;
+  reviewCount: number;
 }
 
 const LEVELS = ["전체", "200", "300", "400", "기타"];
@@ -112,7 +114,14 @@ export default function CoursesPage() {
                       <p className="text-pretty text-sm text-muted-foreground line-clamp-2 mb-3">{courseDescription}</p>
                     )}
 
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      {course.averageRating !== null && course.reviewCount > 0 && (
+                        <div className="flex items-center gap-1 text-xs">
+                          <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+                          <span className="font-semibold tabular-nums">{course.averageRating.toFixed(1)}</span>
+                          <span className="text-muted-foreground tabular-nums">({course.reviewCount})</span>
+                        </div>
+                      )}
                       {course.textbook && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <BookMarked className="h-3 w-3" />

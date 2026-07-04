@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { enforce, getClientIp } from "@/lib/rate-limit";
 import { ipHash } from "@/lib/anon";
 
-const VALID_TARGETS = new Set(["post", "comment", "suggestion"]);
+const VALID_TARGETS = new Set(["post", "comment", "suggestion", "courseReview"]);
 const AUTO_HIDE_THRESHOLD = 5;
 
 export async function POST(req: Request) {
@@ -73,6 +73,15 @@ export async function POST(req: Request) {
     });
     if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
       await prisma.suggestion.update({ where: { id: body.targetId }, data: { hidden: true } });
+    }
+  } else if (body.targetType === "courseReview") {
+    const updated = await prisma.courseReview.update({
+      where: { id: body.targetId },
+      data: { reportCount: { increment: 1 } },
+      select: { reportCount: true, hidden: true },
+    });
+    if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
+      await prisma.courseReview.update({ where: { id: body.targetId }, data: { hidden: true } });
     }
   }
 

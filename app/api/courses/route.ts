@@ -6,8 +6,27 @@ import { isValidString, isValidUrl, isAllowedCategory } from "@/lib/validation";
 const ALLOWED_LEVELS = ["200", "300", "400", "기타"];
 
 export async function GET() {
-  const courses = await prisma.course.findMany({ orderBy: [{ level: "asc" }, { order: "asc" }] });
-  return NextResponse.json(courses);
+  const [courses, ratings] = await Promise.all([
+    prisma.course.findMany({ orderBy: [{ level: "asc" }, { order: "asc" }] }),
+    prisma.courseReview.groupBy({
+      by: ["courseId"],
+      where: { hidden: false },
+      _avg: { rating: true },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const byCourse = new Map(ratings.map((r) => [r.courseId, r]));
+  const withRatings = courses.map((course) => {
+    const r = byCourse.get(course.id);
+    return {
+      ...course,
+      averageRating: r?._avg.rating ?? null,
+      reviewCount: r?._count._all ?? 0,
+    };
+  });
+
+  return NextResponse.json(withRatings);
 }
 
 export async function POST(req: Request) {

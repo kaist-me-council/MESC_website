@@ -6,6 +6,7 @@ import { BookOpen, Youtube, BookMarked, ExternalLink, FileText, ArrowLeft } from
 import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
 import { pick } from "@/lib/bilingual";
+import CourseReviews from "./course-reviews";
 
 interface CourseDetail {
   id: number;
@@ -122,6 +123,8 @@ export default function CourseDetailClient({ course, resources }: { course: Cour
           </div>
         )}
       </div>
+
+      <CourseReviews courseId={course.id} />
     </div>
   );
 }

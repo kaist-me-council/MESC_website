@@ -61,6 +61,24 @@ model Course {
   youtubeUrl        String?
   order             Int     @default(0)
   books             Book[]
+  reviews           CourseReview[]
+}
+
+// 강의평 (닉네임 + 비밀번호로 수정·삭제)
+model CourseReview {
+  id           Int      @id @default(autoincrement())
+  courseId     Int
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  rating       Int      // 1~5, 서버 검증
+  content      String
+  nickname     String
+  passwordHash String
+  hidden       Boolean  @default(false)
+  reportCount  Int      @default(0)
+  ipHash       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([courseId, hidden, createdAt])
 }
 
 model Book {
@@ -276,7 +294,7 @@ model Comment {
 // 신고
 model Report {
   id         Int      @id @default(autoincrement())
-  targetType String   // "post" | "comment" | "suggestion"
+  targetType String   // "post" | "comment" | "suggestion" | "courseReview"
   targetId   Int
   reason     String?
   ipHash     String?

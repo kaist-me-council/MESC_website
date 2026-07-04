@@ -9,7 +9,7 @@
  * salt 는 환경변수 ANON_SALT (없으면 fallback) 로부터 가져온다.
  */
 
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 const FALLBACK_SALT = "mesc-anon-salt-please-set-ANON_SALT";
 
@@ -43,4 +43,24 @@ export function authorTag(ip: string, scope: string | number = "global"): string
 export function ipHash(ip: string): string {
   const salt = getAnonSalt();
   return createHash("sha256").update(`${salt}:ip:${ip}`).digest("hex").slice(0, 16);
+}
+
+/**
+ * 강의평 수정·삭제용 비밀번호 해시.
+ *
+ * 로그인 없는 게시판 성격의 낮은 위험 모델(4자리 등 간단 비밀번호)이라
+ * 별도 의존성 없이 저장소의 기존 node:crypto 관례(salt + sha256)를 따른다.
+ */
+export function hashPassword(password: string): string {
+  const salt = getAnonSalt();
+  return createHash("sha256").update(`${salt}:pw:${password}`).digest("hex");
+}
+
+/** 평문 비밀번호가 저장된 해시와 일치하는지 상수 시간으로 비교. */
+export function verifyPassword(password: string, hash: string): boolean {
+  const computed = hashPassword(password);
+  const a = Buffer.from(computed, "utf8");
+  const b = Buffer.from(hash, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
