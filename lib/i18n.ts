@@ -29,6 +29,16 @@ export const translations = {
       groupLectures: "강의 관련",
       groupSchedule: "일정·재정",
       groupHelper: "학과 도우미",
+      groupNotices: "공지사항",
+      groupCommunity: "커뮤니티",
+      noticesAll: "전체",
+      noticesNotice: "공지",
+      noticesEvent: "행사",
+      noticesAcademic: "학사",
+      communityGallery: "갤러리",
+      communitySuggestions: "건의함",
+      communityBoard: "자유게시판",
+      communityWishlist: "간식 위시리스트",
     },
     // Common
     common: {
@@ -256,6 +266,16 @@ export const translations = {
       groupLectures: "Lectures",
       groupSchedule: "Schedule & Finance",
       groupHelper: "ME Helper",
+      groupNotices: "Notices",
+      groupCommunity: "Community",
+      noticesAll: "All",
+      noticesNotice: "Notice",
+      noticesEvent: "Events",
+      noticesAcademic: "Academic",
+      communityGallery: "Gallery",
+      communitySuggestions: "Suggestions",
+      communityBoard: "Board",
+      communityWishlist: "Snack Wishlist",
     },
     // Common
     common: {

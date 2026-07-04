@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,9 +32,40 @@ interface SnackWish {
 const TABS = ["갤러리", "건의함", "자유게시판", "간식 위시리스트"] as const;
 type Tab = typeof TABS[number];
 
+const DEFAULT_TAB: Tab = "갤러리";
+
+const SLUG_TO_TAB: Record<string, Tab> = {
+  gallery: "갤러리",
+  suggestions: "건의함",
+  board: "자유게시판",
+  wishlist: "간식 위시리스트",
+};
+
+const TAB_TO_SLUG: Record<Tab, string> = {
+  "갤러리": "gallery",
+  "건의함": "suggestions",
+  "자유게시판": "board",
+  "간식 위시리스트": "wishlist",
+};
+
+function tabFromSlug(slug: string | null): Tab {
+  if (!slug) return DEFAULT_TAB;
+  return SLUG_TO_TAB[slug] ?? DEFAULT_TAB;
+}
+
 export default function CommunityPage() {
+  return (
+    <Suspense fallback={null}>
+      <CommunityPageInner />
+    </Suspense>
+  );
+}
+
+function CommunityPageInner() {
   const { lang: language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<Tab>("갤러리");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(() => tabFromSlug(searchParams.get("tab")));
   const [events, setEvents] = useState<Event[]>([]);
   const [wishes, setWishes] = useState<SnackWish[]>([]);
   const [wishInput, setWishInput] = useState("");
@@ -46,6 +78,22 @@ export default function CommunityPage() {
     fetch("/api/events").then(r => r.json()).then(d => { setEvents(d); setLoading(false); });
     fetch("/api/snack-wishes").then(r => r.json()).then(setWishes);
   }, []);
+
+  useEffect(() => {
+    setActiveTab(tabFromSlug(searchParams.get("tab")));
+  }, [searchParams]);
+
+  function selectTab(tab: Tab) {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === DEFAULT_TAB) {
+      params.delete("tab");
+    } else {
+      params.set("tab", TAB_TO_SLUG[tab]);
+    }
+    const query = params.toString();
+    router.replace(query ? `/community?${query}` : "/community", { scroll: false });
+  }
 
   async function submitWish() {
     if (!wishInput.trim() || wishSubmittingRef.current) return;
@@ -88,7 +136,7 @@ export default function CommunityPage() {
 
       <div className="flex gap-2 mb-8">
         {TABS.map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
+          <button key={tab} onClick={() => selectTab(tab)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               activeTab === tab ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}>

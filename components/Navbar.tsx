@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, Bell, BookOpen, BookMarked, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, Bell, BookOpen, BookMarked, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, ListChecks, PartyPopper, Images, Inbox, MessagesSquare, Cookie, type LucideIcon } from "lucide-react";
+import { Suspense, useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { useLanguage } from "@/lib/language-context";
 import {
@@ -18,12 +18,54 @@ type NavItem =
   | { type: "group"; label: string; icon: LucideIcon; items: NavLink[] };
 
 export default function Navbar() {
+  return (
+    <Suspense fallback={<NavbarContent search={null} />}>
+      <NavbarWithSearchParams />
+    </Suspense>
+  );
+}
+
+function NavbarWithSearchParams() {
+  const searchParams = useSearchParams();
+  return <NavbarContent search={searchParams} />;
+}
+
+function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { lang, setLang, t } = useLanguage();
 
+  // 하위 항목 활성 판정: 경로가 같고, 같은 그룹의 형제 항목들이 사용하는 쿼리 키에 대해
+  // 현재 URL 값과 항목 값이 일치할 때만 활성 (쿼리 없는 항목은 해당 키가 URL에 없어야 활성)
+  const isSubActive = (sub: NavLink, siblings: NavLink[]) => {
+    const [subPath, subQuery] = sub.href.split("?");
+    if (pathname !== subPath) return false;
+    const subParams = new URLSearchParams(subQuery ?? "");
+    const keys = new Set<string>();
+    siblings.forEach((s) => {
+      const [sPath, sQuery] = s.href.split("?");
+      if (sPath === subPath && sQuery) {
+        new URLSearchParams(sQuery).forEach((_, key) => keys.add(key));
+      }
+    });
+    for (const key of keys) {
+      if ((search?.get(key) ?? null) !== subParams.get(key)) return false;
+    }
+    return true;
+  };
+
   const navItems: NavItem[] = [
-    { type: "link", href: "/notices", label: t("navbar.notices"), icon: Bell },
+    {
+      type: "group",
+      label: t("navbar.groupNotices"),
+      icon: Bell,
+      items: [
+        { href: "/notices", label: t("navbar.noticesAll"), icon: ListChecks },
+        { href: "/notices?category=notice", label: t("navbar.noticesNotice"), icon: Bell },
+        { href: "/notices?category=event", label: t("navbar.noticesEvent"), icon: PartyPopper },
+        { href: "/notices?category=academic", label: t("navbar.noticesAcademic"), icon: GraduationCap },
+      ],
+    },
     {
       type: "group",
       label: t("navbar.groupLectures"),
@@ -53,7 +95,17 @@ export default function Navbar() {
         { href: "/department-info", label: t("navbar.deptInfo"), icon: MapPin },
       ],
     },
-    { type: "link", href: "/community", label: t("navbar.community"), icon: MessageSquare },
+    {
+      type: "group",
+      label: t("navbar.groupCommunity"),
+      icon: MessageSquare,
+      items: [
+        { href: "/community?tab=gallery", label: t("navbar.communityGallery"), icon: Images },
+        { href: "/community?tab=suggestions", label: t("navbar.communitySuggestions"), icon: Inbox },
+        { href: "/community?tab=board", label: t("navbar.communityBoard"), icon: MessagesSquare },
+        { href: "/community?tab=wishlist", label: t("navbar.communityWishlist"), icon: Cookie },
+      ],
+    },
   ];
 
   return (
@@ -102,7 +154,7 @@ export default function Navbar() {
               }
 
               const Icon = item.icon;
-              const isActive = item.items.some((sub) => pathname === sub.href);
+              const isActive = item.items.some((sub) => isSubActive(sub, item.items));
               return (
                 <DropdownMenu key={item.label} modal={false}>
                   <DropdownMenuTrigger
@@ -128,7 +180,7 @@ export default function Navbar() {
                   <DropdownMenuContent align="start" sideOffset={8} className="w-52">
                     {item.items.map((sub) => {
                       const SubIcon = sub.icon;
-                      const subActive = pathname === sub.href;
+                      const subActive = isSubActive(sub, item.items);
                       return (
                         <DropdownMenuItem
                           key={sub.href}
@@ -220,7 +272,7 @@ export default function Navbar() {
                   <div className="grid grid-cols-3 gap-3">
                     {item.items.map((link) => {
                       const Icon = link.icon;
-                      const isActive = pathname === link.href;
+                      const isActive = isSubActive(link, item.items);
                       return (
                         <Link
                           key={link.href}

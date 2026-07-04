@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,9 +17,30 @@ interface Notice {
   createdAt: string;
 }
 
-export default function NoticesPage() {
+const CATEGORY_SLUG_TO_KO: Record<string, string> = {
+  notice: "공지",
+  event: "행사",
+  academic: "학사",
+};
+
+const CATEGORY_KO_TO_SLUG: Record<string, string> = {
+  공지: "notice",
+  행사: "event",
+  학사: "academic",
+};
+
+function categoryFromSlug(slug: string | null): string {
+  if (!slug) return "전체";
+  return CATEGORY_SLUG_TO_KO[slug] ?? "전체";
+}
+
+function NoticesContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [notices, setNotices] = useState<Notice[]>([]);
-  const [activeCategory, setActiveCategory] = useState("전체");
+  const [activeCategory, setActiveCategory] = useState(() =>
+    categoryFromSlug(searchParams.get("category"))
+  );
   const [loading, setLoading] = useState(true);
   const { t, lang } = useLanguage();
 
@@ -38,6 +60,19 @@ export default function NoticesPage() {
       });
   }, []);
 
+  // 뒤로가기 등으로 URL의 category 쿼리가 바뀌면 탭 상태를 동기화한다.
+  useEffect(() => {
+    setActiveCategory(categoryFromSlug(searchParams.get("category")));
+  }, [searchParams]);
+
+  const handleCategoryChange = (ko: string) => {
+    setActiveCategory(ko);
+    const slug = CATEGORY_KO_TO_SLUG[ko];
+    router.replace(slug ? `/notices?category=${slug}` : "/notices", {
+      scroll: false,
+    });
+  };
+
   const filtered =
     activeCategory === "전체"
       ? notices
@@ -46,7 +81,7 @@ export default function NoticesPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">{t("notices.title")}</h1>
-      <Tabs value={activeCategory} onValueChange={setActiveCategory} className="mb-6">
+      <Tabs value={activeCategory} onValueChange={handleCategoryChange} className="mb-6">
         <TabsList>
           {CATEGORIES.map((cat) => (
             <TabsTrigger key={cat.ko} value={cat.ko}>
@@ -94,5 +129,13 @@ export default function NoticesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NoticesPage() {
+  return (
+    <Suspense fallback={null}>
+      <NoticesContent />
+    </Suspense>
   );
 }
