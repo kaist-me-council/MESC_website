@@ -114,7 +114,7 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo & Brand */}
           <Link href="/" className="flex items-center gap-3 group shrink-0">
-            <div className="relative w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105 flex-shrink-0">
+            <div className="relative w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-[box-shadow,transform] duration-300 group-hover:scale-105 flex-shrink-0">
               <span className="font-black text-lg leading-none tracking-tighter">ME</span>
               <div className="absolute inset-0 rounded-lg border border-primary-foreground/10" />
             </div>
@@ -135,14 +135,14 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "relative px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 group whitespace-nowrap",
+                      "relative px-3 py-2 rounded-lg text-sm font-semibold transition-[color,background-color,box-shadow] duration-300 flex items-center gap-2 group whitespace-nowrap",
                       isActive
                         ? "text-primary bg-primary/10 shadow-md shadow-primary/10"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     )}
                   >
                     <Icon className={cn(
-                      "h-4 w-4 transition-all duration-300 flex-shrink-0",
+                      "h-4 w-4 transition-[color,transform] duration-300 flex-shrink-0",
                       isActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-foreground"
                     )} />
                     <span>{item.label}</span>
@@ -161,14 +161,14 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
                     openOnHover
                     delay={80}
                     className={cn(
-                      "relative px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 group whitespace-nowrap outline-none data-popup-open:bg-muted/60",
+                      "relative px-3 py-2 rounded-lg text-sm font-semibold transition-[color,background-color,box-shadow] duration-300 flex items-center gap-2 group whitespace-nowrap outline-none data-popup-open:bg-muted/60",
                       isActive
                         ? "text-primary bg-primary/10 shadow-md shadow-primary/10"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     )}
                   >
                     <Icon className={cn(
-                      "h-4 w-4 transition-all duration-300 flex-shrink-0",
+                      "h-4 w-4 transition-[color,transform] duration-300 flex-shrink-0",
                       isActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-foreground"
                     )} />
                     <span>{item.label}</span>
@@ -185,13 +185,23 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
                         <DropdownMenuItem
                           key={sub.href}
                           className={cn(
-                            "gap-2.5 py-2 font-semibold",
-                            subActive && "text-primary bg-primary/10 focus:bg-primary/10 focus:text-primary"
+                            "gap-2.5 px-2 py-2.5 font-semibold",
+                            subActive
+                              ? "bg-primary/10 text-primary focus:bg-primary/15 focus:text-primary"
+                              : "text-foreground"
                           )}
                           render={<Link href={sub.href} />}
                         >
-                          <SubIcon className={cn("h-4 w-4", subActive ? "text-primary" : "text-muted-foreground")} />
+                          <SubIcon className={cn(
+                            "h-4 w-4 shrink-0",
+                            subActive
+                              ? "text-primary"
+                              : "text-muted-foreground group-focus/dropdown-menu-item:text-foreground"
+                          )} />
                           <span>{sub.label}</span>
+                          {subActive && (
+                            <span className="ml-auto size-1.5 shrink-0 rounded-full bg-primary shadow-sm shadow-primary/40" />
+                          )}
                         </DropdownMenuItem>
                       );
                     })}
@@ -206,7 +216,7 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
             {/* Language Toggle */}
             <button
               onClick={() => setLang(lang === "ko" ? "en" : "ko")}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/40 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted/40 hover:border transition-all duration-300"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/40 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted/40 hover:border transition-[color,background-color,border-color] duration-300"
               aria-label="Switch language"
             >
               <span className="text-sm">{lang === "ko" ? "🇺🇸" : "🇰🇷"}</span>
@@ -217,7 +227,7 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
 
             <Link
               href="/admin"
-              className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg border border-border/40 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 hover:border transition-all duration-300 group"
+              className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg border border-border/40 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 hover:border transition-[color,background-color,border-color] duration-300 group"
             >
               <Settings className="h-4 w-4 group-hover:rotate-90 transition-transform duration-500 flex-shrink-0" />
               <span className="hidden md:inline">{t("navbar.admin")}</span>
@@ -248,17 +258,20 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
-                      "flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-300 group",
+                      "relative flex items-center gap-3 p-3.5 rounded-xl border transition-[color,background-color,border-color,box-shadow] duration-300 group",
                       isActive
                         ? "bg-primary/10 border-primary/30 text-primary shadow-md shadow-primary/10"
                         : "border-border/40 text-muted-foreground hover:bg-muted/50 hover:border-border/60 hover:text-foreground"
                     )}
                   >
                     <Icon className={cn(
-                      "h-5 w-5 transition-all duration-300 flex-shrink-0",
+                      "h-5 w-5 transition-transform duration-300 flex-shrink-0",
                       isActive ? "scale-110" : "group-hover:scale-110"
                     )} />
                     <span className="text-sm font-semibold leading-tight">{item.label}</span>
+                    {isActive && (
+                      <span className="ml-auto size-1.5 shrink-0 rounded-full bg-primary shadow-sm shadow-primary/40" />
+                    )}
                   </Link>
                 );
               }
@@ -279,14 +292,17 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
                           href={link.href}
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
-                            "flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-300 group",
+                            "relative flex flex-col items-center justify-center p-4 rounded-xl border transition-[color,background-color,border-color,box-shadow] duration-300 group",
                             isActive
                               ? "bg-primary/10 border-primary/30 text-primary shadow-md shadow-primary/10"
                               : "border-border/40 text-muted-foreground hover:bg-muted/50 hover:border-border/60 hover:text-foreground"
                           )}
                         >
+                          {isActive && (
+                            <span className="absolute top-2 right-2 size-1.5 rounded-full bg-primary shadow-sm shadow-primary/40" />
+                          )}
                           <Icon className={cn(
-                            "h-6 w-6 mb-2 transition-all duration-300",
+                            "h-6 w-6 mb-2 transition-transform duration-300",
                             isActive ? "scale-110" : "group-hover:scale-110"
                           )} />
                           <span className="text-xs font-semibold text-center leading-tight">{link.label}</span>
@@ -301,7 +317,7 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setLang(lang === "ko" ? "en" : "ko")}
-                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-border/60 text-muted-foreground hover:bg-muted/30 hover:text-foreground transition-all"
+                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-border/60 text-muted-foreground hover:bg-muted/30 hover:text-foreground transition-[color,background-color] duration-300"
               >
                 <span>{lang === "ko" ? "🇺🇸" : "🇰🇷"}</span>
                 <span className="text-xs font-semibold">{lang === "ko" ? t("common.english") : t("common.korean")}</span>
@@ -309,7 +325,7 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
               <Link
                 href="/admin"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-border/60 text-muted-foreground hover:bg-muted/30 hover:text-foreground transition-all"
+                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-border/60 text-muted-foreground hover:bg-muted/30 hover:text-foreground transition-[color,background-color] duration-300"
               >
                 <Settings className="h-4 w-4" />
                 <span className="text-xs font-semibold">{t("navbar.admin")}</span>
