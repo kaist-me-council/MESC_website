@@ -1,0 +1,1182 @@
+[
+  {
+    "uid": 106,
+    "name": "강준상",
+    "nameEn": "KANG, Joon Sang",
+    "title": "교수",
+    "email": "jskang1@kaist.ac.kr",
+    "phone": "042-350-3025",
+    "researchArea": "Semiconductor thermal transport, renewable energy production, extreme thermal conduction, thermal logic circuit",
+    "researchTruncated": false,
+    "websiteUrl": "https://sites.google.com/view/atetl",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_pYQx4Bkc_20240325094926.jpg",
+    "labName": "첨단 열 및 에너지 전달 연구실",
+    "degree": "Ph.D., University of California, Los Angeles (2019)",
+    "officeRaw": "기계동(N7) 6114",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6114",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 1,
+    "name": "경기욱",
+    "nameEn": "KYUNG, Ki-Uk",
+    "title": "교수",
+    "email": "kyungku@kaist.ac.kr",
+    "phone": "042-350-3245",
+    "researchArea": "Soft Robotics, Human-Robot Interaction, Flexible actuators & sensors, Haptics",
+    "researchTruncated": false,
+    "websiteUrl": "http://irobot.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/1.jpg",
+    "labName": "휴먼-로봇 인터랙션 연구실",
+    "degree": "Ph.D., KAIST (2006)",
+    "officeRaw": "기계동(N7) 7101",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7101",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 2,
+    "name": "공경철",
+    "nameEn": "KONG, Kyoungchul",
+    "title": "교수",
+    "email": "kckong@kaist.ac.kr",
+    "phone": "042-350-3012",
+    "researchArea": "Robust control systems, Human assistive robotics, Design and control of legged robots",
+    "researchTruncated": false,
+    "websiteUrl": "http://robotics.kaist.ac.kr",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_BYp1Duo7_20230914012148.jpg",
+    "labName": "웨어러블로봇연구실(Exo-LAB)",
+    "degree": "Ph.D., University of California, Berkeley (2009)",
+    "officeRaw": "기계동 (N7) 3206",
+    "office": {
+      "isN7": true,
+      "roomNumber": "3206",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 3,
+    "name": "구승범",
+    "nameEn": "KOO, Seungbum",
+    "title": "교수",
+    "email": "skoo@kaist.ac.kr",
+    "phone": "042-350-3241",
+    "researchArea": "Human musculoskeletal biomechanics, Human joint kinematic analysis and dynamics simulation",
+    "researchTruncated": false,
+    "websiteUrl": "https://mskbiodyn.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/3.png",
+    "labName": "근골격 운동역학 연구실",
+    "degree": "Ph.D., Stanford University (2006)",
+    "officeRaw": "기계동(N7) 5206",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5206",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 5,
+    "name": "김경수",
+    "nameEn": "KIM, Kyung-Soo",
+    "title": "교수",
+    "email": "kyungsookim@kaist.ac.kr",
+    "phone": "042-350-3047",
+    "researchArea": "Control theory & applications, Robotics, Sensor & Actuators",
+    "researchTruncated": false,
+    "websiteUrl": "http://msc.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/5.png",
+    "labName": "MSC (Mechatronics, Systems and Control) 연구실",
+    "degree": "Ph.D., KAIST (1999)",
+    "officeRaw": "기계동(N7) 7112",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7112",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 7,
+    "name": "김남일",
+    "nameEn": "KIM, Nam Il",
+    "title": "교수",
+    "email": "nikim@kaist.ac.kr",
+    "phone": "042-350-3211",
+    "researchArea": "Flame control, Combustion new technology and combustor design, Thermal and reactive flow",
+    "researchTruncated": false,
+    "websiteUrl": "http://combustion.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_jSkuFT2P_20190326020200.jpg",
+    "labName": "연소공학 연구실",
+    "degree": "Ph.D.,KAIST(2001)",
+    "officeRaw": "기계동(N7) 5112",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5112",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 8,
+    "name": "김대겸",
+    "nameEn": "KIM, Dae Gyoum",
+    "title": "교수",
+    "email": "daegyoum@kaist.ac.kr",
+    "phone": "042-350-3218",
+    "researchArea": "Fluid-structure interaction, Biological flow, Energy harvesting, Unsteady aerodynamics and hydrodynamics",
+    "researchTruncated": false,
+    "websiteUrl": "http://fluid.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_9y2IMPv1_20240808091359.png",
+    "labName": "응용유체역학 연구실",
+    "degree": "Ph.D., California Institute of Technology (2010)",
+    "officeRaw": "기계동(N7) 5113",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5113",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 137,
+    "name": "김미소",
+    "nameEn": "KIM, Miso",
+    "title": "교수",
+    "email": "misokim@kaist.ac.kr",
+    "phone": null,
+    "researchArea": "Mechanical metamaterials, Piezoelectrics and dielectrics, Energy harvesting/Sensor/MLCC, Additive manufacturing",
+    "researchTruncated": false,
+    "websiteUrl": "https://sites.google.com/view/misokimgroup/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_6WAMyfJx_20241223094143.jpg",
+    "labName": "스마트 에너지 소재 및 응용 연구실",
+    "degree": "PhD., MIT (2012)",
+    "officeRaw": "기계동(N7) 6015",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6015",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 9,
+    "name": "김산하",
+    "nameEn": "KIM, Sanha",
+    "title": "교수",
+    "email": "sanhkim@kaist.ac.kr",
+    "phone": "042-350- 3022",
+    "researchArea": "Manufacturing Process Mechanics, Device Planarization & Integration, Functional Surface Architecturing, Digital Production Technologies",
+    "researchTruncated": false,
+    "websiteUrl": "https://amselab.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_ipMoG4Vm_20250120065411.jpg",
+    "labName": "첨단 생산기술 및 표면공학 연구실",
+    "degree": "Ph.D., MIT (2013)",
+    "officeRaw": "기계동(N7) 4204",
+    "office": {
+      "isN7": true,
+      "roomNumber": "4204",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 10,
+    "name": "김성수",
+    "nameEn": "KIM, Seong Su",
+    "title": "교수",
+    "email": "seongsukim@kaist.ac.kr",
+    "phone": "042-350-3018",
+    "researchArea": "Composite materials & manufacturing, Multifunctional structures & materials",
+    "researchTruncated": false,
+    "websiteUrl": "http://mdam.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_X9K1C2Qp_20190806094950.jpg",
+    "labName": "신소재응용 기계설계 연구실",
+    "degree": "Ph.D., KAIST (2007)",
+    "officeRaw": "기계동(N7) 7104",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7104",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 11,
+    "name": "김성용",
+    "nameEn": "KIM, Sung Yong",
+    "title": "교수",
+    "email": "syongkim@kaist.ac.kr",
+    "phone": "042-350-1523",
+    "researchArea": "Environmental fluid dynamics, Air-sea and air-sea-land interaction processes, Environmental sensing",
+    "researchTruncated": false,
+    "websiteUrl": "http://efml.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_XHWL4Y9d_20190326021019.jpg",
+    "labName": "환경유체역학 실험실",
+    "degree": "Ph.D., University of California, San Diego (2009)",
+    "officeRaw": "기계동(N7) 6111",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6111",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 12,
+    "name": "김성진",
+    "nameEn": "KIM, Sung Jin",
+    "title": "교수",
+    "email": "sungjinkim@kaist.ac.kr",
+    "phone": "042-350- 3043",
+    "researchArea": "Microscale heat transfer and fluid flow, Optimum design of heat exchanger, heat pipes, and heat sinks",
+    "researchTruncated": false,
+    "websiteUrl": "http://appheat.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_e4tsERP0_20220801024736.jpg",
+    "labName": "응용열전달 연구실",
+    "degree": "Ph.D., Ohio State University (1989)",
+    "officeRaw": "기계동(N7) 5111",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5111",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 100,
+    "name": "김영진",
+    "nameEn": "KIM, Young-Jin",
+    "title": "교수",
+    "email": "yj.kim@kaist.ac.kr",
+    "phone": "042-350-3017",
+    "researchArea": "Precision Metrology, Ultrafast Photonics, Non-Destructive Testing, Direct Laser Writing, Flexible/Stretchable Electro-Optics",
+    "researchTruncated": false,
+    "websiteUrl": "http://upm2.kaist.ac.kr",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_zvYGMb4X_20210823090703.jpg",
+    "labName": "초정밀 광측정/광가공/지능화 연구실",
+    "degree": "Ph.D., KAIST (2008)",
+    "officeRaw": "기계동(N7) 6113",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6113",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 15,
+    "name": "김정",
+    "nameEn": "KIM, Jung",
+    "title": "교수",
+    "email": "jungkim@kaist.ac.kr",
+    "phone": "042-350-3231",
+    "researchArea": "Biorobotics, Bioinstrumentation, Haptics, Physical HRI",
+    "researchTruncated": false,
+    "websiteUrl": "http://biorobotics.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_EU81zoFS_20210726103954.JPG",
+    "labName": "생체기계 연구실",
+    "degree": "Ph.D., MIT (2004)",
+    "officeRaw": "기계동(N7) 5201",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5201",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 16,
+    "name": "김정원",
+    "nameEn": "KIM, Jungwon",
+    "title": "교수",
+    "email": "jungwon.kim@kaist.ac.kr",
+    "phone": "042-350- 3236",
+    "researchArea": "Advanced lasers, Time-of-flight sensors and imaging, Timing and synchronization, Semiconductor metrology",
+    "researchTruncated": false,
+    "websiteUrl": "http://upcam.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_cUQFMsay_20190326023136.jpg",
+    "labName": "초규모 광 제어 및 계측 연구실",
+    "degree": "Ph.D., MIT (2007)",
+    "officeRaw": "기계동(N7) 7105",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7105",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 123,
+    "name": "김지태",
+    "nameEn": "Kim, Ji Tae",
+    "title": "교수",
+    "email": "jitae.kim@kaist.ac.kr",
+    "phone": null,
+    "researchArea": "Additive Manufacturing, 3D printed electronics/photonics",
+    "researchTruncated": false,
+    "websiteUrl": "https://sites.google.com/view/kimlabkaist",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_cklafgtb_20240304015240.png",
+    "labName": "초정밀 적층제조 (나노 3차원 프린팅) 연구실",
+    "degree": "Ph.D., POSTECH (2011)",
+    "officeRaw": null,
+    "office": {
+      "isN7": false,
+      "roomNumber": null,
+      "buildingHint": null
+    }
+  },
+  {
+    "uid": 17,
+    "name": "김진환",
+    "nameEn": "KIM, Jinwhan",
+    "title": "교수",
+    "email": "jinwhan@kaist.ac.kr",
+    "phone": "042-350- 1519",
+    "researchArea": "Mobile and marine robotics, vehicle intelligence, navigation and control",
+    "researchTruncated": false,
+    "websiteUrl": " http://morin.kaist.ac.kr ",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_16ZcMyLv_20210713041016.png",
+    "labName": "모바일지능로봇연구실",
+    "degree": "Ph.D., Stanford University (2007)",
+    "officeRaw": "KI빌딩(E4) C323",
+    "office": {
+      "isN7": false,
+      "roomNumber": "C323",
+      "buildingHint": "KI빌딩"
+    }
+  },
+  {
+    "uid": 18,
+    "name": "김택수",
+    "nameEn": "KIM, Taek-Soo",
+    "title": "교수",
+    "email": "tskim1@kaist.ac.kr",
+    "phone": "042-350-3238",
+    "researchArea": "Mechanics-related subjects of advanced packaging and thin films",
+    "researchTruncated": false,
+    "websiteUrl": "http://aptf.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_XKPBqoHw_20190326023506.PNG",
+    "labName": "차세대 패키징 및 박막 연구실",
+    "degree": "Ph.D., Stanford University (2010)",
+    "officeRaw": "기계동(N7) 7103",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7103",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 103,
+    "name": "김현진",
+    "nameEn": "KIM, Hyun Jin",
+    "title": "교수",
+    "email": "kim.hyunjin@kaist.ac.kr",
+    "phone": "042-350-7925",
+    "researchArea": "Computational mechanics, Cardiovascular biomechanics, Clinical applications",
+    "researchTruncated": false,
+    "websiteUrl": " http://cvbml.kaist.ac.kr ",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_hEsrYoKv_20230627025211.JPG",
+    "labName": "전산역학 및 생체역학 연구실",
+    "degree": "Ph.D.,Stanford University (2009)",
+    "officeRaw": "기계동(N7) 6112",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6112",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 19,
+    "name": "김형수",
+    "nameEn": "KIM, Hyoungsoo",
+    "title": "교수",
+    "email": "hshk@kaist.ac.kr",
+    "phone": "042-350-3049",
+    "researchArea": "Materials-Aware Fluid Mechanics, Interfacial & Multiphase Flows, Flow Visualization & Optical Diagnostics",
+    "researchTruncated": false,
+    "websiteUrl": "http://fil.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_1KeNYZ4z_20200820034544.jpg",
+    "labName": "유체 및 계면 연구실",
+    "degree": "Ph.D., Delft University of Technology (2013)",
+    "officeRaw": "기계동(N7) 5110",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5110",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 105,
+    "name": "남영석",
+    "nameEn": "NAM, Youngsuk",
+    "title": "교수",
+    "email": "ysnam1@kaist.ac.kr",
+    "phone": "042-350-3246",
+    "researchArea": "Phase change heat transfer, Renewable/Intelligent thermal solutions, Thermal materials",
+    "researchTruncated": false,
+    "websiteUrl": "https://mel.kaist.ac.kr/ ",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_fpVdtM7n_20230623090423.jpg",
+    "labName": "멀티스케일 에너지 연구실",
+    "degree": "Ph.D., University of California, Los Angeles (2010)",
+    "officeRaw": "기계공학동(N7) 5106",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5106",
+      "buildingHint": "기계공학동"
+    }
+  },
+  {
+    "uid": 107,
+    "name": "노민균",
+    "nameEn": "NOH, Minkyun",
+    "title": "교수",
+    "email": "minkyun.noh@kaist.ac.kr",
+    "phone": "042-350-3021",
+    "researchArea": "Electric motors and drives; Sensors and actuators; Control, instrumentation, and robotics",
+    "researchTruncated": false,
+    "websiteUrl": "https://pml.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_3MnioPaN_20220608041626.jpg",
+    "labName": "정밀 메카트로닉스 연구실",
+    "degree": "Ph.D., MIT (2018)",
+    "officeRaw": "기계동(N7) 4203",
+    "office": {
+      "isN7": true,
+      "roomNumber": "4203",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 21,
+    "name": "박수경",
+    "nameEn": "PARK, Sukyung",
+    "title": "교수",
+    "email": "sukyungp@kaist.ac.kr",
+    "phone": "042-350-3230",
+    "researchArea": "Biomechanics, Dynamic Walking, Postural Control, Sports Mechanics, Biomimetics",
+    "researchTruncated": false,
+    "websiteUrl": "http://biomech.kaist.ac.kr",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_RmEfpAu0_20231204092813.JPG",
+    "labName": "생체역학 연구실",
+    "degree": "Ph.D., University of Michigan (2002)",
+    "officeRaw": "기계동(N7) 5204",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5204",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 23,
+    "name": "박용화",
+    "nameEn": "PARK, Yong-Hwa",
+    "title": "교수",
+    "email": "yhpark@kaist.ac.kr",
+    "phone": "042-350-3235",
+    "researchArea": "Vibration Analysis and Condition Monitoring / Human Auditory System-inspired Acoustic Recognition / Human Sound and Vibration for Health Sensors / 3D Lidar Sensor and Human Recognition",
+    "researchTruncated": false,
+    "websiteUrl": "http://human.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_XtIDwuWy_20240115093434.jpg",
+    "labName": "인간-기계 상호작용 연구실",
+    "degree": "Ph.D., KAIST(1999)",
+    "officeRaw": "기계동(N7-4) 4107",
+    "office": {
+      "isN7": true,
+      "roomNumber": "4107",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 24,
+    "name": "박인규",
+    "nameEn": "PARK, Inkyu",
+    "title": "교수",
+    "email": "inkyu@kaist.ac.kr",
+    "phone": "042-350- 7922",
+    "researchArea": "Micro/nano-sensors for robotics, healthcare, and environment applications & AI+Smart sensors",
+    "researchTruncated": false,
+    "websiteUrl": "http://mint.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_KGfjXYge_20240307113657.jpg",
+    "labName": "기계지능 및 첨단센서 연구실",
+    "degree": "Ph.D., UC Berkeley (2007)",
+    "officeRaw": "기계동(N7) 6102",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6102",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 25,
+    "name": "박해원",
+    "nameEn": "PARK, Hae-Won",
+    "title": "교수",
+    "email": "haewonpark@kaist.ac.kr",
+    "phone": "042-350-3242",
+    "researchArea": "Control and design of dynamic robot systems,Legged locomotion robots,Bio-inspired robots",
+    "researchTruncated": false,
+    "websiteUrl": "https://dynamicrobot.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_HP2laMf5_20240103094814.jpg",
+    "labName": "로봇 제어 & 설계 연구실",
+    "degree": "Ph.D., University of Michigan (2012)",
+    "officeRaw": "기계동(N7) 6104",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6104",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 26,
+    "name": "박형순",
+    "nameEn": "PARK, Hyung-Soon",
+    "title": "교수",
+    "email": "hyungspark@kaist.ac.kr",
+    "phone": "042-350-3038",
+    "researchArea": "Rehabilitation robotics, Healthcare system technology, Neuro-rehabilitation engineering, Orthopedic biomechanics",
+    "researchTruncated": false,
+    "websiteUrl": "http://rehab.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_8BlckMvi_20190326025919.jpg",
+    "labName": "신경재활공학 연구실",
+    "degree": "Ph.D., KAIST (2004)",
+    "officeRaw": "기계동(N7) 5203",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5203",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 27,
+    "name": "배중면",
+    "nameEn": "BAE, Joongmyeon",
+    "title": "교수",
+    "email": "jmbae@kaist.ac.kr",
+    "phone": "042-350-3045",
+    "researchArea": "Solid Oxide Fuel Cell (SOFC), Liquid Fuel Reforming, Fuel Cell System, Hydrogen Storage System",
+    "researchTruncated": false,
+    "websiteUrl": "http://fuelcell.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_mR523U0g_20190326030059.png",
+    "labName": "신 에너지변환시스템 연구실",
+    "degree": "Ph.D., Imperial College London (1996)",
+    "officeRaw": "기계동(N7) 7111",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7111",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 28,
+    "name": "배충식",
+    "nameEn": "BAE, Choongsik",
+    "title": "교수",
+    "email": "csbae@kaist.ac.kr",
+    "phone": null,
+    "researchArea": "Internal combustion engine, Laser diagnostics and instrumentation",
+    "researchTruncated": false,
+    "websiteUrl": "http://ftpl.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_g1mB5yxq_20190326030744.jpg",
+    "labName": "수송동력연구실",
+    "degree": "Ph.D., Imperial College London (1994)",
+    "officeRaw": "기계동(N7) 5109",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5109",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 31,
+    "name": "신현정",
+    "nameEn": "SHIN, Jennifer Hyunjong",
+    "title": "교수",
+    "email": "j_shin@kaist.ac.kr",
+    "phone": "042-350- 3232",
+    "researchArea": "Cellular Mechanobiology, Tissue Engineering, Microfluidics, Plasma Medicine",
+    "researchTruncated": false,
+    "websiteUrl": "http://softbm.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_IPyQFc0l_20230629021632.jpg",
+    "labName": "연성 생체역학 연구실",
+    "degree": "Ph.D., MIT (2004)",
+    "officeRaw": "기계동(N7) 5205",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5205",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 32,
+    "name": "심기동",
+    "nameEn": "SIM, Gi-Dong",
+    "title": "교수",
+    "email": "gdsim@kaist.ac.kr",
+    "phone": "042-350- 7318",
+    "researchArea": "Mechanical Properties of Materials, Thin Film Mechanics, Fracture and Fatigue",
+    "researchTruncated": false,
+    "websiteUrl": "https://icare.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_zUoq19kj_20251113095347.JPG",
+    "labName": "극한소재역학 및 신뢰성 평가 연구실",
+    "degree": "Ph.D., KAIST (2012)",
+    "officeRaw": "기계동(N7) 6116",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6116",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 129,
+    "name": "안송이",
+    "nameEn": "AHN, Song Ih",
+    "title": "교수",
+    "email": "siahn@kaist.ac.kr",
+    "phone": "042-350-3015",
+    "researchArea": "Tissue engineering, Organs-on-chips, Bioelectronics",
+    "researchTruncated": false,
+    "websiteUrl": "https://sites.google.com/view/biosel24",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_7whJaNFp_20240613092435.jpg",
+    "labName": "생체융합 시스템 공학 연구실",
+    "degree": "Ph.D., Georgia Institute of Technology [2019]",
+    "officeRaw": "기계동(N7) 6103",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6103",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 34,
+    "name": "오왕열",
+    "nameEn": "OH, Wang-Yuhl",
+    "title": "교수",
+    "email": "woh1@kaist.ac.kr",
+    "phone": "042-350-3237",
+    "researchArea": "Development and Application of Optical Imaging System",
+    "researchTruncated": false,
+    "websiteUrl": "https://phil.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_UzM31eXN_20190328041633.jpeg",
+    "labName": "포토닉 이미징 연구실",
+    "degree": "Ph.D., KAIST (1997)",
+    "officeRaw": "기계동(N7) 7106",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7106",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 35,
+    "name": "오일권",
+    "nameEn": "OH, Ilkwon",
+    "title": "교수",
+    "email": "ikoh@kaist.ac.kr",
+    "phone": "042-350-1520",
+    "researchArea": "Soft Actuators and Mechatronics, Smart Materials/Structures, Energy Harvesting, Graphene and Nano-Engineering",
+    "researchTruncated": false,
+    "websiteUrl": "https://srim.kaist.ac.kr/ ",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_U5LSQd3u_20190328041713.jpg",
+    "labName": "소프트 로보틱스 및 지능형 재료 연구실",
+    "degree": "Ph.D., KAIST (2001)",
+    "officeRaw": "유레카관(N27) 3104",
+    "office": {
+      "isN7": false,
+      "roomNumber": "3104",
+      "buildingHint": "유레카관"
+    }
+  },
+  {
+    "uid": 143,
+    "name": "오현동",
+    "nameEn": "OH, Hyondong",
+    "title": "교수",
+    "email": "h.oh@kaist.ac.kr",
+    "phone": "042-350-3028",
+    "researchArea": "Unmanned Vehicles, Perception and Planning, Multi-Agent Systems",
+    "researchTruncated": false,
+    "websiteUrl": "https://fair.kaist.ac.kr",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_Ew2BPtO5_20251128095818.jpg",
+    "labName": "필드 인공지능 및 로보틱스 연구실",
+    "degree": "Ph.D., Cranfield University (2013)",
+    "officeRaw": "기계공학동(N7) 6106",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6106",
+      "buildingHint": "기계공학동"
+    }
+  },
+  {
+    "uid": 37,
+    "name": "유승화",
+    "nameEn": "RYU, Seunghwa",
+    "title": "교수",
+    "email": "ryush@kaist.ac.kr",
+    "phone": "042-350-3019",
+    "researchArea": "Multiscale mechanics and material simulation, Machine learning based design of structural materials",
+    "researchTruncated": false,
+    "websiteUrl": "https://sites.google.com/site/seunghwalab/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_PetWRJYM_20211207095628.jpg",
+    "labName": "AiM⁴ Lab - 지능형 설계 및 제조 연구실",
+    "degree": "Ph.D., Stanford University (2011)",
+    "officeRaw": "기계동(N7) 3205",
+    "office": {
+      "isN7": true,
+      "roomNumber": "3205",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 38,
+    "name": "유홍기",
+    "nameEn": "YOO, Hongki",
+    "title": "교수",
+    "email": "h.yoo@kaist.ac.kr",
+    "phone": "042-350-3243",
+    "researchArea": "Optical System Design, Biomedical Optics, Optical Metrology",
+    "researchTruncated": false,
+    "websiteUrl": "http://boom.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_Tb7fcnUo_20190329094726.jpg",
+    "labName": "의광학 및 광측정 연구실",
+    "degree": "Ph.D., KAIST(2007)",
+    "officeRaw": "기계동(N7) 3204",
+    "office": {
+      "isN7": true,
+      "roomNumber": "3204",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 39,
+    "name": "윤국진",
+    "nameEn": "YOON, Kuk-Jin",
+    "title": "교수",
+    "email": "kjyoon@kaist.ac.kr",
+    "phone": "042-350- 7319",
+    "researchArea": "Computer Vision, Machine Learning, Pattern Analysis",
+    "researchTruncated": false,
+    "websiteUrl": "http://vi.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_XVwDPyST_20190329094958.jpg",
+    "labName": "시각 지능 연구실",
+    "degree": "Ph.D., KAIST (2006)",
+    "officeRaw": "기계동(N7) 6101",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6101",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 40,
+    "name": "윤용진",
+    "nameEn": "YOON, Yong Jin",
+    "title": "교수",
+    "email": "yongjiny@kaist.ac.kr",
+    "phone": "042-350- 3213",
+    "researchArea": "3D printing, Si-μSOFC, Nonlinear dynamics",
+    "researchTruncated": false,
+    "websiteUrl": "https://jdl.kaist.ac.kr/  ",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_m9zbYw4V_20190329095045.JPG",
+    "labName": "JDL (Just Do it Laboratory) 적층제조 및 반도체 융합 공정 연구실",
+    "degree": "Ph.D., Stanford University(2009)",
+    "officeRaw": "기계동(N7) 7115",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7115",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 41,
+    "name": "윤정환",
+    "nameEn": "YOON, Jeong Whan",
+    "title": "교수",
+    "email": "j.yoon@kaist.ac.kr",
+    "phone": "042-350-3233",
+    "researchArea": "Mechanics of Plasticity, Materials Processing",
+    "researchTruncated": false,
+    "websiteUrl": "http://canesm.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_AzqZJFeG_20190329095109.png",
+    "labName": "컴퓨터원용 정형가공 연구실",
+    "degree": "Ph.D., KAIST (1997)",
+    "officeRaw": "기계동(N7) 4202",
+    "office": {
+      "isN7": true,
+      "roomNumber": "4202",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 115,
+    "name": "윤희택",
+    "nameEn": "YUN, Huitaek",
+    "title": "교수",
+    "email": "htyun@kaist.ac.kr",
+    "phone": "042-350-3011",
+    "researchArea": "Smart Manufacturing, Manufacturing Mechatronics, Manufacturing AI",
+    "researchTruncated": false,
+    "websiteUrl": "https://smslab.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_WF8NSaqY_20240102091552.jpg",
+    "labName": "스마트생산시스템 연구실",
+    "degree": "Ph.D., Purdue Univ.(2021)",
+    "officeRaw": null,
+    "office": {
+      "isN7": false,
+      "roomNumber": null,
+      "buildingHint": null
+    }
+  },
+  {
+    "uid": 101,
+    "name": "이강택",
+    "nameEn": "LEE, Kang Taek",
+    "title": "교수",
+    "email": "leekt@kaist.ac.kr",
+    "phone": "042-350-3020",
+    "researchArea": "SOFCs, Solid-state Batteries, Hydrogen Production, 3D Nano-imaging",
+    "researchTruncated": false,
+    "websiteUrl": "https://www.ktlee.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_MPpZgA7O_20250411041123.jpg",
+    "labName": "첨단 에너지 변환 저장 연구실",
+    "degree": "Ph.D.,University of Florida(2010)",
+    "officeRaw": "기계공학동(N7) 6108",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6108",
+      "buildingHint": "기계공학동"
+    }
+  },
+  {
+    "uid": 42,
+    "name": "이두용",
+    "nameEn": "LEE, Doo Yong",
+    "title": "교수",
+    "email": "leedy@kaist.ac.kr",
+    "phone": "042-350-3229",
+    "researchArea": "Medical Robotics, Medical Simulation",
+    "researchTruncated": false,
+    "websiteUrl": "https://sites.google.com/view/rslab-kaist/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_pQtwT96d_20190329095124.gif",
+    "labName": "로봇 및 시뮬레이션 연구실",
+    "degree": "Ph.D., Rensselaer Polytechnic Institute (1993)",
+    "officeRaw": "기계동(N7) 5202",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5202",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 44,
+    "name": "이봉재",
+    "nameEn": "LEE, Bong Jae",
+    "title": "교수",
+    "email": "bongjae.lee@kaist.ac.kr",
+    "phone": "042-350-3239",
+    "researchArea": "Thermal Radiation; Solar Energy Harvesting",
+    "researchTruncated": false,
+    "websiteUrl": "https://trad.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_ndLZSx50_20190329095157.PNG",
+    "labName": "복사열전달 연구실",
+    "degree": "Ph.D., Georgia Institute of Technology (2007)",
+    "officeRaw": "기계동(N7) 5101",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5101",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 45,
+    "name": "이승섭",
+    "nameEn": "LEE, Seung Seob",
+    "title": "교수",
+    "email": "sslee97@kaist.ac.kr",
+    "phone": "042-350-3046",
+    "researchArea": "MEMS, NEMS, Bio-MEMS, Microfluidics",
+    "researchTruncated": false,
+    "websiteUrl": "https://sites.google.com/site/kaistmmstlab/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_tKJ2VzON_20230320084950.jpg",
+    "labName": "초소형 기전 공학 연구실",
+    "degree": "Ph.D., Univ. of California, Berkeley (1995)",
+    "officeRaw": "기계동(N7) 7113",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7113",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 117,
+    "name": "이승철",
+    "nameEn": "LEE, Seungchul",
+    "title": "교수",
+    "email": "seunglee@kaist.ac.kr",
+    "phone": "042-350-3026",
+    "researchArea": "Industrial AI, Manufacturing AI, Physics-informed AI",
+    "researchTruncated": false,
+    "websiteUrl": "https://iailab.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_tJsXMilo_20230814023408.jpg",
+    "labName": "산업 인공지능 연구실",
+    "degree": "Ph.D., The University of Michigan, Ann Arbor (2010)",
+    "officeRaw": "기계공학동(N7) 6102",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6102",
+      "buildingHint": "기계공학동"
+    }
+  },
+  {
+    "uid": 46,
+    "name": "이익진",
+    "nameEn": "LEE, Ikjin",
+    "title": "교수",
+    "email": "ikjin.lee@kaist.ac.kr",
+    "phone": "042-350-3041",
+    "researchArea": "Design under uncertainties and applications, Statistical input identification",
+    "researchTruncated": false,
+    "websiteUrl": "http://idol.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_1YOxuz64_20190329095332.jpg",
+    "labName": "최적 설계 연구실",
+    "degree": "Ph.D., University of Iowa (2008)",
+    "officeRaw": "기계동(N7) 7109",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7109",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 48,
+    "name": "이정철",
+    "nameEn": "LEE, Jungchul",
+    "title": "교수",
+    "email": "jungchullee@kaist.ac.kr",
+    "phone": "042-350-3212",
+    "researchArea": "Advanced micro-/nanomanufacturing, MEMS, Precision Instrumentation",
+    "researchTruncated": false,
+    "websiteUrl": "http://mnil.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_2jUaido7_20200512112824.jpg",
+    "labName": "생산 및 계측 연구실",
+    "degree": "Ph.D., Georgia Institute of Technology(2007)",
+    "officeRaw": "기계동(N7) 5108",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5108",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 51,
+    "name": "이필승",
+    "nameEn": "LEE, Phill-Seung",
+    "title": "교수",
+    "email": "phillseung@kaist.edu",
+    "phone": "042-350-1512",
+    "researchArea": "Computational Mechanics, Structural Systems, Experimental Biology",
+    "researchTruncated": false,
+    "websiteUrl": "http://cmss.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_dSKojXEt_20190329095701.jpg",
+    "labName": "전산역학 및 구조시스템 연구실",
+    "degree": "Ph.D., MIT (2004)",
+    "officeRaw": "유레카관(N27) 2103",
+    "office": {
+      "isN7": false,
+      "roomNumber": "2103",
+      "buildingHint": "유레카관"
+    }
+  },
+  {
+    "uid": 53,
+    "name": "장대준",
+    "nameEn": "CHANG, Daejun",
+    "title": "교수",
+    "email": "djchang@kaist.ac.kr",
+    "phone": "042-350-1514",
+    "researchArea": "Process Engineering for energy systems, High Pressure Storage Tanks, Risk and Reliability",
+    "researchTruncated": false,
+    "websiteUrl": "http://iesel.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_0JucIWyx_20190329095854.jpg",
+    "labName": "에너지시스템공학 연구실",
+    "degree": "Ph.D., KAIST (1997)",
+    "officeRaw": "유레카관 3102",
+    "office": {
+      "isN7": false,
+      "roomNumber": "3102",
+      "buildingHint": null
+    }
+  },
+  {
+    "uid": 54,
+    "name": "전성윤",
+    "nameEn": "JEON, Jessie Sungyun",
+    "title": "교수",
+    "email": "jsjeon@kaist.ac.kr",
+    "phone": "042-350-3226",
+    "researchArea": "Microfluidics for biological applications, Organ-on-a-chip",
+    "researchTruncated": false,
+    "websiteUrl": "http://jeon.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_1UIrqNo0_20230629071627.jpg",
+    "labName": "바이오 미세 유체 연구실",
+    "degree": "Ph.D., MIT (2014)",
+    "officeRaw": "기계동(N7) 3203",
+    "office": {
+      "isN7": true,
+      "roomNumber": "3203",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 55,
+    "name": "전원주",
+    "nameEn": "JEON, Wonju",
+    "title": "교수",
+    "email": "wonju.jeon@kaist.ac.kr",
+    "phone": "042-350-3219",
+    "researchArea": "Acoustic Metamaterial, Acoustic Black Hole, Absorption of Sound and Vibration, Fan Noise Prediction",
+    "researchTruncated": false,
+    "websiteUrl": "http://wave.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_0eQgibKq_20190329100639.bmp",
+    "labName": "파동에너지(소음/진동) 제어 연구실",
+    "degree": "Ph.D., KAIST (2006)",
+    "officeRaw": "기계동(N7) 4111",
+    "office": {
+      "isN7": true,
+      "roomNumber": "4111",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 56,
+    "name": "정상권",
+    "nameEn": "JEONG, Sangkwon",
+    "title": "교수",
+    "email": "skjeong@kaist.ac.kr",
+    "phone": "042-350- 3039",
+    "researchArea": "Cryogenic enginnering, Cryogenic heat transfer, Cryogenic refrigeration, Applied superconductivity",
+    "researchTruncated": false,
+    "websiteUrl": "https://sites.google.com/view/cryokaist",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_a6u4ALmd_20190329100713.jpg",
+    "labName": "저온공학 연구실",
+    "degree": "Ph.D., MIT (1992)",
+    "officeRaw": "기계동(N7) 5115",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5115",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 57,
+    "name": "조연우",
+    "nameEn": "CHO, Yeunwoo",
+    "title": "교수",
+    "email": "ywoocho@kaist.ac.kr",
+    "phone": "042-350- 3220",
+    "researchArea": "Waves in Fluids, Nonlinear Dynamics and Waves, Renewable Energy from Fluids, Fluid-Body Interaction",
+    "researchTruncated": false,
+    "websiteUrl": "http://wfm.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_Z62kKCnP_20190329100730.jpg",
+    "labName": "파동역학 연구실",
+    "degree": "Ph.D., MIT (2010)",
+    "officeRaw": "기계동(N7) 5116",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5116",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 138,
+    "name": "조한솔",
+    "nameEn": "CHO, Hansohl",
+    "title": "교수",
+    "email": "hansohl@kaist.ac.kr",
+    "phone": "042-350-3030",
+    "researchArea": "Solid mechanics, continuum mechanics, soft/hard condensed matter",
+    "researchTruncated": false,
+    "websiteUrl": "https://continuum.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_djQT0JZ5_20250321093614.jpg",
+    "labName": "mechanics & extremes @ kaist",
+    "degree": "Ph.D., Massachusetts Institute of Technology (2014)",
+    "officeRaw": "기계동(N7) 7110 (서관)",
+    "office": {
+      "isN7": true,
+      "roomNumber": "7110",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 58,
+    "name": "최세범",
+    "nameEn": "CHOI, Seibum",
+    "title": "교수",
+    "email": "sbchoi@kaist.ac.kr",
+    "phone": "042-350- 4120",
+    "researchArea": "Fuel Saving Technologies, Vehicle Dynamics Control, Active Safety",
+    "researchTruncated": false,
+    "websiteUrl": "http://acl.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_Z9pM3Bcg_20190329100746.png",
+    "labName": "차량 제어 연구실",
+    "degree": "Ph.D., UC Berkeley (1993)",
+    "officeRaw": "기계동(N7) 5105",
+    "office": {
+      "isN7": true,
+      "roomNumber": "5105",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 150,
+    "name": "한지훈",
+    "nameEn": "HAN, Jihun",
+    "title": "교수",
+    "email": "jihunhan86@gmail.com",
+    "phone": "042-350-3031",
+    "researchArea": "Connected and automated vehicles, Vehicle dynamics and control, Human-vehicle interaction, Infrastructure intelligence, Network-level traffic control, Intelligent Transportation Systems",
+    "researchTruncated": false,
+    "websiteUrl": null,
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_RG3ExJdt_20260630043636.png",
+    "labName": null,
+    "degree": "Ph.D., KAIST [2016]",
+    "officeRaw": "기계동(N7) 6113",
+    "office": {
+      "isN7": true,
+      "roomNumber": "6113",
+      "buildingHint": "기계동"
+    }
+  },
+  {
+    "uid": 102,
+    "name": "황보제민",
+    "nameEn": "HWANGBO, Je Min",
+    "title": "교수",
+    "email": "jhwangbo@kaist.ac.kr",
+    "phone": "042-350-3244",
+    "researchArea": "Legged robotics, Learning-based control",
+    "researchTruncated": false,
+    "websiteUrl": "https://www.railab.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_ujL2gQl6_20200318105008.jpg",
+    "labName": "로봇지능 연구실",
+    "degree": "Ph.D., ETH Zurich(2019)",
+    "officeRaw": null,
+    "office": {
+      "isN7": false,
+      "roomNumber": null,
+      "buildingHint": null
+    }
+  },
+  {
+    "uid": 136,
+    "name": "황준식",
+    "nameEn": "HWANG, Joonsik",
+    "title": "교수",
+    "email": "jhwang@kaist.ac.kr",
+    "phone": null,
+    "researchArea": "High-speed optical diagnostics, Turbulent flow, Spray atomization, Propulsion systems",
+    "researchTruncated": false,
+    "websiteUrl": "https://ftpl.kaist.ac.kr/",
+    "imageUrl": "http://me.kaist.ac.kr/upload/main/2415412181_8lv5A6Nx_20241230111143.jpg",
+    "labName": "다상유동 연구실",
+    "degree": "Ph.D., KAIST (2017)",
+    "officeRaw": null,
+    "office": {
+      "isN7": false,
+      "roomNumber": null,
+      "buildingHint": null
+    }
+  }
+]
