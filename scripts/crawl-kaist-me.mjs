@@ -73,7 +73,13 @@ function parseProfessorDetail(html) {
   const name = stripTags((html.match(/<p class="name">([\s\S]*?)<\/p>/) || [])[1]);
 
   const img = (html.match(/background-image:url\(([^)]+)\)/) || [])[1] || null;
-  const imageUrl = img ? img.trim().replace(/^['"]|['"]$/g, "") : null;
+  let imageUrl = img ? img.trim().replace(/^['"]|['"]$/g, "") : null;
+  // http→https 정규화 (https 사이트에서 mixed content 차단 방지)
+  if (imageUrl) {
+    if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl;
+    else if (imageUrl.startsWith("/")) imageUrl = BASE + imageUrl;
+    else imageUrl = imageUrl.replace(/^http:\/\//i, "https://");
+  }
 
   // dt/dd 페어를 라벨→값 맵으로
   const rows = {};

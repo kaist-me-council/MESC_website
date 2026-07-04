@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "drive.google.com",
       },
+      {
+        protocol: "https",
+        hostname: "me.kaist.ac.kr",
+      },
     ],
   },
 
@@ -45,7 +49,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://lh3.googleusercontent.com https://drive.google.com",
+              "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://lh3.googleusercontent.com https://drive.google.com https://me.kaist.ac.kr",
               "frame-src https://calendar.google.com https://docs.google.com",
               "connect-src 'self' https://*.public.blob.vercel-storage.com",
             ].join("; "),
