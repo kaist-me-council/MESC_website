@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import CourseDetailClient from "./course-detail-client";
 
+export const revalidate = 60;
+
 export default async function CourseDetailPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
 

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import LibraryClient, { type LibraryBook } from "./library-client";
 
+export const revalidate = 60;
+
 export default async function LibraryPage() {
   let books: LibraryBook[] = [];
 
