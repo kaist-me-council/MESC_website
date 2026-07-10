@@ -51,4 +51,9 @@ dev.db-wal
 
 # local sqlite db (may contain tokens/PII — never commit)
 dev.db
+dev.db.backup-*
 prisma/*.db
+prisma/dev.db.backup-*
+
+# local machine shell env dump (personal paths, not project config)
+.vscode/colcon.env
