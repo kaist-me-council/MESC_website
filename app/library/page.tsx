@@ -28,7 +28,8 @@ export default async function LibraryPage() {
         },
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("LibraryPage: 전공서 조회 실패", error);
     books = [];
   }
 

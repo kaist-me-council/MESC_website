@@ -17,7 +17,13 @@ function normalizeBookPayload(body: Record<string, unknown>) {
   const titleEn = typeof body.titleEn === "string" ? body.titleEn.trim() : "";
   const author = typeof body.author === "string" ? body.author.trim() : "";
   const publisher = typeof body.publisher === "string" ? body.publisher.trim() : "";
-  const coverImage = typeof body.coverImage === "string" ? body.coverImage.trim() : "";
+  const coverImageRaw = typeof body.coverImage === "string" ? body.coverImage.trim() : "";
+  // http→https 정규화 (https 사이트에서 mixed content 차단 방지)
+  const coverImage = coverImageRaw
+    ? coverImageRaw.startsWith("//")
+      ? "https:" + coverImageRaw
+      : coverImageRaw.replace(/^http:\/\//i, "https://")
+    : "";
   const isbn = typeof body.isbn === "string" ? body.isbn.trim() : "";
   const category = typeof body.category === "string" ? body.category.trim() : "";
   const quantity = Number.isFinite(Number(body.quantity)) ? Math.min(MAX_QUANTITY, Math.max(1, Math.floor(Number(body.quantity)))) : 1;
@@ -51,7 +57,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const id = parseId(idStr);
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
-  const body = await req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const data = normalizeBookPayload(body);
 
   if (!isValidString(data.title, 150)) return NextResponse.json({ error: "책 제목을 입력해주세요. (최대 150자)" }, { status: 400 });

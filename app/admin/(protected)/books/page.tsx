@@ -62,13 +62,7 @@ export default function AdminBooksPage() {
     setCourses(await coursesRes.json());
   }
 
-  useEffect(() => {
-    Promise.all([fetch("/api/books"), fetch("/api/courses")])
-      .then(async ([booksRes, coursesRes]) => {
-        setBooks(await booksRes.json());
-        setCourses(await coursesRes.json());
-      });
-  }, []);
+  useEffect(() => { load(); }, []);
 
   function reset() {
     setTitle(""); setTitleEn(""); setAuthor(""); setPublisher(""); setCoverImage(""); setIsbn("");

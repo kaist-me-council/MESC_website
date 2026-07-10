@@ -53,11 +53,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!isAllowedCategory(level, ALLOWED_LEVELS)) return NextResponse.json({ error: "올바른 레벨을 선택해주세요." }, { status: 400 });
   if (youtubeUrl && !isValidUrl(youtubeUrl)) return NextResponse.json({ error: "올바른 URL을 입력해주세요." }, { status: 400 });
 
-  const course = await prisma.course.update({
-    where: { id },
-    data: { code, name, nameEn: nameEn || null, level, description: description || null, descriptionEn: descriptionEn || null, textbook: textbook || null, textbookAvailable, youtubeUrl: youtubeUrl || null, order },
-  });
-  return NextResponse.json(course);
+  try {
+    const course = await prisma.course.update({
+      where: { id },
+      data: { code, name, nameEn: nameEn || null, level, description: description || null, descriptionEn: descriptionEn || null, textbook: textbook || null, textbookAvailable, youtubeUrl: youtubeUrl || null, order },
+    });
+    return NextResponse.json(course);
+  } catch {
+    return NextResponse.json({ error: "이미 존재하는 과목코드입니다." }, { status: 409 });
+  }
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
