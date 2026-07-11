@@ -10,12 +10,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { AdminGuide } from "@/components/admin-guide";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, ImageIcon, Upload } from "lucide-react";
+import { BookOpen, ImageIcon, Upload, Search, X } from "lucide-react";
 
 interface Course {
   id: number;
   code: string;
   name: string;
+}
+
+interface CoverCandidate {
+  url: string;
+  title: string;
+  authors: string;
+  year: string;
+  source: "google" | "openlibrary";
 }
 
 interface Book {
@@ -54,6 +62,10 @@ export default function AdminBooksPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [coverSearching, setCoverSearching] = useState(false);
+  const [coverCandidates, setCoverCandidates] = useState<CoverCandidate[]>([]);
+  const [coverSearchOpen, setCoverSearchOpen] = useState(false);
+  const [coverSearchError, setCoverSearchError] = useState("");
   const formRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -68,6 +80,7 @@ export default function AdminBooksPage() {
     setTitle(""); setTitleEn(""); setAuthor(""); setPublisher(""); setCoverImage(""); setIsbn("");
     setQuantity("1"); setAvailable(true); setCategory(""); setCourseId(NO_COURSE_VALUE); setOrder("0");
     setEditingId(null); setSubmitError("");
+    setCoverCandidates([]); setCoverSearchOpen(false); setCoverSearchError("");
   }
 
   function startEdit(book: Book) {
@@ -102,6 +115,30 @@ export default function AdminBooksPage() {
       setSubmitError("표지 업로드 중 네트워크 오류가 발생했습니다.");
     }
     setUploading(false);
+  }
+
+  async function handleCoverSearch() {
+    if (!title.trim()) {
+      setCoverSearchError("먼저 제목을 입력해주세요.");
+      setCoverSearchOpen(true);
+      setCoverCandidates([]);
+      return;
+    }
+    setCoverSearching(true);
+    setCoverSearchError("");
+    setCoverSearchOpen(true);
+    setCoverCandidates([]);
+    try {
+      const params = new URLSearchParams({ title: title.trim() });
+      if (author.trim()) params.set("author", author.trim());
+      const res = await fetch(`/api/books/cover-search?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) setCoverSearchError(data.error ?? "표지 검색 중 오류가 발생했습니다.");
+      else setCoverCandidates(data.candidates ?? []);
+    } catch {
+      setCoverSearchError("표지 검색 중 네트워크 오류가 발생했습니다.");
+    }
+    setCoverSearching(false);
   }
 
   async function handleSubmit() {
@@ -213,9 +250,68 @@ export default function AdminBooksPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>표지 URL (선택)</Label>
-                    <Input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="https://..." />
+                    <div className="flex gap-2">
+                      <Input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="https://..." className="flex-1" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCoverSearch}
+                        disabled={coverSearching}
+                        className="shrink-0 gap-1.5"
+                      >
+                        <Search className="h-4 w-4" />
+                        {coverSearching ? "검색 중..." : "표지 검색"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
+
+                {coverSearchOpen && (
+                  <div className="rounded-xl border border-border/60 bg-muted/40 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-sm font-medium">표지 검색 결과</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-muted-foreground"
+                        onClick={() => { setCoverSearchOpen(false); setCoverCandidates([]); setCoverSearchError(""); }}
+                      >
+                        <X className="h-4 w-4" /> 닫기
+                      </Button>
+                    </div>
+                    {coverSearching ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">표지를 검색하고 있습니다...</p>
+                    ) : coverSearchError ? (
+                      <Alert variant="destructive"><AlertDescription>{coverSearchError}</AlertDescription></Alert>
+                    ) : coverCandidates.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">표지 후보를 찾지 못했습니다. 제목이나 저자를 조정해보세요.</p>
+                    ) : (
+                      <div className="flex gap-3 overflow-x-auto pb-2">
+                        {coverCandidates.map((c, i) => {
+                          const selected = coverImage === c.url;
+                          return (
+                            <button
+                              key={`${c.url}-${i}`}
+                              type="button"
+                              onClick={() => setCoverImage(c.url)}
+                              className="group w-[104px] shrink-0 text-left transition-transform hover:-translate-y-0.5"
+                            >
+                              <div className={`aspect-[3/4] overflow-hidden rounded-lg bg-muted ring-2 transition-colors ${selected ? "ring-primary" : "ring-black/10 dark:ring-white/10 group-hover:ring-primary/50"}`}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={c.url} alt={c.title} className="h-full w-full object-cover" loading="lazy" />
+                              </div>
+                              <p className="mt-1 truncate text-xs font-medium" title={c.title}>{c.title || "제목 미상"}</p>
+                              <p className="truncate text-[11px] text-muted-foreground">
+                                {[c.year, c.source === "google" ? "Google" : "OpenLibrary"].filter(Boolean).join(" · ")}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label>보유 권수</Label>
