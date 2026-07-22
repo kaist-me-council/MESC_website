@@ -148,7 +148,7 @@ export default async function AdminPage() {
           <ul className="list-disc pl-5 space-y-0.5">
             <li><strong>공지사항·공지/행사/학사</strong> 카테고리로 분류해서 발행 (상단 고정 가능).</li>
             <li><strong>행사 관리</strong> — 사이트에서 행사를 만들면 Google Drive 에 폴더가 자동으로 만들어지고 사진은 드래그앤드롭으로 Drive 에 직접 올라갑니다.</li>
-            <li><strong>예산·간식 위시·팝업</strong> 같은 일상 관리 + <strong>건물·교수·수업·학습자료·멤버</strong> 같은 기준 데이터 관리.</li>
+            <li><strong>간식 위시·팝업</strong> 같은 일상 관리 + <strong>건물·교수·수업·학습자료·멤버</strong> 같은 기준 데이터 관리.</li>
           </ul>
           <p className="text-xs">💡 공용 컴퓨터에서 작업했다면 우상단 <strong>로그아웃</strong> 잊지 마세요. 세션은 자동 만료되지만 안전을 위해 권장합니다.</p>
         </AdminGuide>
@@ -187,7 +187,6 @@ export default async function AdminPage() {
             {[
               { href: "/", label: "홈페이지" },
               { href: "/notices", label: "공지사항" },
-              { href: "/budget", label: "예산 내역" },
               { href: "/check-fee", label: "과비 확인" },
               { href: "/members", label: "학생회 소개" },
             ].map((l) => (

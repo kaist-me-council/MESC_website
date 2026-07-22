@@ -51,7 +51,6 @@ export default function Footer() {
     { label: t("navbar.notices"), href: "/notices" },
     { label: t("navbar.calendar"), href: "/calendar" },
     { label: t("navbar.checkFee"), href: "/check-fee" },
-    { label: t("navbar.budget"), href: "/budget" },
   ];
 
   const resourceLinks = [

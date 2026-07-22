@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowRight, Bell, BookOpen, Calendar, PieChart, CreditCard, ChevronRight, Pin,
+  ArrowRight, Bell, BookOpen, Calendar, CreditCard, ChevronRight, Pin,
   Zap, Clock, ArrowUpRight
 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
@@ -55,13 +55,6 @@ export function HomeClient({ notices, hours }: HomeClientProps) {
       label: t("features.calendar.label"),
       desc: t("features.calendar.desc"),
       lightColor: "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-300"
-    },
-    {
-      href: "/budget",
-      icon: PieChart,
-      label: t("features.budget.label"),
-      desc: t("features.budget.desc"),
-      lightColor: "bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-300"
     },
     {
       href: "/resources",

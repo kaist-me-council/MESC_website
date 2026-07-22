@@ -27,17 +27,6 @@ model Resource {
   createdAt   DateTime @default(now())
 }
 
-model BudgetItem {
-  id          Int      @id @default(autoincrement())
-  date        DateTime
-  description String
-  amount      Int
-  type        String
-  category    String   @default("기타")
-  receiptUrl  String?
-  createdAt   DateTime @default(now())
-}
-
 model Member {
   id       Int     @id @default(autoincrement())
   name     String

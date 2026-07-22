@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, Bell, BookOpen, BookMarked, Calendar, PieChart, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, ListChecks, PartyPopper, Images, Inbox, MessagesSquare, Cookie, type LucideIcon } from "lucide-react";
+import { Menu, X, Bell, BookOpen, BookMarked, Calendar, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, ListChecks, PartyPopper, Images, Inbox, MessagesSquare, Cookie, type LucideIcon } from "lucide-react";
 import { Suspense, useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { useLanguage } from "@/lib/language-context";
@@ -82,7 +82,6 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
       icon: Calendar,
       items: [
         { href: "/calendar", label: t("navbar.calendar"), icon: Calendar },
-        { href: "/budget", label: t("navbar.budget"), icon: PieChart },
         { href: "/check-fee", label: t("navbar.checkFee"), icon: CreditCard },
       ],
     },

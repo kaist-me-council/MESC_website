@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     default: "기계공학과 학생회",
     template: "%s | 기계공학과 학생회",
   },
-  description: "기계공학과 학생회 공식 웹사이트 - 공지사항, 학습자료, 예산 내역, 캘린더 등을 확인하세요.",
+  description: "기계공학과 학생회 공식 웹사이트 - 공지사항, 학습자료, 캘린더 등을 확인하세요.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     siteName: "기계공학과 학생회",
     title: "기계공학과 학생회",
-    description: "기계공학과 학생회 공식 웹사이트 - 공지사항, 학습자료, 예산 내역, 캘린더 등을 확인하세요.",
+    description: "기계공학과 학생회 공식 웹사이트 - 공지사항, 학습자료, 캘린더 등을 확인하세요.",
     url: SITE_URL,
     images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "기계공학과 학생회" }],
   },

@@ -11,7 +11,6 @@ const STATIC_PATHS = [
   "/notices",
   "/resources",
   "/calendar",
-  "/budget",
   "/check-fee",
   "/community",
   "/courses",
