@@ -25,16 +25,21 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError("");
-    const res = await signIn("credentials", {
-      username: username.trim(),
-      password,
-      redirect: false,
-    });
-    setLoading(false);
-    if (res?.ok) {
-      router.push("/admin");
-    } else {
-      setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+    try {
+      const res = await signIn("credentials", {
+        username: username.trim(),
+        password,
+        redirect: false,
+      });
+      if (res?.ok) {
+        router.push("/admin");
+      } else {
+        setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+      }
+    } catch {
+      setError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -94,6 +99,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

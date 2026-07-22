@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/language-context";
 import { pick } from "@/lib/bilingual";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Youtube, BookMarked, FileText, ChevronRight, Star } from "lucide-react";
+import { BookOpen, Youtube, BookMarked, FileText, ChevronRight, Star, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 interface Course {
@@ -31,11 +31,16 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [activeLevel, setActiveLevel] = useState("전체");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetch("/api/courses")
-      .then((r) => r.json())
-      .then((data) => { setCourses(data); setLoading(false); });
+      .then((r) => {
+        if (!r.ok) throw new Error("fetch failed");
+        return r.json();
+      })
+      .then((data) => { setCourses(data); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
   }, []);
 
   const filtered = activeLevel === "전체" ? courses : courses.filter((c) => c.level === activeLevel);
@@ -78,7 +83,12 @@ export default function CoursesPage() {
         ))}
       </div>
 
-      {loading ? (
+      {error ? (
+        <div className="p-5 rounded-xl bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400 text-sm font-bold flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {t("courses.loadError")}
+        </div>
+      ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="skeleton h-40 rounded-2xl" />

@@ -36,6 +36,7 @@ export async function DELETE(req: Request) {
 
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
-  await prisma.snackWish.delete({ where: { id: Number(id) } });
+  const { count } = await prisma.snackWish.deleteMany({ where: { id: Number(id) } });
+  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

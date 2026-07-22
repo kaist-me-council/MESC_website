@@ -56,6 +56,9 @@ export const translations = {
       previous: "이전",
       next: "다음",
       viewAll: "전체 보기",
+      switchToLight: "라이트 모드로 전환",
+      switchToDark: "다크 모드로 전환",
+      toggleTheme: "테마 전환",
     },
     // Footer
     footer: {
@@ -178,6 +181,7 @@ export const translations = {
       level400: "400번대",
       other: "기타",
       empty: "등록된 과목이 없습니다.",
+      loadError: "과목 정보를 불러오지 못했습니다.",
       available: "학생회 보유",
       lecture: "강의 영상",
       materials: "족보 보기",
@@ -224,8 +228,10 @@ export const translations = {
     },
     // Calendar Page
     calendar: {
+      badge: "일정 안내",
       title: "학과 일정",
       subtitle: "기계공학과 학생회 행사 및 학사 일정을 확인하세요.",
+      loadError: "일정을 불러오지 못했습니다.",
       subscribeGoogle: "Google Calendar 구독",
       subscribeApple: "Apple Calendar 구독 (iCal)",
       setupNeeded: "캘린더 설정이 필요합니다",
@@ -236,6 +242,18 @@ export const translations = {
       androidDesc: "\"Google Calendar 구독\" 버튼 → Google Calendar에 추가",
       realtimeDesc: "구독 캘린더는 실시간으로 업데이트됩니다.",
       autoSync: "일정이 추가/변경되면 자동으로 내 캘린더에 반영됩니다.",
+      selectDate: "날짜 선택",
+      selectYear: "연도 선택",
+      selectMonth: "월 선택",
+      cancel: "취소",
+      confirm: "확인",
+      close: "닫기",
+      prevMonth: "이전 달",
+      nextMonth: "다음 달",
+      thisMonth: "이번 달",
+      noEventsThisMonth: "이 달에 예정된 일정이 없습니다.",
+      upcomingEvents: "다가오는 일정",
+      upcomingEventsDesc: "전체 일정 중 가장 가까운 5개",
     },
     // Check Fee Page
     checkFee: {
@@ -255,6 +273,8 @@ export const translations = {
       notFoundDesc: "학번을 다시 확인하거나 학생회에 문의해주세요.",
       notPaid: "미납 상태입니다. 학생회에 문의해주세요.",
       privacyNote: "입력한 학번은 납부 횟수 조회에만 사용되며, 서버에 저장되지 않습니다.",
+      genericError: "오류가 발생했습니다.",
+      timesUnit: "회",
     },
     // Members Page
     members: {
@@ -317,6 +337,9 @@ export const translations = {
       previous: "Previous",
       next: "Next",
       viewAll: "View All",
+      switchToLight: "Switch to light mode",
+      switchToDark: "Switch to dark mode",
+      toggleTheme: "Toggle theme",
     },
     // Footer
     footer: {
@@ -439,6 +462,7 @@ export const translations = {
       level400: "400-level",
       other: "Other",
       empty: "No courses registered.",
+      loadError: "Failed to load courses.",
       available: "Available",
       lecture: "Lecture",
       materials: "Materials",
@@ -485,8 +509,10 @@ export const translations = {
     },
     // Calendar Page
     calendar: {
+      badge: "Schedule",
       title: "Department Schedule",
       subtitle: "Check Mechanical Engineering Student Council events and academic schedule.",
+      loadError: "Failed to load events.",
       subscribeGoogle: "Subscribe to Google Calendar",
       subscribeApple: "Subscribe to Apple Calendar (iCal)",
       setupNeeded: "Calendar Setup Required",
@@ -497,6 +523,18 @@ export const translations = {
       androidDesc: "Tap \"Subscribe to Google Calendar\" button → Added to Google Calendar",
       realtimeDesc: "Subscribed calendars are updated in real-time.",
       autoSync: "Events are automatically reflected in your calendar when added/changed.",
+      selectDate: "Select Date",
+      selectYear: "Year",
+      selectMonth: "Month",
+      cancel: "Cancel",
+      confirm: "Confirm",
+      close: "Close",
+      prevMonth: "Previous month",
+      nextMonth: "Next month",
+      thisMonth: "This month",
+      noEventsThisMonth: "No events scheduled this month.",
+      upcomingEvents: "Upcoming Events",
+      upcomingEventsDesc: "5 nearest events overall",
     },
     // Check Fee Page
     checkFee: {
@@ -516,6 +554,8 @@ export const translations = {
       notFoundDesc: "Please recheck your student ID or contact the student council.",
       notPaid: "Unpaid. Please contact the student council.",
       privacyNote: "The entered student ID is only used for payment inquiry and is not stored on the server.",
+      genericError: "An error occurred.",
+      timesUnit: "",
     },
     // Members Page
     members: {

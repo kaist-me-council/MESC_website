@@ -34,6 +34,7 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { lang: language } = useLanguage();
+  const locale = language === "ko" ? "ko-KR" : "en-US";
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [feedbackContent, setFeedbackContent] = useState("");
   const [feedbackRating, setFeedbackRating] = useState(5);
@@ -59,7 +60,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       setFeedbackContent(""); setFeedbackRating(5); setSubmitDone(true);
       setTimeout(() => setSubmitDone(false), 3000);
     } else {
-      setSubmitError(data.error ?? "오류가 발생했습니다.");
+      setSubmitError(data.error ?? (language === "ko" ? "오류가 발생했습니다." : "An error occurred."));
     }
     setSubmitting(false);
   }
@@ -86,7 +87,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
       <div className="mb-6">
         <h1 className="text-3xl font-black tracking-tight mb-1">{event.title}</h1>
-        <p className="text-sm text-muted-foreground mb-2">{new Date(event.date).toLocaleDateString("ko-KR")}</p>
+        <p className="text-sm text-muted-foreground mb-2">{new Date(event.date).toLocaleDateString(locale)}</p>
         {event.description && <p className="text-muted-foreground leading-relaxed">{event.description}</p>}
       </div>
 
@@ -149,7 +150,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <span className="text-xs text-muted-foreground">{feedbackContent.length}/500</span>
               <Button onClick={submitFeedback} disabled={submitting || !feedbackContent.trim()} size="sm" className="gap-2">
                 <Send className="h-3 w-3" />
-                {submitting ? "제출 중..." : language === "ko" ? "제출" : "Submit"}
+                {submitting ? (language === "ko" ? "제출 중..." : "Submitting...") : language === "ko" ? "제출" : "Submit"}
               </Button>
             </div>
             {submitError && <p className="text-xs text-destructive">{submitError}</p>}
@@ -165,7 +166,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="flex items-center justify-between mb-2">
                   <StarRating value={fb.rating} />
                   <span className="text-xs text-muted-foreground">
-                    {new Date(fb.createdAt).toLocaleDateString("ko-KR")}
+                    {new Date(fb.createdAt).toLocaleDateString(locale)}
                   </span>
                 </div>
                 <p className="text-sm leading-relaxed">{fb.content}</p>

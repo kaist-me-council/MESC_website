@@ -82,6 +82,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
   }
 
-  await prisma.courseReview.delete({ where: { id } });
+  const { count } = await prisma.courseReview.deleteMany({ where: { id } });
+  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

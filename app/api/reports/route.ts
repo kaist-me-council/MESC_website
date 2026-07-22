@@ -31,58 +31,72 @@ export async function POST(req: Request) {
   }
   const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 200) || null : null;
 
+  const targetType = body.targetType;
+  const targetId = body.targetId;
   const ipH = ipHash(ip);
 
   // 중복 신고 방지 — 같은 IP 가 같은 대상에 이미 신고했으면 skip
   const dup = await prisma.report.findFirst({
-    where: { targetType: body.targetType, targetId: body.targetId, ipHash: ipH },
+    where: { targetType, targetId, ipHash: ipH },
     select: { id: true },
   });
   if (dup) {
     return NextResponse.json({ ok: true, alreadyReported: true });
   }
 
-  await prisma.report.create({
-    data: { targetType: body.targetType, targetId: body.targetId, reason, ipHash: ipH },
-  });
+  try {
+    // create + reportCount 증가(+임계 초과 시 자동 hidden)를 원자적으로 처리.
+    // 잘못된 targetId면 update 가 P2025 를 던지고 트랜잭션이 롤백돼 고아 Report 가 남지 않음.
+    await prisma.$transaction(async (tx) => {
+      await tx.report.create({
+        data: { targetType, targetId, reason, ipHash: ipH },
+      });
 
-  // reportCount 증가 + 임계 초과 시 자동 hidden
-  if (body.targetType === "post") {
-    const updated = await prisma.post.update({
-      where: { id: body.targetId },
-      data: { reportCount: { increment: 1 } },
-      select: { reportCount: true, hidden: true },
+      if (targetType === "post") {
+        const updated = await tx.post.update({
+          where: { id: targetId },
+          data: { reportCount: { increment: 1 } },
+          select: { reportCount: true, hidden: true },
+        });
+        if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
+          await tx.post.update({ where: { id: targetId }, data: { hidden: true } });
+        }
+      } else if (targetType === "comment") {
+        const updated = await tx.comment.update({
+          where: { id: targetId },
+          data: { reportCount: { increment: 1 } },
+          select: { reportCount: true, hidden: true },
+        });
+        if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
+          await tx.comment.update({ where: { id: targetId }, data: { hidden: true } });
+        }
+      } else if (targetType === "suggestion") {
+        const updated = await tx.suggestion.update({
+          where: { id: targetId },
+          data: { reportCount: { increment: 1 } },
+          select: { reportCount: true, hidden: true },
+        });
+        if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
+          await tx.suggestion.update({ where: { id: targetId }, data: { hidden: true } });
+        }
+      } else if (targetType === "courseReview") {
+        const updated = await tx.courseReview.update({
+          where: { id: targetId },
+          data: { reportCount: { increment: 1 } },
+          select: { reportCount: true, hidden: true },
+        });
+        if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
+          await tx.courseReview.update({ where: { id: targetId }, data: { hidden: true } });
+        }
+      }
     });
-    if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
-      await prisma.post.update({ where: { id: body.targetId }, data: { hidden: true } });
-    }
-  } else if (body.targetType === "comment") {
-    const updated = await prisma.comment.update({
-      where: { id: body.targetId },
-      data: { reportCount: { increment: 1 } },
-      select: { reportCount: true, hidden: true },
-    });
-    if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
-      await prisma.comment.update({ where: { id: body.targetId }, data: { hidden: true } });
-    }
-  } else if (body.targetType === "suggestion") {
-    const updated = await prisma.suggestion.update({
-      where: { id: body.targetId },
-      data: { reportCount: { increment: 1 } },
-      select: { reportCount: true, hidden: true },
-    });
-    if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
-      await prisma.suggestion.update({ where: { id: body.targetId }, data: { hidden: true } });
-    }
-  } else if (body.targetType === "courseReview") {
-    const updated = await prisma.courseReview.update({
-      where: { id: body.targetId },
-      data: { reportCount: { increment: 1 } },
-      select: { reportCount: true, hidden: true },
-    });
-    if (updated.reportCount >= AUTO_HIDE_THRESHOLD && !updated.hidden) {
-      await prisma.courseReview.update({ where: { id: body.targetId }, data: { hidden: true } });
-    }
+  } catch (error) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : null;
+    if (code === "P2025") return NextResponse.json({ error: "신고 대상을 찾을 수 없습니다." }, { status: 404 });
+    throw error;
   }
 
   return NextResponse.json({ ok: true });

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/lib/language-context";
+import { Coffee, BookOpen, BookMarked, GraduationCap, FolderOpen, type LucideIcon } from "lucide-react";
 
 interface Resource {
   id: number;
@@ -16,11 +17,11 @@ interface Resource {
   createdAt: string;
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  "200": "📗",
-  "300": "📘",
-  "400": "📙",
-  기타: "📁",
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  "200": BookOpen,
+  "300": BookMarked,
+  "400": GraduationCap,
+  기타: FolderOpen,
 };
 
 const NAVER_CAFE_URL = "https://cafe.naver.com/kaistme";
@@ -40,7 +41,7 @@ export default function ResourcesPage() {
     { ko: "200", label: "200번대" },
     { ko: "300", label: "300번대" },
     { ko: "400", label: "400번대" },
-    { ko: "기타", label: lang === "ko" ? "기타" : "Other" },
+    { ko: "기타", label: t("courses.other") },
   ];
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export default function ResourcesPage() {
         </div>
         <a href={NAVER_CAFE_URL} target="_blank" rel="noopener noreferrer">
           <Button variant="outline" className="gap-2 shrink-0">
-            <span>☕</span>
+            <Coffee className="h-4 w-4" />
             {t("resources.naverCafe")}
           </Button>
         </a>
@@ -103,9 +104,10 @@ export default function ResourcesPage() {
               <Card className="h-full hover:shadow-md transition-shadow cursor-pointer group">
                 <CardContent className="p-4 flex flex-col gap-2 h-full">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-2xl">
-                      {CATEGORY_ICONS[resource.category] ?? "📁"}
-                    </span>
+                    {(() => {
+                      const Icon = CATEGORY_ICONS[resource.category] ?? FolderOpen;
+                      return <Icon className="h-6 w-6 text-primary/70" />;
+                    })()}
                     <div className="flex gap-1 flex-wrap justify-end">
                       <Badge variant="secondary" className="text-xs shrink-0">
                         {resource.category}

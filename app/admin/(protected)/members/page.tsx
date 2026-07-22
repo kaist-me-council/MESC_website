@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import Image from "next/image";
 import { AdminGuide } from "@/components/admin-guide";
 import { Loader2, Upload } from "lucide-react";
 
@@ -208,7 +207,8 @@ export default function AdminMembersPage() {
                 </div>
                 {imageUrl && (
                   <div className="relative w-16 h-16 rounded-full overflow-hidden bg-muted mt-1">
-                    <Image src={imageUrl} alt="미리보기" fill className="object-cover" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imageUrl} alt="미리보기" className="h-full w-full object-cover" />
                   </div>
                 )}
               </div>
@@ -238,7 +238,8 @@ export default function AdminMembersPage() {
             <CardContent className="p-4 flex flex-col items-center text-center gap-2">
               <div className="relative w-16 h-16 rounded-full overflow-hidden bg-muted">
                 {member.imageUrl ? (
-                  <Image src={member.imageUrl} alt={member.name} fill className="object-cover" />
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={member.imageUrl} alt={member.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-2xl">👤</div>
                 )}

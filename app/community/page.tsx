@@ -63,6 +63,7 @@ export default function CommunityPage() {
 
 function CommunityPageInner() {
   const { lang: language } = useLanguage();
+  const locale = language === "ko" ? "ko-KR" : "en-US";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>(() => tabFromSlug(searchParams.get("tab")));
@@ -107,7 +108,7 @@ function CommunityPageInner() {
     if (res.ok) {
       setWishes(prev => [data, ...prev]); setWishInput("");
     } else {
-      setWishError(data.error ?? "오류가 발생했습니다.");
+      setWishError(data.error ?? (language === "ko" ? "오류가 발생했습니다." : "An error occurred."));
     }
     wishSubmittingRef.current = false;
     setWishSubmitting(false);
@@ -175,7 +176,7 @@ function CommunityPageInner() {
                   <CardContent className="p-4">
                     <p className="font-bold mb-1 truncate">{event.title}</p>
                     <p className="text-xs text-muted-foreground mb-2">
-                      {new Date(event.date).toLocaleDateString("ko-KR")}
+                      {new Date(event.date).toLocaleDateString(locale)}
                     </p>
                     <div className="flex items-center justify-between">
                       <div className="flex gap-2">
@@ -239,7 +240,7 @@ function CommunityPageInner() {
                   <Cookie className="h-4 w-4 text-amber-500 shrink-0" />
                   <span className="text-sm flex-1">{w.content}</span>
                   <span className="text-xs text-muted-foreground shrink-0">
-                    {new Date(w.createdAt).toLocaleDateString("ko-KR")}
+                    {new Date(w.createdAt).toLocaleDateString(locale)}
                   </span>
                 </CardContent>
               </Card>

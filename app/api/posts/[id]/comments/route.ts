@@ -34,16 +34,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const post = await prisma.post.findFirst({ where: { id: postId, hidden: false }, select: { id: true } });
   if (!post) return NextResponse.json({ error: "게시글을 찾을 수 없습니다." }, { status: 404 });
 
-  const comment = await prisma.comment.create({
-    data: {
-      postId,
-      content,
-      authorTag: authorTag(ip, postId),
-      ipHash: ipHash(ip),
-    },
-  });
-  // 댓글 카운트 증가
-  await prisma.post.update({ where: { id: postId }, data: { commentCount: { increment: 1 } } });
+  // 댓글 생성 + 카운트 증가를 원자적으로 처리
+  const [comment] = await prisma.$transaction([
+    prisma.comment.create({
+      data: {
+        postId,
+        content,
+        authorTag: authorTag(ip, postId),
+        ipHash: ipHash(ip),
+      },
+    }),
+    prisma.post.update({ where: { id: postId }, data: { commentCount: { increment: 1 } } }),
+  ]);
 
   return NextResponse.json(
     { id: comment.id, authorTag: comment.authorTag, content: comment.content, createdAt: comment.createdAt },

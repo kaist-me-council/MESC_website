@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
+import { CheckCircle2, XCircle, AlertTriangle, Lock } from "lucide-react";
 
 export default function CheckFeePage() {
   const [studentId, setStudentId] = useState("");
@@ -30,7 +31,7 @@ export default function CheckFeePage() {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error ?? "오류가 발생했습니다.");
+      setError(data.error ?? t("checkFee.genericError"));
     } else {
       setResult(data);
     }
@@ -71,17 +72,17 @@ export default function CheckFeePage() {
             <div
               className={`rounded-lg p-6 text-center border-2 ${
                 !result.found
-                  ? "border-red-300 bg-red-50 dark:bg-red-950"
+                  ? "border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950"
                   : result.count >= 2
-                  ? "border-green-500 bg-green-50 dark:bg-green-950"
+                  ? "border-green-500 dark:border-green-600 bg-green-50 dark:bg-green-950"
                   : result.count === 1
-                  ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950"
-                  : "border-red-400 bg-red-50 dark:bg-red-950"
+                  ? "border-yellow-500 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-950"
+                  : "border-red-400 dark:border-red-700 bg-red-50 dark:bg-red-950"
               }`}
             >
               {!result.found ? (
                 <>
-                  <div className="text-4xl mb-2">❌</div>
+                  <XCircle className="h-10 w-10 mx-auto mb-2 text-red-600 dark:text-red-400" />
                   <p className="text-lg font-semibold">{t("checkFee.notFound")}</p>
                   <p className="text-sm text-red-700 dark:text-red-300 mt-1">
                     {t("checkFee.notFoundDesc")}
@@ -89,10 +90,10 @@ export default function CheckFeePage() {
                 </>
               ) : result.count >= 2 ? (
                 <>
-                  <div className="text-4xl mb-2">✅</div>
+                  <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-green-600 dark:text-green-400" />
                   <p className="text-lg font-semibold">
                     {t("checkFee.paidCount")}:{" "}
-                    <span className="text-2xl font-bold">{result.count}회</span>
+                    <span className="text-2xl font-bold">{result.count}{t("checkFee.timesUnit")}</span>
                   </p>
                   <p className="text-sm text-green-700 dark:text-green-300 mt-1">
                     {t("checkFee.fullyPaid")}
@@ -100,10 +101,10 @@ export default function CheckFeePage() {
                 </>
               ) : result.count > 0 ? (
                 <>
-                  <div className="text-4xl mb-2">⚠️</div>
+                  <AlertTriangle className="h-10 w-10 mx-auto mb-2 text-yellow-600 dark:text-yellow-400" />
                   <p className="text-lg font-semibold">
                     {t("checkFee.paidCount")}:{" "}
-                    <span className="text-2xl font-bold">{result.count}회</span>
+                    <span className="text-2xl font-bold">{result.count}{t("checkFee.timesUnit")}</span>
                   </p>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                     {t("checkFee.partialPaid")}
@@ -111,8 +112,8 @@ export default function CheckFeePage() {
                 </>
               ) : (
                 <>
-                  <div className="text-4xl mb-2">❌</div>
-                  <p className="text-lg font-semibold">{t("checkFee.paidCount")}: <span className="text-2xl font-bold">0회</span></p>
+                  <XCircle className="h-10 w-10 mx-auto mb-2 text-red-600 dark:text-red-400" />
+                  <p className="text-lg font-semibold">{t("checkFee.paidCount")}: <span className="text-2xl font-bold">0{t("checkFee.timesUnit")}</span></p>
                   <p className="text-sm text-red-700 dark:text-red-300 mt-1">
                     {t("checkFee.notPaid")}
                   </p>
@@ -123,8 +124,8 @@ export default function CheckFeePage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground text-center mt-4">
-        🔒 {t("checkFee.privacyNote")}
+      <p className="text-xs text-muted-foreground text-center mt-4 flex items-center justify-center gap-1">
+        <Lock className="h-3.5 w-3.5" /> {t("checkFee.privacyNote")}
       </p>
     </div>
   );

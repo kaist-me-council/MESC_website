@@ -27,21 +27,26 @@ interface CalendarEvent {
 
 const ICAL_URL = process.env.NEXT_PUBLIC_ICAL_URL || "";
 
-function formatICalDate(dateStr: string): string {
+const MONTH_NAMES_EN = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function formatICalDate(dateStr: string, lang: "ko" | "en"): string {
   if (!dateStr) return "-";
+  const year = dateStr.substring(0, 4);
+  const month = dateStr.substring(4, 6);
+  const day = dateStr.substring(6, 8);
+  const dateLabel =
+    lang === "ko"
+      ? `${year}년 ${month}월 ${day}일`
+      : `${MONTH_NAMES_EN[Number(month) - 1]} ${Number(day)}, ${year}`;
   if (dateStr.length === 8) {
-    const year = dateStr.substring(0, 4);
-    const month = dateStr.substring(4, 6);
-    const day = dateStr.substring(6, 8);
-    return `${year}년 ${month}월 ${day}일`;
-  } else {
-    const year = dateStr.substring(0, 4);
-    const month = dateStr.substring(4, 6);
-    const day = dateStr.substring(6, 8);
-    const hour = dateStr.substring(9, 11);
-    const minute = dateStr.substring(11, 13);
-    return `${year}년 ${month}월 ${day}일 ${hour}:${minute}`;
+    return dateLabel;
   }
+  const hour = dateStr.substring(9, 11);
+  const minute = dateStr.substring(11, 13);
+  return `${dateLabel} ${hour}:${minute}`;
 }
 
 function getEventColor(index: number): string {
@@ -56,7 +61,7 @@ function getEventColor(index: number): string {
 }
 
 export default function CalendarPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -187,7 +192,9 @@ export default function CalendarPage() {
                     onClick={handleOpenModal}
                     className="px-6 py-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-left font-bold text-lg tracking-tight flex-1 min-w-fit hover:shadow-md"
                   >
-                    {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
+                    {lang === "ko"
+                      ? `${currentMonth.getFullYear()}년 ${currentMonth.getMonth() + 1}월`
+                      : `${MONTH_NAMES_EN[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`}
                   </button>
 
                   {/* Navigation Arrows */}
@@ -197,7 +204,7 @@ export default function CalendarPage() {
                       size="sm"
                       onClick={prevMonth}
                       className="h-10 w-10 p-0"
-                      title="이전 달"
+                      title={t("calendar.prevMonth")}
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </Button>
@@ -206,16 +213,16 @@ export default function CalendarPage() {
                       size="sm"
                       onClick={goToThisMonth}
                       className="text-xs font-bold px-3"
-                      title="현재 달로 이동"
+                      title={t("calendar.thisMonth")}
                     >
-                      이번 달
+                      {t("calendar.thisMonth")}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={nextMonth}
                       className="h-10 w-10 p-0"
-                      title="다음 달"
+                      title={t("calendar.nextMonth")}
                     >
                       <ChevronRight className="h-5 w-5" />
                     </Button>
@@ -229,11 +236,11 @@ export default function CalendarPage() {
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
                 <Card className="w-full max-w-md border-border/50 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300">
                   <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border/40">
-                    <CardTitle className="text-xl font-black">날짜 선택</CardTitle>
+                    <CardTitle className="text-xl font-black">{t("calendar.selectDate")}</CardTitle>
                     <button
                       onClick={() => setShowModal(false)}
                       className="p-2.5 hover:bg-muted rounded-lg transition-colors"
-                      title="닫기"
+                      title={t("calendar.close")}
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -242,7 +249,7 @@ export default function CalendarPage() {
                   <CardContent className="pt-6 space-y-6">
                     {/* Year Selection */}
                     <div className="space-y-3">
-                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">연도 선택</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("calendar.selectYear")}</p>
                       <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-2">
                         {years.map((year) => (
                           <button
@@ -262,7 +269,7 @@ export default function CalendarPage() {
 
                     {/* Month Selection */}
                     <div className="space-y-3">
-                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">월 선택</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("calendar.selectMonth")}</p>
                       <div className="grid grid-cols-4 gap-2">
                         {months.map((month) => (
                           <button
@@ -287,13 +294,13 @@ export default function CalendarPage() {
                         onClick={() => setShowModal(false)}
                         className="flex-1"
                       >
-                        취소
+                        {t("calendar.cancel")}
                       </Button>
                       <Button
                         onClick={confirmSelection}
                         className="flex-1"
                       >
-                        확인
+                        {t("calendar.confirm")}
                       </Button>
                     </div>
                   </CardContent>
@@ -307,7 +314,7 @@ export default function CalendarPage() {
                 <CardContent className="py-16 text-center flex flex-col items-center gap-3">
                   <Calendar className="h-10 w-10 text-muted-foreground/30" />
                   <p className="text-muted-foreground font-medium">
-                    이 달에 예정된 일정이 없습니다.
+                    {t("calendar.noEventsThisMonth")}
                   </p>
                 </CardContent>
               </Card>
@@ -323,9 +330,9 @@ export default function CalendarPage() {
                         <div>
                           <h3 className="font-bold text-lg">{event.title}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {formatICalDate(event.startDate)}
+                            {formatICalDate(event.startDate, lang)}
                             {event.endDate && event.endDate !== event.startDate && (
-                              <> ~ {formatICalDate(event.endDate)}</>
+                              <> ~ {formatICalDate(event.endDate, lang)}</>
                             )}
                           </p>
                         </div>
@@ -353,8 +360,8 @@ export default function CalendarPage() {
                 <div className="flex items-center gap-3">
                   <div className="w-1 h-8 bg-gradient-to-b from-primary to-accent rounded-full" />
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight">다가오는 일정</h2>
-                    <p className="text-xs text-muted-foreground font-medium mt-1">전체 일정 중 가장 가까운 5개</p>
+                    <h2 className="text-2xl font-black tracking-tight">{t("calendar.upcomingEvents")}</h2>
+                    <p className="text-xs text-muted-foreground font-medium mt-1">{t("calendar.upcomingEventsDesc")}</p>
                   </div>
                 </div>
 
@@ -369,7 +376,7 @@ export default function CalendarPage() {
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-sm truncate">{event.title}</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              {formatICalDate(event.startDate)}
+                              {formatICalDate(event.startDate, lang)}
                             </p>
                           </div>
                         </div>

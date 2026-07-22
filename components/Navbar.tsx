@@ -236,6 +236,8 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label={isMobileMenuOpen ? (lang === "ko" ? "메뉴 닫기" : "Close menu") : (lang === "ko" ? "메뉴 열기" : "Open menu")}
+              aria-expanded={isMobileMenuOpen}
               className="lg:hidden p-2 rounded-lg hover:bg-muted/60 transition-colors duration-300 text-muted-foreground hover:text-foreground"
             >
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

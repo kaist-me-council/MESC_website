@@ -170,7 +170,7 @@ export default function BudgetPage() {
                 <Card className={`stat-card border-l-4 ${summary.balance >= 0 ? "border-l-primary hover:shadow-2xl hover:shadow-primary/10" : "border-l-orange-500 hover:shadow-2xl hover:shadow-orange-500/10"} transition-all duration-300`}>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-bold text-muted-foreground flex items-center gap-2">
-                      <Wallet className="h-4 w-4" style={{ color: summary.balance >= 0 ? "var(--color-primary)" : "#f97316" }} />
+                      <Wallet className={`h-4 w-4 ${summary.balance >= 0 ? "text-primary" : "text-orange-600 dark:text-orange-400"}`} />
                       {t("budget.currentBalance")}
                     </CardTitle>
                   </CardHeader>

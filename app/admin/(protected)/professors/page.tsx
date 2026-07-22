@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, User } from "lucide-react";
-import Image from "next/image";
 import { AdminGuide } from "@/components/admin-guide";
 
 interface Professor {
@@ -273,7 +272,8 @@ export default function AdminProfessorsPage() {
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
               </div>
               {form.imageUrl && (
-                <Image src={form.imageUrl} alt="" width={80} height={80} className="rounded-full object-cover mt-2 border border-border" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.imageUrl} alt="" width={80} height={80} className="rounded-full object-cover mt-2 border border-border" />
               )}
             </div>
             <div className="space-y-2">
@@ -296,7 +296,8 @@ export default function AdminProfessorsPage() {
           <Card key={p.id} className={editingId === p.id ? "ring-2 ring-primary" : ""}>
             <CardContent className="p-3 flex items-center gap-3">
               {p.imageUrl ? (
-                <Image src={p.imageUrl} alt="" width={40} height={40} className="rounded-full object-cover shrink-0 border border-border" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.imageUrl} alt="" width={40} height={40} className="rounded-full object-cover shrink-0 border border-border" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                   <User className="h-5 w-5 text-muted-foreground/50" />

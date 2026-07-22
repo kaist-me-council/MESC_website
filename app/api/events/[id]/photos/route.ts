@@ -92,6 +92,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const pid = parseId(String(photoId));
   if (!pid) return NextResponse.json({ error: "Invalid photo ID" }, { status: 400 });
 
-  await prisma.eventPhoto.delete({ where: { id: pid, eventId } });
+  const { count } = await prisma.eventPhoto.deleteMany({ where: { id: pid, eventId } });
+  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

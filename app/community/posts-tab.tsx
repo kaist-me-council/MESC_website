@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MessageCircle, PenSquare } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
 
 interface Post {
   id: number;
@@ -24,6 +25,8 @@ const CATEGORIES = ["자유", "질문", "정보공유"] as const;
 type Cat = typeof CATEGORIES[number];
 
 export function PostsTab() {
+  const { lang: language } = useLanguage();
+  const locale = language === "ko" ? "ko-KR" : "en-US";
   const [posts, setPosts] = useState<Post[]>([]);
   const [filter, setFilter] = useState<Cat | "전체">("전체");
   const [writing, setWriting] = useState(false);
@@ -52,7 +55,7 @@ export function PostsTab() {
       setTitle(""); setContent(""); setWriting(false);
       load();
     } else {
-      setError(data.error ?? "오류가 발생했습니다.");
+      setError(data.error ?? (language === "ko" ? "오류가 발생했습니다." : "An error occurred."));
     }
     setSubmitting(false);
   }
@@ -95,11 +98,20 @@ export function PostsTab() {
                 </button>
               ))}
             </div>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="제목 (2~100자)" maxLength={100} />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={language === "ko" ? "제목 (2~100자)" : "Title (2-100 chars)"}
+              maxLength={100}
+            />
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="내용 (5~5000자) — 익명으로 게시됩니다. 신상정보(학번/전화/이메일)는 입력하지 마세요."
+              placeholder={
+                language === "ko"
+                  ? "내용 (5~5000자) — 익명으로 게시됩니다. 신상정보(학번/전화/이메일)는 입력하지 마세요."
+                  : "Content (5-5000 chars) — posted anonymously. Do not include personal info (student ID/phone/email)."
+              }
               rows={6}
               maxLength={5000}
             />
@@ -127,7 +139,7 @@ export function PostsTab() {
                     <Badge variant="outline" className="text-xs">{p.category}</Badge>
                     <span className="text-xs text-muted-foreground">{p.authorTag}</span>
                     <span className="text-xs text-muted-foreground">
-                      · {new Date(p.createdAt).toLocaleString("ko-KR")}
+                      · {new Date(p.createdAt).toLocaleString(locale)}
                     </span>
                   </div>
                   <p className="font-semibold mb-1 truncate">{p.title}</p>

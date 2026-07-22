@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { parseId } from "@/lib/validation";
+import { checkContent } from "@/lib/content-filter";
 
 // IP 기반 rate limit (10분에 5회)
 const rateMap = new Map<string, { count: number; reset: number }>();
@@ -45,6 +46,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (!content || content.length > 500) return NextResponse.json({ error: "피드백 내용을 입력해주세요. (최대 500자)" }, { status: 400 });
 
+  const block = checkContent(content);
+  if (block.blocked) return NextResponse.json({ error: block.message }, { status: 400 });
+
+  // 행사가 존재하는지 확인 (없는 eventId면 FK 위반 500 방지)
+  const event = await prisma.event.findUnique({ where: { id }, select: { id: true } });
+  if (!event) return NextResponse.json({ error: "행사를 찾을 수 없습니다." }, { status: 404 });
+
   const feedback = await prisma.eventFeedback.create({
     data: { eventId: id, content, rating },
   });
@@ -62,8 +70,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const { feedbackId } = await req.json();
   if (!feedbackId) return NextResponse.json({ error: "feedbackId required" }, { status: 400 });
 
-  await prisma.eventFeedback.delete({
+  const { count } = await prisma.eventFeedback.deleteMany({
     where: { id: Number(feedbackId), eventId },
   });
+  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

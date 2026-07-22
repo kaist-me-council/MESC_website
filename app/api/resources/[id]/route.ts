@@ -59,6 +59,7 @@ export async function DELETE(
   const numId = parseId(id);
   if (!numId) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
-  await prisma.resource.delete({ where: { id: numId } });
+  const { count } = await prisma.resource.deleteMany({ where: { id: numId } });
+  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

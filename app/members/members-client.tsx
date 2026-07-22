@@ -181,9 +181,7 @@ export function MembersClient({
                   className="mt-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-background/70 border hover:bg-background transition-colors text-sm font-medium w-fit"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  {lang === "en"
-                    ? (club.urlLabel === "site" ? t("members.visitSite") : t("members.visitInsta"))
-                    : (club.urlLabel === "site" ? t("members.visitSite") : t("members.visitInsta"))}
+                  {club.urlLabel === "site" ? t("members.visitSite") : t("members.visitInsta")}
                 </a>
               </div>
             ))}

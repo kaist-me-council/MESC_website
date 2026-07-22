@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Send, Inbox, CheckCircle2, Flag } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
 
 interface Suggestion {
   id: number;
@@ -21,6 +22,8 @@ interface Suggestion {
 const CATEGORIES = ["행사", "시설", "학사", "기타"] as const;
 
 export function SuggestionsTab() {
+  const { lang: language } = useLanguage();
+  const locale = language === "ko" ? "ko-KR" : "en-US";
   const [items, setItems] = useState<Suggestion[]>([]);
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<typeof CATEGORIES[number]>("기타");
@@ -47,7 +50,7 @@ export function SuggestionsTab() {
       setContent(""); setContactInfo(""); setSuccess(true);
       load();
     } else {
-      setError(data.error ?? "오류가 발생했습니다.");
+      setError(data.error ?? (language === "ko" ? "오류가 발생했습니다." : "An error occurred."));
     }
     setSubmitting(false);
   }
@@ -91,7 +94,7 @@ export function SuggestionsTab() {
           <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="건의 내용 (5~2000자)"
+            placeholder={language === "ko" ? "건의 내용 (5~2000자)" : "Suggestion (5-2000 chars)"}
             rows={4}
             maxLength={2000}
           />
@@ -124,10 +127,10 @@ export function SuggestionsTab() {
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">{s.category}</Badge>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(s.createdAt).toLocaleDateString("ko-KR")}
+                      {new Date(s.createdAt).toLocaleDateString(locale)}
                     </span>
                   </div>
-                  <button onClick={() => report(s.id)} className="p-2 -m-2 text-muted-foreground hover:text-destructive" title="신고">
+                  <button onClick={() => report(s.id)} className="p-2 -m-2 text-muted-foreground hover:text-destructive" title={language === "ko" ? "신고" : "Report"}>
                     <Flag className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -139,7 +142,7 @@ export function SuggestionsTab() {
                       학생회 답변
                       {s.respondedAt && (
                         <span className="text-muted-foreground font-normal ml-1">
-                          · {new Date(s.respondedAt).toLocaleDateString("ko-KR")}
+                          · {new Date(s.respondedAt).toLocaleDateString(locale)}
                         </span>
                       )}
                     </p>

@@ -37,6 +37,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id: idStr } = await params;
   const id = parseId(idStr);
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-  await prisma.siteLink.delete({ where: { id } });
+  const { count } = await prisma.siteLink.deleteMany({ where: { id } });
+  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

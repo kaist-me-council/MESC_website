@@ -110,6 +110,8 @@ export async function GET(req: NextRequest) {
     // 학번 컬럼 인덱스: 환경변수로 설정 가능, 없으면 헤더에서 자동 감지
     const colEnv = process.env.FEE_STUDENT_ID_COLUMN;
     let idColumnIndex = colEnv !== undefined && colEnv !== "" ? parseInt(colEnv, 10) : -1;
+    // 잘못된 값(NaN)이면 자동 감지로 폴백 — 전부 "미납" 오답 방지
+    if (Number.isNaN(idColumnIndex)) idColumnIndex = -1;
 
     if (idColumnIndex < 0) {
       for (let i = 0; i < headerRow.length; i++) {
