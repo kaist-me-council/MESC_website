@@ -22,13 +22,15 @@ export async function GET(req: Request) {
 
     const json = JSON.stringify(dump);
     const date = new Date().toISOString().slice(0, 10);
-    // access: "private" — URL만으로는 열람 불가, BLOB_READ_WRITE_TOKEN 소지자만 접근 가능
-    await put(`backups/backup-${date}.json`, json, {
-      access: "private",
+    // 이 Blob 스토어는 public(행사 사진용). addRandomSuffix로 추측 불가능한 URL 생성 —
+    // 파일명만으로는 접근 불가, 복원 시 list({ prefix: "backups/" })로 조회. (private 스토어 불필요)
+    const blob = await put(`backups/backup-${date}.json`, json, {
+      access: "public",
+      addRandomSuffix: true,
       contentType: "application/json",
     });
 
-    return NextResponse.json({ ok: true, tables: tables.length, bytes: json.length });
+    return NextResponse.json({ ok: true, tables: tables.length, bytes: json.length, url: blob.url });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : String(err) },
