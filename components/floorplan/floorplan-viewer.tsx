@@ -40,6 +40,9 @@ interface Props {
  */
 export function FloorplanViewer({ floor, professors }: Props) {
   const [selected, setSelected] = useState<ViewerProfessor | null>(null);
+  // 이미지 로드 시 자연 종횡비를 읽어 컨테이너에 반영 → 레터박싱(회색 여백) 제거.
+  // (DB width/height 는 폴백, 없으면 16:10)
+  const [imgAspect, setImgAspect] = useState<number | null>(null);
   const pinned = professors.filter((p) => p.posX != null && p.posY != null);
 
   if (!floor.imageUrl) {
@@ -50,8 +53,7 @@ export function FloorplanViewer({ floor, professors }: Props) {
     );
   }
 
-  // aspect ratio 유지 (width/height 없으면 16:10 fallback)
-  const aspect = floor.width && floor.height ? floor.width / floor.height : 16 / 10;
+  const aspect = imgAspect ?? (floor.width && floor.height ? floor.width / floor.height : 16 / 10);
 
   return (
     <div className="relative w-full">
@@ -74,6 +76,10 @@ export function FloorplanViewer({ floor, professors }: Props) {
                 alt={`${floor.level}층 평면도`}
                 className="w-full h-full object-contain pointer-events-none select-none"
                 draggable={false}
+                onLoad={(e) => {
+                  const t = e.currentTarget;
+                  if (t.naturalWidth && t.naturalHeight) setImgAspect(t.naturalWidth / t.naturalHeight);
+                }}
               />
               {pinned.map((p) => (
                 <button

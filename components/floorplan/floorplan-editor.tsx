@@ -39,7 +39,14 @@ export function FloorplanEditor({ floor, professors, onSave }: Props) {
   const [selectedProfId, setSelectedProfId] = useState<number | null>(null);
   const [saving, setSaving] = useState<number | null>(null);
   const [placeMode, setPlaceMode] = useState(false);
+  // 이미지 자연 종횡비 → 컨테이너 반영 (뷰어와 동일, 레터박싱 제거). width/height 폴백, 없으면 16:10
+  const [imgAspect, setImgAspect] = useState<number | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+
+  function handleImgLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const t = e.currentTarget;
+    if (t.naturalWidth && t.naturalHeight) setImgAspect(t.naturalWidth / t.naturalHeight);
+  }
 
   const placed = professors.filter((p) => p.posX != null && p.posY != null);
   const unplaced = professors.filter((p) => p.posX == null || p.posY == null);
@@ -77,7 +84,7 @@ export function FloorplanEditor({ floor, professors, onSave }: Props) {
     );
   }
 
-  const aspect = floor.width && floor.height ? floor.width / floor.height : 16 / 10;
+  const aspect = imgAspect ?? (floor.width && floor.height ? floor.width / floor.height : 16 / 10);
 
   return (
     <div className="grid md:grid-cols-[260px_1fr] gap-4">
@@ -168,6 +175,7 @@ export function FloorplanEditor({ floor, professors, onSave }: Props) {
               className="w-full h-full object-contain select-none cursor-crosshair"
               draggable={false}
               onClick={handleImageClick}
+              onLoad={handleImgLoad}
             />
             {placed.map((p) => (
               <div
@@ -202,6 +210,7 @@ export function FloorplanEditor({ floor, professors, onSave }: Props) {
                   alt={`${floor.level}층 평면도`}
                   className="w-full h-full object-contain select-none pointer-events-none"
                   draggable={false}
+                  onLoad={handleImgLoad}
                 />
                 {placed.map((p) => (
                   <div
