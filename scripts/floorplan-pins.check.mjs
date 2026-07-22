@@ -54,4 +54,30 @@ for (const lvl of [...byFloor.keys()].sort((a, b) => a - b)) {
 }
 const placed = profs.filter((p) => p.posX != null).length;
 console.log(`\n총 교수 ${profs.length}, 배치 ${placed}, 미배치 ${profs.length - placed}`);
-console.log("OK: 7개 층 이미지 실존, 모든 좌표 0~1 범위");
+
+// (d) Room 좌표: 채워진 것은 모두 0~1, 층별 채움/미채움 집계
+const rooms = (await db.execute({
+  sql: "SELECT r.code, f.level, r.posX, r.posY FROM Room r " +
+       "JOIN BuildingFloor f ON r.floorId=f.id WHERE f.buildingId=?",
+  args: [bid],
+})).rows;
+let rPlaced = 0;
+const rByFloor = new Map();
+for (const r of rooms) {
+  const s = rByFloor.get(r.level) || { placed: 0, unplaced: 0 };
+  if (r.posX != null && r.posY != null) {
+    assert.ok(r.posX >= 0 && r.posX <= 1, `Room ${r.code} posX 범위 이탈: ${r.posX}`);
+    assert.ok(r.posY >= 0 && r.posY <= 1, `Room ${r.code} posY 범위 이탈: ${r.posY}`);
+    s.placed++; rPlaced++;
+  } else {
+    s.unplaced++;
+  }
+  rByFloor.set(r.level, s);
+}
+console.log("\n호실 좌표  층 | 채움 | 미채움(도면無)");
+for (const lvl of [...rByFloor.keys()].sort((a, b) => a - b)) {
+  const s = rByFloor.get(lvl);
+  console.log(`${lvl}층 | ${s.placed} | ${s.unplaced}`);
+}
+console.log(`총 호실 ${rooms.length}, 좌표 ${rPlaced}, 미채움 ${rooms.length - rPlaced}`);
+console.log("OK: 7개 층 이미지 실존, 교수·호실 좌표 모두 0~1 범위");

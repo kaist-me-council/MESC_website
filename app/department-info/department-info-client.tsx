@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Search, MapPin, Mail, Phone, ExternalLink, User } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
-import { FloorplanViewer } from "@/components/floorplan/floorplan-viewer";
+import { FloorplanViewer, type FocusRequest } from "@/components/floorplan/floorplan-viewer";
 
 interface Professor {
   id: number;
@@ -25,6 +25,8 @@ interface Professor {
   researchArea: string | null;
   websiteUrl: string | null;
   imageUrl: string | null;
+  posX: number | null;
+  posY: number | null;
 }
 
 interface RoomInList {
@@ -32,6 +34,8 @@ interface RoomInList {
   code: string;
   wing: number | null;
   name: string | null;
+  posX: number | null;
+  posY: number | null;
   professors: Array<{ id: number; name: string; title?: string | null; email?: string | null; researchArea?: string | null; websiteUrl?: string | null }>;
 }
 
@@ -83,6 +87,7 @@ export function DepartmentInfoClient({ buildings, professors }: Props) {
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(buildings[0]?.id ?? null);
   const [selectedFloorId, setSelectedFloorId] = useState<number | null>(buildings[0]?.floors[0]?.id ?? null);
   const [search, setSearch] = useState("");
+  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
 
   const selectedBuilding = useMemo(
     () => buildings.find((b) => b.id === selectedBuildingId) ?? null,
@@ -109,6 +114,10 @@ export function DepartmentInfoClient({ buildings, professors }: Props) {
     setSelectedBuildingId(prof.buildingId);
     if (prof.floorId) setSelectedFloorId(prof.floorId);
     setTab("map");
+    // 위치가 등록된 교수만 지도 포커스 트리거 (좌표 없으면 층 이동만).
+    if (prof.floorId != null && prof.posX != null && prof.posY != null) {
+      setFocusRequest({ nonce: Date.now(), floorId: prof.floorId, kind: "prof", id: prof.id });
+    }
     setTimeout(() => window.scrollTo({ top: 200, behavior: "smooth" }), 100);
   }
 
@@ -159,12 +168,13 @@ export function DepartmentInfoClient({ buildings, professors }: Props) {
           ) : (
             <>
               {/* 건물 선택 */}
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {buildings.map((b) => (
                   <Button
                     key={b.id}
                     variant={b.id === selectedBuildingId ? "default" : "outline"}
                     size="sm"
+                    className="shrink-0"
                     onClick={() => {
                       setSelectedBuildingId(b.id);
                       setSelectedFloorId(b.floors[0]?.id ?? null);
@@ -177,12 +187,13 @@ export function DepartmentInfoClient({ buildings, professors }: Props) {
 
               {/* 층 선택 */}
               {selectedBuilding && selectedBuilding.floors.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {selectedBuilding.floors.map((f) => (
                     <Button
                       key={f.id}
                       variant={f.id === selectedFloor?.id ? "default" : "outline"}
                       size="sm"
+                      className="shrink-0 min-w-11"
                       onClick={() => setSelectedFloorId(f.id)}
                     >
                       {f.level}F
@@ -195,7 +206,14 @@ export function DepartmentInfoClient({ buildings, professors }: Props) {
               {selectedFloor ? (
                 <Card>
                   <CardContent className="p-6 space-y-4">
-                    <FloorplanViewer floor={selectedFloor} professors={selectedFloor.professors} />
+                    <FloorplanViewer
+                      floor={selectedFloor}
+                      professors={selectedFloor.professors}
+                      buildingFloors={selectedBuilding?.floors ?? [selectedFloor]}
+                      onRequestFloor={(id) => setSelectedFloorId(id)}
+                      focusRequest={focusRequest}
+                      lang={lang}
+                    />
 
                     {selectedFloor.description && (
                       <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">

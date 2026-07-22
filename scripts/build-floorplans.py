@@ -1,41 +1,49 @@
 #!/usr/bin/env python3
 """
-기계공학동(N7) 1~7층 CAD PDF -> 웹 평면도 PNG + 교수 핀 좌표(posX/posY) 자동 반영.
+기계공학동(N7) 1~7층 CAD PDF -> 스타일화된 실내지도 PNG + 호실/교수 핀 좌표.
 
 파이프라인 (재실행 가능):
-  1. gs -sDEVICE=bbox 로 실제 그려진 영역(HiResBoundingBox, 좌하단 원점) 계산
-  2. pdftoppm 로 페이지 렌더 후 bbox(+패딩) 대로 크롭 -> public/floorplans/n7-<level>.png
-  3. pdftotext -bbox 로 방번호 단어 추출, 크롭 기준 정규화(0~1, 좌상단 원점) 좌표 계산
-  4. dev.db 기계공학동 교수의 roomNumber 와 매칭, 같은 방 다중 교수는 posX 소량 오프셋
-  5. BuildingFloor.imageUrl / Professor.posX,posY 를 dev.db 에 반영 (매칭 실패는 NULL 유지)
+  1. pdftotext -bbox 로 방번호 라벨(<level>NNN[A-Z]?) 추출·코드별 중복 병합
+  2. 라벨 클러스터를 seed 로, 렌더 래스터에서 건물 외벽까지 성장(공백 gap·거리 cap 제한)
+     -> 치수선/타이틀블록/원경 상세도는 잘리고 방번호·벽만 남는 타이트 크롭
+  3. 크롭을 그레이스케일 -> 어두운 정도를 알파로, 선색은 단일 slate 톤으로 통일
+     -> 투명 배경 + 단색 라인워크 PNG (CAD 느낌 제거, 웹 배경 자유·라이트/다크 대응)
+  4. 크롭 기준 정규화(0~1, 좌상단 원점) 좌표를 dev.db 에 반영:
+       - Professor.posX/posY  (roomNumber 정확 매칭, 같은 방 다중 교수는 posX 소량 오프셋)
+       - Room.posX/posY       (Room.code 정확 매칭, 같은 층만; 라벨 없는 방은 NULL 유지)
+       - BuildingFloor.imageUrl/width/height (최종 PNG 픽셀 크기)
 
 사용: python3 scripts/build-floorplans.py [--dry]
-  --dry : DB 미반영, 추출/매칭 리포트만 출력
+  --dry : DB 미반영, 추출/매칭 리포트만 출력 (PNG 는 항상 생성)
 """
-import subprocess, re, sqlite3, os, sys
+import subprocess, re, sqlite3, os, sys, math
 from collections import defaultdict
+from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PDF_DIR = "/Users/an-yeonsu/Downloads/기계공학동 도면 (1)"
 OUT_DIR = os.path.join(ROOT, "public", "floorplans")
 DB = os.path.join(ROOT, "dev.db")
-DPI = 150
-PAGE_H = 1080.0            # 모든 PDF 페이지 높이(pt)
-PAD_FRAC = 0.02            # 크롭 여백 2%
+
+DPI = 200                 # 렌더 해상도 (크롭·성장 분석 공용)
+MAX_LONG_SIDE = 2200      # 최종 PNG 긴 변 상한 px (초과 시 LANCZOS 축소)
 BUILDING_ID = 1           # 기계공학동
-ROOM_OFFSET = 0.008       # 같은 방 다중 교수 posX 간격(정규화, 층당 총폭)
+ROOM_OFFSET = 0.008       # 같은 방 다중 교수 posX 간격(정규화)
+
+# --- 크롭 성장 파라미터 (pt 단위) ---
+INK_THR = 160             # gray < INK_THR = 선(ink)
+HEXP_MOD = 0.7            # 라벨 유니온 수평 여유 = HEXP_MOD * 방모듈
+GROW_CAP_MOD = 2.1        # 라벨 밴드에서 벽까지 성장 상한 = CAP * 방모듈
+GROW_GAP_PT = 7           # 이만큼 연속 공백이면 벽 바깥으로 판단, 성장 정지
+EMPTY_FRAC = 0.004        # 한 행/열 ink 비율이 이 미만이면 공백
+
+# --- 스타일화 ---
+LINE_COLOR = (100, 116, 139)  # slate-500. 라이트/다크 배경 모두 판독됨
+ALPHA_LO = 25             # 이 미만 어둠(옅은 잡선)은 알파 0 으로
+ALPHA_GAIN = 1.6          # 알파 대비 (벽=진한 선 또렷하게)
+ALPHA_LEVELS = 64         # 알파 양자화 단계(P+tRNS 저장, 파일 축소)
 
 DRY = "--dry" in sys.argv
-
-
-def gs_bbox(pdf):
-    """HiResBoundingBox(좌하단 원점) -> (left, top, right, bottom) 좌상단 원점 pt."""
-    out = subprocess.run(
-        ["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=bbox", pdf],
-        capture_output=True, text=True).stderr
-    m = re.search(r"HiResBoundingBox: ([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+)", out)
-    x0, y0b, x1, y1b = map(float, m.groups())
-    return x0, PAGE_H - y1b, x1, PAGE_H - y0b
 
 
 def words(pdf):
@@ -46,125 +54,225 @@ def words(pdf):
         xml)
 
 
-def render_crop(pdf, level, box):
-    """페이지를 DPI 로 렌더 후 box(pt, 좌상단 원점)대로 크롭 저장. 반환: (w,h) px."""
-    from PIL import Image
+def label_boxes(pdf, level):
+    """{code: (xMin,yMin,xMax,yMax,cx,cy)} in pt, 코드별 인스턴스 평균."""
+    inst = defaultdict(list)
+    for a, b, c, d, txt in words(pdf):
+        m = re.match(rf'^({level}\d{{3}}[A-Za-z]?)$', txt.strip())
+        if not m:
+            continue
+        inst[m.group(1)].append(tuple(map(float, (a, b, c, d))))
+    out = {}
+    for code, bs in inst.items():
+        cx = sum((x[0] + x[2]) / 2 for x in bs) / len(bs)
+        cy = sum((x[1] + x[3]) / 2 for x in bs) / len(bs)
+        w = sum(x[2] - x[0] for x in bs) / len(bs)
+        h = sum(x[3] - x[1] for x in bs) / len(bs)
+        out[code] = (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2, cx, cy)
+    return out
+
+
+def module_pt(boxes):
+    """방 모듈(pt) = 라벨 중심들의 최근접거리 중앙값."""
+    cs = [(v[4], v[5]) for v in boxes.values()]
+    ds = []
+    for i, (x, y) in enumerate(cs):
+        ds.append(min((math.hypot(x - x2, y - y2)
+                       for j, (x2, y2) in enumerate(cs) if j != i), default=30.0))
+    ds.sort()
+    return ds[len(ds) // 2] if ds else 30.0
+
+
+def _grow(prof, start, step, thr, cap, gap):
+    """prof(px별 ink 평균)에서 start 부터 step 방향으로 이동. 마지막 ink 위치를 edge 로.
+    gap 연속 공백 또는 cap px 이동 시 정지."""
+    i = start
+    empties = 0
+    edge = start
+    traveled = 0
+    N = len(prof)
+    while 0 <= i + step < N:
+        i += step
+        traveled += 1
+        if traveled > cap:
+            break
+        if prof[i] <= thr:
+            empties += 1
+            if empties >= gap:
+                break
+        else:
+            empties = 0
+            edge = i
+    return edge
+
+
+def crop_box_px(binimg, boxes, mod, f):
+    """라벨 유니온 + 벽까지 성장으로 크롭박스(px) 계산."""
+    W, H = binimg.size
+    lL = min(v[0] for v in boxes.values()) * f
+    lT = min(v[1] for v in boxes.values()) * f
+    lR = max(v[2] for v in boxes.values()) * f
+    lB = max(v[3] for v in boxes.values()) * f
+    thr = EMPTY_FRAC * 255
+    cap = int(GROW_CAP_MOD * mod * f)
+    gap = int(GROW_GAP_PT * f)
+    # 세로 성장 (라벨 x-범위 안에서)
+    vstrip = binimg.crop((int(lL), 0, int(lR), H)).resize((1, H), Image.BOX)
+    rp = [vstrip.getpixel((0, y)) for y in range(H)]
+    top = _grow(rp, int(lT), -1, thr, cap, gap)
+    bot = _grow(rp, int(lB), +1, thr, cap, gap)
+    # 가로 성장 (성장된 y-범위 안에서)
+    hstrip = binimg.crop((0, top, W, bot)).resize((W, 1), Image.BOX)
+    cp = [hstrip.getpixel((x, 0)) for x in range(W)]
+    left = _grow(cp, int(lL), -1, thr, cap, gap)
+    right = _grow(cp, int(lR), +1, thr, cap, gap)
+    # 라벨 유니온+여유 와 성장 결과 결합
+    hexp = HEXP_MOD * mod * f
+    L = min(lL - hexp, left)
+    R = max(lR + hexp, right)
+    T = min(lT, top)
+    B = max(lB, bot)
+    padx = 0.02 * (R - L)
+    pady = 0.03 * (B - T)
+    return (max(0, L - padx), max(0, T - pady),
+            min(W, R + padx), min(H, B + pady))
+
+
+def stylize(gray):
+    """그레이스케일 크롭 -> 투명배경 단색 라인워크 RGBA."""
+    a = gray.point(lambda p: max(0, min(255, int((255 - p - ALPHA_LO) * ALPHA_GAIN))))
+    out = Image.new("RGBA", gray.size, LINE_COLOR + (0,))
+    out.putalpha(a)
+    return out
+
+
+def save_linework(styl, path):
+    """단색 알파 라인워크를 P+tRNS PNG 로 저장(용량 최소)."""
+    K = ALPHA_LEVELS
+    idx = styl.getchannel("A").point(lambda v: min(K - 1, v * K // 256)).convert("P")
+    idx.putpalette(list(LINE_COLOR) * K + [0, 0, 0] * (256 - K))
+    trns = bytes(min(255, round((i + 0.5) * 256 / K)) for i in range(K)) + bytes(256 - K)
+    idx.save(path, optimize=True, transparency=trns)
+
+
+def render(pdf, level):
+    """렌더 -> 크롭 -> 스타일화 -> 저장. 반환: (png_wh, crop_box_px, f, full_size)."""
     f = DPI / 72.0
-    tmp = f"/tmp/fp_full_{level}"
-    subprocess.run(["pdftoppm", "-r", str(DPI), "-png", "-singlefile", pdf, tmp], check=True)
-    im = Image.open(tmp + ".png")
-    l, t, r, b = box
-    crop = im.crop((round(l * f), round(t * f), round(r * f), round(b * f)))
+    tmp = f"/tmp/fp_full_{level}.png"
+    subprocess.run(["pdftoppm", "-r", str(DPI), "-png", "-singlefile", pdf, tmp[:-4]], check=True)
+    gray = Image.open(tmp).convert("L")
+    W, H = gray.size
+    binimg = gray.point(lambda p: 255 if p < INK_THR else 0)
+    boxes = label_boxes(pdf, level)
+    mod = module_pt(boxes)
+    box = crop_box_px(binimg, boxes, mod, f)
+    crop = gray.crop(tuple(int(v) for v in box))
+    styl = stylize(crop)
+    # 긴 변 상한 축소
+    cw, ch = styl.size
+    scale = min(1.0, MAX_LONG_SIDE / max(cw, ch))
+    if scale < 1.0:
+        styl = styl.resize((round(cw * scale), round(ch * scale)), Image.LANCZOS)
     out = os.path.join(OUT_DIR, f"n7-{level}.png")
-    crop.save(out, optimize=True)
-    os.remove(tmp + ".png")
-    return crop.size
+    save_linework(styl, out)
+    os.remove(tmp)
+    return styl.size, box, f
+
+
+def norm(cx_pt, cy_pt, box, f):
+    """라벨 중심(pt) -> 크롭 기준 정규화(0~1)."""
+    L, T, R, B = box
+    x = (cx_pt * f - L) / (R - L)
+    y = (cy_pt * f - T) / (B - T)
+    return round(min(1.0, max(0.0, x)), 5), round(min(1.0, max(0.0, y)), 5)
 
 
 def main():
     con = sqlite3.connect(DB)
-    # 층별 교수 (floorId <-> level 교차검증용으로 level 도 조회)
+    # 층별 교수
     profs = defaultdict(list)  # level -> [(id, name, room, floorId)]
     for pid, name, level, room, fid in con.execute(
         "SELECT p.id,p.name,f.level,p.roomNumber,p.floorId "
         "FROM Professor p JOIN BuildingFloor f ON p.floorId=f.id "
         "WHERE p.buildingId=?", (BUILDING_ID,)):
         profs[level].append((pid, name, room, fid))
-    # level -> floorId 매핑 (BuildingFloor)
     floor_id = {lvl: fid for fid, lvl in
                 con.execute("SELECT id,level FROM BuildingFloor WHERE buildingId=?", (BUILDING_ID,))}
+    # 층별 Room (id, code)
+    rooms_db = defaultdict(list)  # level -> [(id, code)]
+    for rid, code, level in con.execute(
+        "SELECT r.id,r.code,f.level FROM Room r JOIN BuildingFloor f ON r.floorId=f.id "
+        "WHERE f.buildingId=?", (BUILDING_ID,)):
+        rooms_db[level].append((rid, code))
 
-    updates = []          # (posX, posY, professor_id)
-    floor_updates = []    # (imageUrl, floor_id)
+    prof_updates = []   # (posX, posY, id)
+    room_updates = []   # (posX, posY, id)
+    floor_updates = []  # (imageUrl, width, height, id)
     report = []
 
     for level in range(1, 8):
         pdf = os.path.join(PDF_DIR, f"기계공학동 {level}층.pdf")
-        l, t, r, b = gs_bbox(pdf)
-        # 패딩
-        pw, ph = r - l, b - t
-        l = max(0.0, l - pw * PAD_FRAC); r = min(1920.0, r + pw * PAD_FRAC)
-        t = max(0.0, t - ph * PAD_FRAC); b = min(PAGE_H, b + ph * PAD_FRAC)
-        cw, ch = r - l, b - t
-
-        px = (0, 0)
-        if not DRY:
-            px = render_crop(pdf, level, (l, t, r, b))
-
-        # 방번호 추출: '<level>' 로 시작하는 4자리(+선택 영문 1)
-        rooms = defaultdict(list)
-        for a, yb, c, e, txt in words(pdf):
-            m = re.match(rf'^({level}\d{{3}}[A-Za-z]?)', txt)
-            if not m:
-                continue
-            cx = (float(a) + float(c)) / 2
-            cy = (float(yb) + float(e)) / 2
-            rooms[m.group(1)].append((cx, cy))
-        # 각 방코드 대표좌표 = 인스턴스 평균(중복 라벨은 대개 동일 위치)
-        room_pos = {}
-        for k, v in rooms.items():
-            room_pos[k] = (sum(p[0] for p in v) / len(v),
-                           sum(p[1] for p in v) / len(v))
-
-        # 매칭
-        pr = profs.get(level, [])
+        (pw, ph), box, f = render(pdf, level)
+        boxes = label_boxes(pdf, level)
+        room_pos = {c: (v[4], v[5]) for c, v in boxes.items()}  # code -> (cx,cy) pt
         fid = floor_id[level]
-        floor_updates.append((f"/floorplans/n7-{level}.png", fid))
+        floor_updates.append((f"/floorplans/n7-{level}.png", pw, ph, fid))
 
-        # 같은 방 다중 교수 그룹
+        # Room 좌표
+        rlabeled = 0
+        for rid, code in rooms_db[level]:
+            if code in room_pos:
+                x, y = norm(*room_pos[code], box, f)
+                room_updates.append((x, y, rid))
+                rlabeled += 1
+
+        # 교수 좌표 (같은 방 다중 교수 오프셋)
         by_room = defaultdict(list)
-        for p in pr:
+        for p in profs.get(level, []):
             by_room[p[2]].append(p)
-
         matched = 0
         fails = []
         for room, group in by_room.items():
             if room not in room_pos:
                 for p in group:
-                    fails.append((p[1], room, "도면에 방번호 없음"))
+                    fails.append((p[1], room))
                 continue
-            cx, cy = room_pos[room]
-            posX = (cx - l) / cw
-            posY = (cy - t) / ch
+            px, py = norm(*room_pos[room], box, f)
             n = len(group)
             for i, p in enumerate(sorted(group, key=lambda x: x[0])):
-                # floorId 교차검증 (여기선 level 로 join 했으니 항상 일치하지만 방어적으로)
-                if p[3] != fid:
-                    fails.append((p[1], room, f"floorId 불일치 {p[3]}!={fid}"))
-                    continue
                 ox = (i - (n - 1) / 2) * ROOM_OFFSET if n > 1 else 0.0
-                x = min(1.0, max(0.0, posX + ox))
-                updates.append((round(x, 5), round(posY, 5), p[0]))
+                prof_updates.append((round(min(1.0, max(0.0, px + ox)), 5), py, p[0]))
                 matched += 1
 
-        report.append((level, len(room_pos), len(pr), matched, fails, px))
+        report.append((level, len(room_pos), len(rooms_db[level]), rlabeled,
+                       len(profs.get(level, [])), matched, fails, (pw, ph)))
 
-    # DB 반영
     if not DRY:
         cur = con.cursor()
-        for url, fid in floor_updates:
-            cur.execute("UPDATE BuildingFloor SET imageUrl=? WHERE id=?", (url, fid))
-        for x, y, pid in updates:
+        for url, w, h, fid in floor_updates:
+            cur.execute("UPDATE BuildingFloor SET imageUrl=?, width=?, height=? WHERE id=?",
+                        (url, w, h, fid))
+        for x, y, pid in prof_updates:
             cur.execute("UPDATE Professor SET posX=?, posY=? WHERE id=?", (x, y, pid))
+        for x, y, rid in room_updates:
+            cur.execute("UPDATE Room SET posX=?, posY=? WHERE id=?", (x, y, rid))
         con.commit()
     con.close()
 
-    # 리포트
-    print(f"\n{'DRY-RUN' if DRY else 'APPLIED'}  (DPI={DPI}, pad={PAD_FRAC})")
-    print(f"{'층':>3} {'방번호':>6} {'교수':>4} {'매칭':>4}  {'PNG(px)':>12}")
-    tot_m = tot_p = 0
+    print(f"\n{'DRY-RUN' if DRY else 'APPLIED'}  (DPI={DPI}, color={LINE_COLOR})")
+    print(f"{'층':>3} {'라벨':>4} {'Room':>5} {'채움':>5} {'교수':>4} {'매칭':>4}  {'PNG(px)':>11}")
+    trm = trt = tpm = tpt = 0
     all_fails = []
-    for level, nrooms, nprofs, matched, fails, px in report:
-        tot_m += matched; tot_p += nprofs
-        pxs = f"{px[0]}x{px[1]}" if px[0] else "-"
-        print(f"{level:>3} {nrooms:>6} {nprofs:>4} {matched:>4}  {pxs:>12}")
-        for f in fails:
-            all_fails.append((level, *f))
-    print(f"\n총 교수 {tot_p}, 매칭 {tot_m}, 실패 {tot_p - tot_m}")
+    for level, nlab, nroom, rfill, nprof, pmatch, fails, px in report:
+        trm += rfill; trt += nroom; tpm += pmatch; tpt += nprof
+        print(f"{level:>3} {nlab:>4} {nroom:>5} {rfill:>5} {nprof:>4} {pmatch:>4}  {px[0]}x{px[1]:>6}")
+        for name, room in fails:
+            all_fails.append((level, name, room))
+    print(f"\nRoom 좌표 {trm}/{trt} 채움 · 교수 배치 {tpm}/{tpt}")
     if all_fails:
-        print("실패 목록:")
-        for lv, name, room, why in all_fails:
-            print(f"  N{lv} {name}({room}): {why}")
+        print("교수 매칭 실패(도면에 방번호 없음, NULL 유지):")
+        for lv, name, room in all_fails:
+            print(f"  N{lv} {name}({room})")
 
 
 if __name__ == "__main__":
