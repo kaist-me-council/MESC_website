@@ -23,6 +23,8 @@ export interface LibraryBook {
   course: {
     id: number;
     code: string;
+    name: string;
+    nameEn: string | null;
   } | null;
 }
 
@@ -121,9 +123,9 @@ export default function LibraryClient({ books }: { books: LibraryBook[] }) {
                       </Badge>
                     )}
                     {book.course && (
-                      <Badge variant="outline" className="gap-1 text-xs font-mono">
-                        {book.course.code}
-                        <ChevronRight className="h-3 w-3" />
+                      <Badge variant="outline" className="max-w-full gap-1 text-xs">
+                        <span className="line-clamp-1">{pick(lang, book.course.name, book.course.nameEn)}</span>
+                        <ChevronRight className="h-3 w-3 shrink-0" />
                       </Badge>
                     )}
                   </div>

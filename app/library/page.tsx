@@ -24,6 +24,8 @@ export default async function LibraryPage() {
           select: {
             id: true,
             code: true,
+            name: true,
+            nameEn: true,
           },
         },
       },

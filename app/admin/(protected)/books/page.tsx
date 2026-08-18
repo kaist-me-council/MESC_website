@@ -380,7 +380,7 @@ export default function AdminBooksPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     {book.category && <Badge variant="outline" className="text-xs">{book.category}</Badge>}
-                    <Badge variant={book.available ? "secondary" : "outline"} className="text-xs">{book.available ? "빌림 가능" : "전시만"}</Badge>
+                    <Badge variant={book.available ? "secondary" : "outline"} className="text-xs">{book.available ? "빌림 가능" : "대출 불가 · 열람만"}</Badge>
                     <Badge variant="outline" className="text-xs tabular-nums">{book.quantity}권</Badge>
                     {book.course && <Badge className="text-xs font-mono">{book.course.code}</Badge>}
                   </div>

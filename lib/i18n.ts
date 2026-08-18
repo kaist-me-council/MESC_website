@@ -144,7 +144,7 @@ export const translations = {
     // Courses Page
     courses: {
       title: "수업 정보",
-      description: "KAIST 기계공학과 전공 과목 정보, 전공서, 강의 영상 및 족보를 확인하세요.",
+      description: "KAIST 기계공학과 전공 과목 정보, 전공서, 강의 소개 및 족보를 확인하세요.",
       all: "전체",
       level200: "200번대",
       level300: "300번대",
@@ -153,7 +153,7 @@ export const translations = {
       empty: "등록된 과목이 없습니다.",
       loadError: "과목 정보를 불러오지 못했습니다.",
       available: "학생회 보유",
-      lecture: "강의 영상",
+      lecture: "강의 소개",
       materials: "족보 보기",
       backToList: "수업 목록으로",
       textbook: "전공서",
@@ -194,7 +194,7 @@ export const translations = {
       all: "전체",
       empty: "등록된 전공서적이 없습니다.",
       quantity: "보유 {count}권",
-      displayOnly: "전시만",
+      displayOnly: "대출 불가 · 열람만",
     },
     // Calendar Page
     calendar: {
@@ -395,7 +395,7 @@ export const translations = {
     // Courses Page
     courses: {
       title: "Courses",
-      description: "View course info, textbooks, lecture videos, and study materials for KAIST ME.",
+      description: "View course info, textbooks, lecture intros, and study materials for KAIST ME.",
       all: "All",
       level200: "200-level",
       level300: "300-level",
@@ -404,7 +404,7 @@ export const translations = {
       empty: "No courses registered.",
       loadError: "Failed to load courses.",
       available: "Available",
-      lecture: "Lecture",
+      lecture: "Lecture Intro",
       materials: "Materials",
       backToList: "Back to courses",
       textbook: "Textbook",
@@ -445,7 +445,7 @@ export const translations = {
       all: "All",
       empty: "No textbooks registered.",
       quantity: "{count} copies",
-      displayOnly: "Display only",
+      displayOnly: "Reference only (no loan)",
     },
     // Calendar Page
     calendar: {
