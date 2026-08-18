@@ -117,11 +117,6 @@ export default function LibraryClient({ books }: { books: LibraryBook[] }) {
                     <Badge variant="secondary" className="text-xs tabular-nums">
                       {t("library.quantity").replace("{count}", String(book.quantity))}
                     </Badge>
-                    {!book.available && (
-                      <Badge variant="outline" className="text-xs">
-                        {t("library.displayOnly")}
-                      </Badge>
-                    )}
                     {book.course && (
                       <Badge variant="outline" className="max-w-full gap-1 text-xs">
                         <span className="line-clamp-1">{pick(lang, book.course.name, book.course.nameEn)}</span>

@@ -194,7 +194,6 @@ export const translations = {
       all: "전체",
       empty: "등록된 전공서적이 없습니다.",
       quantity: "보유 {count}권",
-      displayOnly: "대출 불가 · 열람만",
     },
     // Calendar Page
     calendar: {
@@ -445,7 +444,6 @@ export const translations = {
       all: "All",
       empty: "No textbooks registered.",
       quantity: "{count} copies",
-      displayOnly: "Reference only (no loan)",
     },
     // Calendar Page
     calendar: {
