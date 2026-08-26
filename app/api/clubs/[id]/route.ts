@@ -26,6 +26,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     data.url = url || null;
   }
   if (typeof body.urlLabel === "string") data.urlLabel = body.urlLabel.trim().slice(0, 20) || null;
+  if (typeof body.instaUrl === "string") {
+    const instaUrl = body.instaUrl.trim();
+    if (instaUrl && !isValidUrl(instaUrl)) return NextResponse.json({ error: "올바른 URL 형식이 아닙니다." }, { status: 400 });
+    data.instaUrl = instaUrl || null;
+  }
   if (typeof body.emoji === "string") data.emoji = body.emoji.trim().slice(0, 10) || null;
   if (typeof body.colorPreset === "string") data.colorPreset = body.colorPreset.trim().slice(0, 20) || null;
   if (typeof body.order === "number") data.order = Math.max(0, Math.trunc(body.order));

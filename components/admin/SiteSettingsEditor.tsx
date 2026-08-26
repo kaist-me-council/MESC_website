@@ -38,6 +38,7 @@ export interface ClubRow {
   activitiesEn: string | null;
   url: string | null;
   urlLabel: string | null;
+  instaUrl: string | null;
   emoji: string | null;
   colorPreset: string | null;
   order: number;

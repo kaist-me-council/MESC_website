@@ -24,6 +24,8 @@ export async function POST(req: Request) {
 
   const url = typeof body.url === "string" ? body.url.trim() : "";
   if (url && !isValidUrl(url)) return NextResponse.json({ error: "올바른 URL 형식이 아닙니다." }, { status: 400 });
+  const instaUrl = typeof body.instaUrl === "string" ? body.instaUrl.trim() : "";
+  if (instaUrl && !isValidUrl(instaUrl)) return NextResponse.json({ error: "올바른 URL 형식이 아닙니다." }, { status: 400 });
 
   const club = await prisma.club.create({
     data: {
@@ -37,6 +39,7 @@ export async function POST(req: Request) {
       activitiesEn: typeof body.activitiesEn === "string" ? body.activitiesEn.trim().slice(0, 2000) || null : null,
       url: url || null,
       urlLabel: typeof body.urlLabel === "string" ? body.urlLabel.trim().slice(0, 20) || null : null,
+      instaUrl: instaUrl || null,
       emoji: typeof body.emoji === "string" ? body.emoji.trim().slice(0, 10) || null : null,
       colorPreset: typeof body.colorPreset === "string" ? body.colorPreset.trim().slice(0, 20) || null : null,
       order: typeof body.order === "number" ? Math.max(0, Math.trunc(body.order)) : 0,

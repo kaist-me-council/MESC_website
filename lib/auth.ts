@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual, scryptSync } from "node:crypto";
+import { prisma } from "@/lib/prisma";
 
 /** 길이 누출 없이 상수 시간으로 두 문자열을 비교한다. */
 function safeEqual(a: string, b: string): boolean {
@@ -8,6 +9,16 @@ function safeEqual(a: string, b: string): boolean {
   const bb = Buffer.from(b, "utf8");
   if (ab.length !== bb.length) return false;
   return timingSafeEqual(ab, bb);
+}
+
+/** AdminAccount.passwordHash("saltHex:hashHex", scrypt 64바이트) 검증 */
+function verifyPassword(password: string, stored: string): boolean {
+  const [saltHex, hashHex] = stored.split(":");
+  if (!saltHex || !hashHex) return false;
+  const hash = scryptSync(password, Buffer.from(saltHex, "hex"), 64);
+  const expected = Buffer.from(hashHex, "hex");
+  if (hash.length !== expected.length) return false;
+  return timingSafeEqual(hash, expected);
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -36,6 +47,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const passOk = safeEqual(password, adminPass);
         if (userOk && passOk) {
           return { id: "1", name: "관리자", email: "admin@me-council.kr" };
+        }
+
+        // DB 계정 (학과 교직원 등 추가 관리자)
+        const account = await prisma.adminAccount.findUnique({ where: { username } });
+        if (account && verifyPassword(password, account.passwordHash)) {
+          return { id: `db-${account.id}`, name: account.name, email: "admin@me-council.kr" };
         }
         return null;
       },

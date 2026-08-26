@@ -44,7 +44,7 @@ const CLUBS = [
     descEn: "MR (Microrobot Research) is KAIST's only robot club, where members design, build, and research all kinds of robots. Open to all students regardless of major, the club provides foundational robotics education and access to 3D printers and various tools. Members actively participate in robot competitions and media appearances.",
     activitiesKo: ["로봇 설계 및 제작 프로젝트", "신입부원 기초 교육 (아두이노, 회로설계)", "대회 참가 및 방송 출연", "자체 학생 로봇 대회 운영"].join("\n"),
     activitiesEn: ["Robot design & fabrication projects", "Foundational education (Arduino, circuit design)", "Competition participation & media appearances", "Student robotics competition hosting"].join("\n"),
-    url: "https://mr.kaist.ac.kr/", urlLabel: "site", emoji: "🤖", colorPreset: "blue", order: 0,
+    url: "https://mr.kaist.ac.kr/", urlLabel: "site", instaUrl: "https://www.instagram.com/kaist_mr/", emoji: "🤖", colorPreset: "blue", order: 0,
   },
   {
     name: "질주", nameEn: "ZILZU", tagKo: "자작자동차", tagEn: "Built-Car Racing",
@@ -52,7 +52,14 @@ const CLUBS = [
     descEn: "ZILZU is KAIST's student-built automobile club under the Department of Mechanical Engineering, founded in 1998. Members independently design and fabricate off-road racing vehicles from scratch — handling everything from frame welding and suspension to electrical wiring. The team competes annually in the KSAE Student Built-Car Competition in both C-Baja and E-Baja categories.",
     activitiesKo: ["오프로드 경주용 자동차 설계·제작 (CAD, 정적/유동해석)", "KSAE 대학생 자작자동차 대회 참가", "C-Baja (내연기관) · E-Baja (전기차) 부문 출전", "설계부터 용접·전기 배선까지 전 과정 직접 수행"].join("\n"),
     activitiesEn: ["Off-road vehicle design & fabrication (CAD, FEA)", "KSAE Student Built-Car Competition", "C-Baja (combustion) & E-Baja (electric) categories", "Full in-house production: welding, wiring & more"].join("\n"),
-    url: "https://www.instagram.com/kaist_zilzu/?hl=ko", urlLabel: "insta", emoji: "🏎️", colorPreset: "orange", order: 1,
+    url: "https://zilzuorg.vercel.app/", urlLabel: "site", instaUrl: "https://www.instagram.com/kaist_zilzu/", emoji: "🏎️", colorPreset: "orange", order: 1,
+  },
+  {
+    name: "공기계", nameEn: null, tagKo: "운동", tagEn: "Sports",
+    descKo: "기계공학과 운동 과동아리입니다.",
+    descEn: "ME sports club.",
+    activitiesKo: null, activitiesEn: null,
+    url: null, urlLabel: null, instaUrl: null, emoji: "⚽", colorPreset: "green", order: 2,
   },
 ];
 

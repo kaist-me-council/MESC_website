@@ -333,9 +333,18 @@ model Club {
   activitiesEn String?
   url          String?
   urlLabel     String?
+  instaUrl     String?
   emoji        String?
   colorPreset  String?
   order        Int      @default(0)
   enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model AdminAccount {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  name         String
   createdAt    DateTime @default(now())
 }

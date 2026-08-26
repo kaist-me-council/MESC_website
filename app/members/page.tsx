@@ -30,6 +30,7 @@ export default async function MembersPage() {
     activitiesEn: (c.activitiesEn ?? "").split("\n").map((s) => s.trim()).filter(Boolean),
     url: c.url ?? "",
     urlLabel: (c.urlLabel === "insta" ? "insta" : "site") as "site" | "insta",
+    instaUrl: c.instaUrl ?? "",
     emoji: c.emoji ?? "",
     colorPreset: c.colorPreset ?? "blue",
   }));

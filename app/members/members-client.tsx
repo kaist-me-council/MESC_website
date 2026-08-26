@@ -27,6 +27,7 @@ interface Club {
   activitiesEn: string[];
   url: string;
   urlLabel: "site" | "insta";
+  instaUrl: string;
   emoji: string;
   colorPreset: string;
 }
@@ -159,30 +160,49 @@ export function MembersClient({
                 </p>
 
                 {/* 주요 활동 */}
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                    {lang === "en" ? "Key Activities" : "주요 활동"}
-                  </p>
-                  <ul className="space-y-1">
-                    {(lang === "en" ? club.activitiesEn : club.activitiesKo).map((act) => (
-                      <li key={act} className="text-sm flex items-start gap-2">
-                        <span className="text-primary mt-0.5">▸</span>
-                        <span>{act}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {(lang === "en" ? club.activitiesEn : club.activitiesKo).length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                      {lang === "en" ? "Key Activities" : "주요 활동"}
+                    </p>
+                    <ul className="space-y-1">
+                      {(lang === "en" ? club.activitiesEn : club.activitiesKo).map((act) => (
+                        <li key={act} className="text-sm flex items-start gap-2">
+                          <span className="text-primary mt-0.5">▸</span>
+                          <span>{act}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* 링크 버튼 */}
-                <a
-                  href={club.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-background/70 border hover:bg-background transition-colors text-sm font-medium w-fit"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  {club.urlLabel === "site" ? t("members.visitSite") : t("members.visitInsta")}
-                </a>
+                {(club.url || club.instaUrl) && (
+                  <div className="mt-auto flex flex-wrap gap-2">
+                    {club.url && (
+                      <a
+                        href={club.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-background/70 border hover:bg-background transition-colors text-sm font-medium w-fit"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        {club.urlLabel === "site" ? t("members.visitSite") : t("members.visitInsta")}
+                      </a>
+                    )}
+                    {club.instaUrl && (
+                      <a
+                        href={club.instaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-background/70 border hover:bg-background transition-colors text-sm font-medium w-fit"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        {t("members.visitInsta")}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

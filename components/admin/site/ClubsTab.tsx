@@ -76,8 +76,9 @@ export default function ClubsTab({ initial }: { initial: ClubRow[] }) {
             <div className="grid gap-1"><Label>설명 (EN)</Label><Textarea rows={3} value={c.descEn ?? ""} onChange={(e) => patch(c.id, { descEn: e.target.value })} /></div>
             <div className="grid gap-1"><Label>활동 (KO, 한 줄에 하나)</Label><Textarea rows={4} value={c.activitiesKo ?? ""} onChange={(e) => patch(c.id, { activitiesKo: e.target.value })} /></div>
             <div className="grid gap-1"><Label>활동 (EN, 한 줄에 하나)</Label><Textarea rows={4} value={c.activitiesEn ?? ""} onChange={(e) => patch(c.id, { activitiesEn: e.target.value })} /></div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="grid gap-1"><Label>링크 URL</Label><Input value={c.url ?? ""} onChange={(e) => patch(c.id, { url: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1"><Label>웹사이트 URL</Label><Input value={c.url ?? ""} onChange={(e) => patch(c.id, { url: e.target.value })} /></div>
+              <div className="grid gap-1"><Label>인스타그램 URL</Label><Input value={c.instaUrl ?? ""} onChange={(e) => patch(c.id, { instaUrl: e.target.value })} /></div>
               <div className="grid gap-1"><Label>링크 라벨</Label><Input value={c.urlLabel ?? ""} onChange={(e) => patch(c.id, { urlLabel: e.target.value })} placeholder="site / insta" /></div>
               <div className="grid gap-1"><Label>이모지</Label><Input value={c.emoji ?? ""} onChange={(e) => patch(c.id, { emoji: e.target.value })} placeholder="🤖" /></div>
             </div>
