@@ -19,7 +19,6 @@ type SnsLink = {
 };
 
 const FALLBACK_SNS: SnsLink[] = [
-  { label: "카카오톡 채널", labelEn: "KakaoTalk", url: "http://pf.kakao.com/_fHXxkn/chat", icon: null },
   { label: "인스타 (학생회)", labelEn: "Instagram (Council)", url: "https://www.instagram.com/i_love_mesc/", icon: null },
   { label: "인스타 (학과)", labelEn: "Instagram (ME)", url: "https://www.instagram.com/kaist_me/", icon: null },
   { label: "네이버 카페", labelEn: "Naver Cafe", url: "https://cafe.naver.com/kaistme", icon: null },

@@ -103,7 +103,7 @@ export default function AdminCoursesPage() {
         <ol className="list-decimal pl-5 space-y-1">
           <li>과목 코드(예: ME200) / 이름 / 레벨(200·300·400·기타)을 입력합니다.</li>
           <li>전공서가 있다면 책 이름을 적고, <strong>학생회 보유 여부</strong> 체크 시 공개 페이지에서 &quot;대여 가능&quot; 배지로 표시됩니다.</li>
-          <li><strong>YouTube URL</strong>(강의 영상)을 넣으면 학생들이 바로 시청할 수 있습니다.</li>
+          <li><strong>YouTube URL</strong>(강의 소개 영상)을 넣으면 학생들이 바로 시청할 수 있습니다.</li>
           <li>순서 값으로 공개 페이지에서의 표시 순서를 조절합니다.</li>
         </ol>
         <p className="text-xs">💡 학습자료 페이지에서 자료를 등록할 때 여기 등록된 과목과 연결할 수 있습니다.</p>
@@ -164,7 +164,7 @@ export default function AdminCoursesPage() {
               <Label htmlFor="textbookAvailable" className="cursor-pointer">학생회 전공서 보유</Label>
             </div>
             <div className="space-y-2">
-              <Label>강의 영상 URL (선택)</Label>
+              <Label>강의 소개 영상 URL (선택)</Label>
               <Input value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/..." />
             </div>
             <div className="space-y-2">

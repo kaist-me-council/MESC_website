@@ -6,18 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight, Bell, BookOpen, Calendar, CreditCard, ChevronRight, Pin,
-  Zap, Clock, ArrowUpRight
+  Zap, ArrowUpRight
 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import HomePopupModal from "@/components/HomePopupModal";
-import {
-  formatWeekdayHours,
-  formatLunch,
-  isWeekendClosed,
-  formatWeekendHours,
-  DEFAULT_OPERATING_HOURS,
-  type OperatingHours,
-} from "@/lib/site-settings";
 
 interface Notice {
   id: number;
@@ -29,17 +21,10 @@ interface Notice {
 
 interface HomeClientProps {
   notices: Notice[];
-  hours?: OperatingHours;
 }
 
-export function HomeClient({ notices, hours }: HomeClientProps) {
+export function HomeClient({ notices }: HomeClientProps) {
   const { t, lang } = useLanguage();
-
-  const oh: OperatingHours = hours ?? DEFAULT_OPERATING_HOURS;
-  const weekdayHours = formatWeekdayHours(oh, lang);
-  const lunchHours = formatLunch(oh);
-  const weekendClosed = isWeekendClosed(oh);
-  const weekendHours = formatWeekendHours(oh, lang);
 
   const features = [
     {
@@ -243,33 +228,6 @@ export function HomeClient({ notices, hours }: HomeClientProps) {
               </CardContent>
             </Card>
 
-            {/* Operating Hours */}
-            <Card className="border-border/60 bg-card rounded-2xl overflow-hidden group hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-black flex items-center gap-2 text-foreground">
-                  <Clock className="h-4 w-4 text-primary" />
-                  {t("home.operatingHours")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between items-center py-2 px-2 rounded hover:bg-muted/40 transition-colors">
-                  <span className="text-muted-foreground font-bold">{t("home.weekday")}</span>
-                  <span className="font-bold text-foreground">{weekdayHours ?? t("home.closed")}</span>
-                </div>
-                {lunchHours && (
-                  <div className="flex justify-between items-center py-2 px-2 rounded hover:bg-muted/40 transition-colors">
-                    <span className="text-muted-foreground font-bold">{t("home.lunchTime")}</span>
-                    <span className="font-bold text-foreground">{lunchHours}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center py-2 px-2 rounded hover:bg-red-500/5 transition-colors">
-                  <span className="text-muted-foreground font-bold">{t("home.weekend")}</span>
-                  <span className={weekendClosed ? "font-bold text-red-600 dark:text-red-400" : "font-bold text-foreground"}>
-                    {weekendClosed ? t("home.closed") : weekendHours}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </section>

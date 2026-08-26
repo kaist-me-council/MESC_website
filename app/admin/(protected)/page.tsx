@@ -35,7 +35,7 @@ export default async function AdminPage() {
       href: "/admin/courses",
       label: "수업 정보 관리",
       icon: GraduationCap,
-      desc: "전공 과목·전공서·강의 영상 등록",
+      desc: "전공 과목·전공서·강의 소개 등록",
       color: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
     },
     {
