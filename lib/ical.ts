@@ -74,8 +74,17 @@ export function parseICalendar(text: string): CalendarEvent[] {
         const event = currentEvent;
         if (event.DTSTART) {
           const rawStart = event.DTSTART;
-          const rawEnd = event.DTEND || rawStart;
+          let rawEnd = event.DTEND || rawStart;
           const allDay = rawStart.length === 8; // YYYYMMDD 형식이면 올데이
+
+          // 올데이 DTEND는 RFC 5545상 exclusive(종료 다음날) → 표시용 inclusive로 -1일
+          if (allDay && event.DTEND && rawEnd.length === 8 && rawEnd > rawStart) {
+            const d = new Date(
+              Date.UTC(+rawEnd.slice(0, 4), +rawEnd.slice(4, 6) - 1, +rawEnd.slice(6, 8)) - 86400000
+            );
+            const p = (n: number) => String(n).padStart(2, "0");
+            rawEnd = `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}`;
+          }
 
           events.push({
             id: event.UID || `event-${Date.now()}-${Math.random()}`,

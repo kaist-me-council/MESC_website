@@ -122,9 +122,20 @@ export default function CalendarPage() {
     setShowModal(true);
   };
 
-  // 현재 월의 이벤트 필터링
+  // 현재 월과 겹치는 이벤트 필터링 (달을 걸치는 일정 포함)
   const monthStr = `${currentMonth.getFullYear()}${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
-  const monthEvents = events.filter((e) => e.startDate.startsWith(monthStr));
+  const monthEvents = events.filter((e) => {
+    const startMonth = e.startDate.slice(0, 6);
+    const endMonth = (e.endDate || e.startDate).slice(0, 6);
+    return startMonth <= monthStr && monthStr <= endMonth;
+  });
+
+  // 다가오는 일정: 오늘 이후(진행 중 포함)만, 가까운 순 5개
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const upcomingEvents = events
+    .filter((e) => (e.endDate || e.startDate).slice(0, 8) >= todayStr)
+    .slice(0, 5);
 
   // 연도 범위 생성 (현재 연도 ±5년)
   const currentYear = new Date().getFullYear();
@@ -355,7 +366,7 @@ export default function CalendarPage() {
             )}
 
             {/* Upcoming Events */}
-            {events.length > 0 && (
+            {upcomingEvents.length > 0 && (
               <div className="space-y-4 mt-12">
                 <div className="flex items-center gap-3">
                   <div className="w-1 h-8 bg-gradient-to-b from-primary to-accent rounded-full" />
@@ -366,7 +377,7 @@ export default function CalendarPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {events.slice(0, 5).map((event, idx) => (
+                  {upcomingEvents.map((event) => (
                     <Card key={event.id} className="border-border/50 rounded-xl hover:border-primary/40 transition-all">
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">

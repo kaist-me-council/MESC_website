@@ -27,4 +27,15 @@ const [allday] = parseICalendar(
 assert.equal(allday.startDate, "20240101");
 assert.equal(allday.allDay, true);
 
+// 5) 올데이 DTEND는 exclusive → inclusive(-1일)로 보정 (월말 걸침 포함)
+const [span] = parseICalendar(
+  ["BEGIN:VEVENT", "DTSTART;VALUE=DATE:20260831", "DTEND;VALUE=DATE:20260905", "SUMMARY:티셔츠 배부", "END:VEVENT"].join("\r\n"),
+);
+assert.equal(span.endDate, "20260904");
+// 5-1) 하루짜리 올데이(DTEND = 다음날) → 시작일과 동일
+const [oneday] = parseICalendar(
+  ["BEGIN:VEVENT", "DTSTART;VALUE=DATE:20260831", "DTEND;VALUE=DATE:20260901", "SUMMARY:하루 행사", "END:VEVENT"].join("\r\n"),
+);
+assert.equal(oneday.endDate, "20260831");
+
 console.log("✅ ical.test.mjs 통과");
