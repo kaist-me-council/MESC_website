@@ -8,7 +8,8 @@ import {
   Calendar,
   MapPin,
   AlertCircle,
-  Download,
+  Copy,
+  Check,
   Plus,
   ChevronLeft,
   ChevronRight,
@@ -92,10 +93,16 @@ export default function CalendarPage() {
     }
   };
 
-  const handleICalDownload = () => {
-    if (ICAL_URL) {
-      window.open(ICAL_URL, "_blank");
-    }
+  const [copied, setCopied] = useState(false);
+  const handleCopyICalLink = () => {
+    if (!ICAL_URL) return;
+    navigator.clipboard
+      .writeText(ICAL_URL)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => window.open(ICAL_URL, "_blank")); // 클립보드 불가 환경 폴백
   };
 
   const prevMonth = () => {
@@ -176,12 +183,12 @@ export default function CalendarPage() {
           </Button>
           <Button
             variant="outline"
-            onClick={handleICalDownload}
+            onClick={handleCopyICalLink}
             disabled={!ICAL_URL}
             className="gap-2"
           >
-            <Download className="h-4 w-4" />
-            {t("calendar.subscribeApple")}
+            {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            {copied ? t("calendar.linkCopied") : t("calendar.subscribeApple")}
           </Button>
         </div>
 
