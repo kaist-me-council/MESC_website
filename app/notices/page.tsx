@@ -11,7 +11,9 @@ import { useLanguage } from "@/lib/language-context";
 interface Notice {
   id: number;
   title: string;
+  titleEn: string | null;
   content: string;
+  contentEn: string | null;
   category: string;
   pinned: boolean;
   createdAt: string;
@@ -109,12 +111,14 @@ function NoticesContent() {
                         </Badge>
                       )}
                       <Badge variant="secondary" className="text-xs">
-                        {notice.category}
+                        {CATEGORIES.find((c) => c.ko === notice.category)?.label ?? notice.category}
                       </Badge>
                     </div>
-                    <h2 className="font-semibold truncate">{notice.title}</h2>
+                    <h2 className="font-semibold truncate">
+                      {lang === "en" && notice.titleEn ? notice.titleEn : notice.title}
+                    </h2>
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {notice.content}
+                      {lang === "en" && notice.contentEn ? notice.contentEn : notice.content}
                     </p>
                   </div>
                   <span className="text-xs text-muted-foreground whitespace-nowrap">

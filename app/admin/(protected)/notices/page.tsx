@@ -13,7 +13,9 @@ import { AdminGuide } from "@/components/admin-guide";
 interface Notice {
   id: number;
   title: string;
+  titleEn: string | null;
   content: string;
+  contentEn: string | null;
   category: string;
   pinned: boolean;
   createdAt: string;
@@ -22,7 +24,9 @@ interface Notice {
 export default function AdminNoticesPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [title, setTitle] = useState("");
+  const [titleEn, setTitleEn] = useState("");
   const [content, setContent] = useState("");
+  const [contentEn, setContentEn] = useState("");
   const [category, setCategory] = useState("공지");
   const [pinned, setPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -38,13 +42,16 @@ export default function AdminNoticesPage() {
   useEffect(() => { loadNotices(); }, []);
 
   function resetForm() {
-    setTitle(""); setContent(""); setCategory("공지"); setPinned(false); setEditingId(null);
+    setTitle(""); setTitleEn(""); setContent(""); setContentEn("");
+    setCategory("공지"); setPinned(false); setEditingId(null);
   }
 
   function startEdit(notice: Notice) {
     setEditingId(notice.id);
     setTitle(notice.title);
+    setTitleEn(notice.titleEn ?? "");
     setContent(notice.content);
+    setContentEn(notice.contentEn ?? "");
     setCategory(notice.category);
     setPinned(notice.pinned);
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -58,13 +65,13 @@ export default function AdminNoticesPage() {
       await fetch(`/api/notices/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, category, pinned }),
+        body: JSON.stringify({ title, titleEn, content, contentEn, category, pinned }),
       });
     } else {
       await fetch("/api/notices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content, category, pinned }),
+        body: JSON.stringify({ title, titleEn, content, contentEn, category, pinned }),
       });
     }
 
@@ -90,6 +97,7 @@ export default function AdminNoticesPage() {
       <AdminGuide id="notices" title="공지사항 관리 사용법">
         <ol className="list-decimal pl-5 space-y-1">
           <li><strong>새 공지 작성</strong>: 제목·내용을 입력하고 카테고리(공지/행사/학사)를 선택하세요.</li>
+          <li><strong>영문(EN) 제목·내용은 선택</strong>: 입력하면 사이트 영어 모드에서 영문으로 표시되고, 비우면 한국어가 그대로 표시됩니다.</li>
           <li><strong>상단 고정</strong>을 체크하면 공개 페이지(/notices)에서 가장 위에 노출됩니다.</li>
           <li>등록 후에는 카드의 <strong>수정/삭제</strong> 버튼으로 관리합니다.</li>
         </ol>
@@ -114,6 +122,10 @@ export default function AdminNoticesPage() {
             <div className="space-y-2">
               <Label>제목</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="공지 제목" />
+            </div>
+            <div className="space-y-2">
+              <Label>제목 (EN, 선택)</Label>
+              <Input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="영문 제목 — 비우면 영어 모드에서도 한국어 제목 표시" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -147,6 +159,15 @@ export default function AdminNoticesPage() {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="공지 내용을 입력하세요"
+                rows={6}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>내용 (EN, 선택)</Label>
+              <Textarea
+                value={contentEn}
+                onChange={(e) => setContentEn(e.target.value)}
+                placeholder="영문 내용 — 비우면 영어 모드에서도 한국어 내용 표시"
                 rows={6}
               />
             </div>

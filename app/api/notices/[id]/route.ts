@@ -51,7 +51,9 @@ export async function PUT(
     where: { id: numId },
     data: {
       title: (b.title as string).trim(),
+      titleEn: typeof b.titleEn === "string" ? b.titleEn.trim().slice(0, 200) || null : null,
       content: (b.content as string).trim(),
+      contentEn: typeof b.contentEn === "string" ? b.contentEn.trim().slice(0, 10000) || null : null,
       category,
       pinned: Boolean(b.pinned),
     },

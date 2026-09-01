@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
   const notice = await prisma.notice.create({
     data: {
       title: b.title.trim(),
+      titleEn: typeof b.titleEn === "string" ? b.titleEn.trim().slice(0, 200) || null : null,
       content: b.content.trim(),
+      contentEn: typeof b.contentEn === "string" ? b.contentEn.trim().slice(0, 10000) || null : null,
       category,
       pinned: Boolean(b.pinned),
     },

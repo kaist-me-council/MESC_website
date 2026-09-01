@@ -14,6 +14,7 @@ import HomePopupModal from "@/components/HomePopupModal";
 interface Notice {
   id: number;
   title: string;
+  titleEn?: string | null;
   category: string;
   pinned: boolean;
   createdAt: Date;
@@ -173,11 +174,14 @@ export function HomeClient({ notices }: HomeClientProps) {
                               </Badge>
                             )}
                             <Badge variant="secondary" className="text-[11px] px-2 py-0 h-4 font-bold">
-                              {notice.category}
+                              {notice.category === "공지" ? t("notices.notice")
+                                : notice.category === "행사" ? t("notices.event")
+                                : notice.category === "학사" ? t("notices.academic")
+                                : notice.category}
                             </Badge>
                           </div>
                           <h4 className="font-bold text-sm truncate group-hover:text-primary transition-colors">
-                            {notice.title}
+                            {lang === "en" && notice.titleEn ? notice.titleEn : notice.title}
                           </h4>
                         </div>
                         <div className="text-right shrink-0">

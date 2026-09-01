@@ -10,7 +10,9 @@ import { useLanguage } from "@/lib/language-context";
 interface Notice {
   id: number;
   title: string;
+  titleEn: string | null;
   content: string;
+  contentEn: string | null;
   category: string;
   pinned: boolean;
   createdAt: string;
@@ -69,9 +71,16 @@ export default function NoticeDetailPage() {
           {notice.pinned && (
             <Badge variant="destructive">📌 {t("notices.pinned")}</Badge>
           )}
-          <Badge variant="secondary">{notice.category}</Badge>
+          <Badge variant="secondary">
+            {notice.category === "공지" ? t("notices.notice")
+              : notice.category === "행사" ? t("notices.event")
+              : notice.category === "학사" ? t("notices.academic")
+              : notice.category}
+          </Badge>
         </div>
-        <h1 className="text-2xl font-bold mb-3">{notice.title}</h1>
+        <h1 className="text-2xl font-bold mb-3">
+          {lang === "en" && notice.titleEn ? notice.titleEn : notice.title}
+        </h1>
         <p className="text-sm text-muted-foreground mb-6">
           {new Date(notice.createdAt).toLocaleDateString(
             lang === "ko" ? "ko-KR" : "en-US",
@@ -79,7 +88,9 @@ export default function NoticeDetailPage() {
           )}
         </p>
         <div className="border-t pt-6">
-          <div className="whitespace-pre-wrap break-words leading-relaxed">{notice.content}</div>
+          <div className="whitespace-pre-wrap break-words leading-relaxed">
+            {lang === "en" && notice.contentEn ? notice.contentEn : notice.content}
+          </div>
         </div>
       </article>
     </div>

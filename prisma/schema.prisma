@@ -10,7 +10,9 @@ datasource db {
 model Notice {
   id        Int      @id @default(autoincrement())
   title     String
+  titleEn   String?
   content   String
+  contentEn String?
   category  String   @default("공지")
   pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
