@@ -30,6 +30,7 @@ export default function AdminNoticesPage() {
   const [category, setCategory] = useState("공지");
   const [pinned, setPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +81,30 @@ export default function AdminNoticesPage() {
     loadNotices();
   }
 
+  async function autoFillEn() {
+    if (!title.trim() && !content.trim()) return;
+    setTranslating(true);
+    try {
+      const tr = async (text: string) => {
+        if (!text.trim()) return "";
+        const res = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "번역 실패");
+        return data.text as string;
+      };
+      setTitleEn(await tr(title));
+      setContentEn(await tr(content));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "자동 번역에 실패했습니다.");
+    } finally {
+      setTranslating(false);
+    }
+  }
+
   async function handleDelete(id: number) {
     if (!confirm("정말 삭제하시겠습니까?")) return;
     await fetch(`/api/notices/${id}`, { method: "DELETE" });
@@ -98,6 +123,7 @@ export default function AdminNoticesPage() {
         <ol className="list-decimal pl-5 space-y-1">
           <li><strong>새 공지 작성</strong>: 제목·내용을 입력하고 카테고리(공지/행사/학사)를 선택하세요.</li>
           <li><strong>영문(EN) 제목·내용은 선택</strong>: 입력하면 사이트 영어 모드에서 영문으로 표시되고, 비우면 한국어가 그대로 표시됩니다.</li>
+          <li><strong>🌐 EN 자동 채우기</strong>: 한국어 제목·내용을 자동 번역해 EN 칸에 초안으로 채웁니다. <strong>결과를 꼭 검토·수정 후 등록</strong>하세요.</li>
           <li><strong>상단 고정</strong>을 체크하면 공개 페이지(/notices)에서 가장 위에 노출됩니다.</li>
           <li>등록 후에는 카드의 <strong>수정/삭제</strong> 버튼으로 관리합니다.</li>
         </ol>
@@ -124,7 +150,19 @@ export default function AdminNoticesPage() {
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="공지 제목" />
             </div>
             <div className="space-y-2">
-              <Label>제목 (EN, 선택)</Label>
+              <div className="flex items-center justify-between">
+                <Label>제목 (EN, 선택)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={autoFillEn}
+                  disabled={translating || (!title.trim() && !content.trim())}
+                  className="h-7 text-xs"
+                >
+                  {translating ? "번역 중..." : "🌐 EN 자동 채우기"}
+                </Button>
+              </div>
               <Input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="영문 제목 — 비우면 영어 모드에서도 한국어 제목 표시" />
             </div>
             <div className="grid grid-cols-2 gap-4">
