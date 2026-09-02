@@ -2,7 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ["@prisma/client"],
+  serverExternalPackages: ["@prisma/client", "sharp"],
+  // sharp 의 linux-x64 네이티브 바이너리·libvips .so 는 dlopen 으로 로드돼 자동 추적이 안 됨 → 명시 포함 (Vercel 500 방지)
+  outputFileTracingIncludes: {
+    "/api/upload": ["./node_modules/@img/sharp-linux-x64/**", "./node_modules/@img/sharp-libvips-linux-x64/**"],
+  },
 
   images: {
     remotePatterns: [
