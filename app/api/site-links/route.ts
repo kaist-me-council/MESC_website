@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   const where: Record<string, unknown> = { enabled: true };
   if (category && LINK_CATEGORIES.includes(category as never)) where.category = category;
   const links = await prisma.siteLink.findMany({ where, orderBy: { order: "asc" } });
-  return NextResponse.json(links);
+  return NextResponse.json(links, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
 }
 
 // 인증: 신규 링크

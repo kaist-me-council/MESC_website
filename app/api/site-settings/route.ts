@@ -12,7 +12,7 @@ export async function GET() {
     email: s?.email ?? "kaist.mesc@gmail.com",
     phone: s?.phone ?? null,
     hours: parseHours(s?.hoursJson),
-  });
+  }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
 }
 
 // 인증: 수정 (단일 행 upsert)

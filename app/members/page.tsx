@@ -1,23 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { MembersClient } from "./members-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5분 ISR
 
 async function getMembers() {
   return prisma.member.findMany({ orderBy: [{ order: "asc" }] });
 }
 
 export default async function MembersPage() {
-  const members = await getMembers();
-  const clubRows = await prisma.club.findMany({ where: { enabled: true }, orderBy: { order: "asc" } });
-  const importantLinks = await prisma.siteLink.findMany({
-    where: { enabled: true, category: "important" },
-    orderBy: { order: "asc" },
-  });
-  const communityLinks = await prisma.siteLink.findMany({
-    where: { enabled: true, category: "community" },
-    orderBy: { order: "asc" },
-  });
+  const [members, clubRows, importantLinks, communityLinks] = await Promise.all([
+    getMembers(),
+    prisma.club.findMany({ where: { enabled: true }, orderBy: { order: "asc" } }),
+    prisma.siteLink.findMany({ where: { enabled: true, category: "important" }, orderBy: { order: "asc" } }),
+    prisma.siteLink.findMany({ where: { enabled: true, category: "community" }, orderBy: { order: "asc" } }),
+  ]);
 
   const clubs = clubRows.map((c) => ({
     name: c.name,

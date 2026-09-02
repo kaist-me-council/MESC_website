@@ -9,7 +9,7 @@ export async function GET() {
   const notices = await prisma.notice.findMany({
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
   });
-  return NextResponse.json(notices);
+  return NextResponse.json(notices, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
 }
 
 export async function POST(req: NextRequest) {

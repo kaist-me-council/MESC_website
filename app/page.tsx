@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { HomeClient } from "@/components/home-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // 최신 공지 5건 — 1분 ISR (공개 트래픽 대비)
 
 async function getRecentNotices() {
   return prisma.notice.findMany({

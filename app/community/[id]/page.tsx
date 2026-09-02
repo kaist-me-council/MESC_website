@@ -102,7 +102,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             {event.photos.map((photo) => (
               <button key={photo.id} onClick={() => setLightbox(photo.imageUrl)}
                 className="relative aspect-square overflow-hidden rounded-xl bg-muted hover:opacity-90 transition-opacity">
-                <Image src={photo.imageUrl} alt={photo.caption ?? ""} fill className="object-cover" />
+                <Image src={photo.imageUrl} alt={photo.caption ?? ""} fill sizes="(max-width:640px) 50vw, 25vw" className="object-cover" />
               </button>
             ))}
           </div>

@@ -164,9 +164,9 @@ function CommunityPageInner() {
                 <Card className="hover-lift-premium cursor-pointer overflow-hidden border-border/60 rounded-2xl h-full">
                   <div className="relative h-40 bg-muted">
                     {event.coverImage ? (
-                      <Image src={event.coverImage} alt={event.title} fill className="object-cover" />
+                      <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:640px) 100vw, (max-width:1024px) 50vw, 33vw" className="object-cover" />
                     ) : event.photos[0] ? (
-                      <Image src={event.photos[0].imageUrl} alt={event.title} fill className="object-cover" />
+                      <Image src={event.photos[0].imageUrl} alt={event.title} fill sizes="(max-width:640px) 100vw, (max-width:1024px) 50vw, 33vw" className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Camera className="h-8 w-8 text-muted-foreground/40" />

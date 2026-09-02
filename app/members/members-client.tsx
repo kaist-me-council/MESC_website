@@ -47,7 +47,7 @@ function MemberCard({ member }: { member: Member }) {
     <div className="flex flex-col items-center text-center group">
       <div className="relative w-20 h-20 rounded-full overflow-hidden bg-muted mb-3 ring-2 ring-border group-hover:ring-primary transition-all">
         {member.imageUrl ? (
-          <Image src={member.imageUrl} alt={member.name} fill className="object-cover" />
+          <Image src={member.imageUrl} alt={member.name} fill sizes="80px" className="object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-3xl text-muted-foreground">
             👤
