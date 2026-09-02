@@ -80,3 +80,13 @@ openssl rand -hex 32
 ## 3. 이번 배포에 포함된 변경 (참고)
 `SECURITY_REPORT.md`의 "조치 결과" 표 참조. 코드 8개 파일 + `.gitignore`/`.env.example` 수정.
 DB 파일(`dev.db`, `prisma/dev.db`)은 git 추적에서 제거됨(로컬 파일은 보존, 원격 이력에서만 제외).
+
+---
+
+## 4. 2026-09-02 처리 현황
+- P1 과비 열거: 미해결(제품 결정 필요). 완화: 에러 문구 비노출, `Cache-Control: no-store`.
+- P2 관리자 비밀번호 해시: 미처리(env 평문 유지). DB 계정(AdminAccount)은 scrypt.
+- P3 Drive 토큰: 평문 저장은 유지하되 **백업 덤프는 AES-256-GCM 암호화**로 유출 경로 차단.
+- P4: 업로드 매직바이트 검증 → sharp 재인코딩으로 해결(EXIF 제거 포함). CSP `unsafe-inline/eval`은 유지.
+- 신규: `ANON_SALT` 프로덕션 설정 완료 + 미설정 시 fail-closed. 보유기간 정리 cron(백업과 동일 호출). `/privacy`·`/terms` 신설.
+- 잔여 의존성: `next` 16.2.1 high(RSC DoS) — 16.3.x 업그레이드는 별도 검증 후.

@@ -20,22 +20,24 @@ export async function POST(req: Request) {
     if (file.size > MAX_SIZE)
       return NextResponse.json({ error: "파일 크기는 5MB 이하여야 합니다." }, { status: 400 });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    // 이미지 자연 크기 추출 (평면도 SVG 오버레이 좌표계 기준)
+    // sharp 로 재인코딩: 실제 이미지인지 검증 + EXIF(GPS·기기정보) 제거. rotate()는 EXIF 방향을 먼저 적용.
+    let buffer: Buffer;
     let width: number | null = null;
     let height: number | null = null;
     try {
-      const meta = await sharp(buffer).metadata();
+      const img = sharp(Buffer.from(await file.arrayBuffer()), { animated: file.type === "image/gif" }).rotate();
+      const meta = await img.metadata();
       width = meta.width ?? null;
       height = meta.height ?? null;
+      buffer = await img.toBuffer();
     } catch {
-      // sharp 실패 시 크기 없이 계속
+      return NextResponse.json({ error: "손상됐거나 지원하지 않는 이미지입니다." }, { status: 400 });
     }
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const blob = await put(`uploads/${Date.now()}-${safeName}`, buffer, {
       access: "public",
+      addRandomSuffix: true,
       contentType: file.type,
     });
 

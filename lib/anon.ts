@@ -6,28 +6,20 @@
  *
  * 형식: "익명#a3f9" (앞 4자리 hex)
  *
- * salt 는 환경변수 ANON_SALT (없으면 fallback) 로부터 가져온다.
+ * salt 는 환경변수 ANON_SALT. 프로덕션에서 미설정이면 실패(공개 저장소라 fallback 값은 비밀이 아님).
  */
 
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
-const FALLBACK_SALT = "mesc-anon-salt-please-set-ANON_SALT";
-
-let warnedMissingSalt = false;
+const DEV_FALLBACK_SALT = "dev-only-anon-salt";
 
 export function getAnonSalt(): string {
   const salt = process.env.ANON_SALT;
   if (salt) return salt;
-  // 프로덕션에서 하드코딩 fallback salt 사용은 익명성 보장을 약화시킨다.
-  // 게시판을 중단시키진 않되(가용성 우선), 1회 경고 로그로 운영자에게 알린다.
-  if (process.env.NODE_ENV === "production" && !warnedMissingSalt) {
-    warnedMissingSalt = true;
-    console.warn(
-      "[anon] ANON_SALT 미설정 — 추측 가능한 fallback salt 사용 중. " +
-        "익명성 보장을 위해 Vercel 환경변수에 ANON_SALT 를 설정하세요 (openssl rand -hex 32)."
-    );
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("ANON_SALT 미설정 — Vercel 환경변수에 설정하세요 (openssl rand -hex 32)");
   }
-  return FALLBACK_SALT;
+  return DEV_FALLBACK_SALT;
 }
 
 /**
@@ -45,22 +37,18 @@ export function ipHash(ip: string): string {
   return createHash("sha256").update(`${salt}:ip:${ip}`).digest("hex").slice(0, 16);
 }
 
-/**
- * 강의평 수정·삭제용 비밀번호 해시.
- *
- * 로그인 없는 게시판 성격의 낮은 위험 모델(4자리 등 간단 비밀번호)이라
- * 별도 의존성 없이 저장소의 기존 node:crypto 관례(salt + sha256)를 따른다.
- */
+/** 비밀번호 해시 "saltHex:hashHex" (scrypt 64바이트, 레코드별 salt). AdminAccount·CourseReview 공용. */
 export function hashPassword(password: string): string {
-  const salt = getAnonSalt();
-  return createHash("sha256").update(`${salt}:pw:${password}`).digest("hex");
+  const salt = randomBytes(16);
+  return `${salt.toString("hex")}:${scryptSync(password, salt, 64).toString("hex")}`;
 }
 
 /** 평문 비밀번호가 저장된 해시와 일치하는지 상수 시간으로 비교. */
-export function verifyPassword(password: string, hash: string): boolean {
-  const computed = hashPassword(password);
-  const a = Buffer.from(computed, "utf8");
-  const b = Buffer.from(hash, "utf8");
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+export function verifyPassword(password: string, stored: string): boolean {
+  const [saltHex, hashHex] = stored.split(":");
+  if (!saltHex || !hashHex) return false;
+  const hash = scryptSync(password, Buffer.from(saltHex, "hex"), 64);
+  const expected = Buffer.from(hashHex, "hex");
+  if (hash.length !== expected.length) return false;
+  return timingSafeEqual(hash, expected);
 }

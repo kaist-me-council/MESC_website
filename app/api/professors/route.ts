@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 export async function GET() {
   const professors = await prisma.professor.findMany({
     orderBy: [{ order: "asc" }, { name: "asc" }],
+    omit: { phone: true }, // 전화번호는 관리자 화면에서만 (일괄 수집 방지)
     include: {
       building: { select: { id: true, code: true, name: true } },
       floor: { select: { id: true, level: true } },

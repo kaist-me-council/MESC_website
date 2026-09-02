@@ -21,7 +21,7 @@ interface Professor {
   floor: { id: number; level: number } | null;
   roomNumber: string | null;
   email: string | null;
-  phone: string | null;
+  phone?: string | null; // 공개 응답에서는 제외됨
   researchArea: string | null;
   websiteUrl: string | null;
   imageUrl: string | null;

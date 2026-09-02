@@ -14,7 +14,7 @@ const RATE_LIMIT = 5;
 const RATE_WINDOW = 60 * 1000;
 
 // 전역 일일 조회 상한 — 단일 IP 다수화(분산 열거) 완화
-const GLOBAL_DAILY_LIMIT = 5000;
+const GLOBAL_DAILY_LIMIT = 50000;
 const GLOBAL_WINDOW = 24 * 60 * 60 * 1000;
 let globalCount = 0;
 let globalResetAt = 0;
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!matchedRow) {
-      return NextResponse.json({ found: false, count: 0 });
+      return NextResponse.json({ found: false, count: 0 }, { headers: { "Cache-Control": "private, no-store" } });
     }
 
     // 납부 횟수 컬럼 값 파싱 (소수점 포함, 없으면 0)
@@ -155,12 +155,12 @@ export async function GET(req: NextRequest) {
     const count = isNaN(paymentCount) ? 0 : paymentCount;
 
     // 개인정보 전혀 미포함 — count만 반환
-    return NextResponse.json({ found: true, count });
+    return NextResponse.json({ found: true, count }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "알 수 없는 오류";
     console.error("[check-fee]", message);
     return NextResponse.json(
-      { error: `데이터를 불러오는 중 오류가 발생했습니다: ${message}` },
+      { error: "데이터를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." },
       { status: 500 }
     );
   }

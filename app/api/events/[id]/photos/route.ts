@@ -57,7 +57,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     extra = { source: "drive", driveFileId: uploaded.id };
   } else {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const blob = await put(`events/${id}/${Date.now()}-${safeName}`, file, { access: "public" });
+    const blob = await put(`events/${id}/${Date.now()}-${safeName}`, file, { access: "public", addRandomSuffix: true });
     imageUrl = blob.url;
     extra = { source: "blob" };
   }

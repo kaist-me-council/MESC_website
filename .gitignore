@@ -58,3 +58,8 @@ prisma/dev.db.backup-*
 # local machine shell env dump (personal paths, not project config)
 .vscode/colcon.env
 backups/
+
+# local/tmp artifacts
+.vercel*
+__pycache__/
+tmp-*
