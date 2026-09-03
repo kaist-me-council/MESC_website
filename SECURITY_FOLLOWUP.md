@@ -90,3 +90,4 @@ DB 파일(`dev.db`, `prisma/dev.db`)은 git 추적에서 제거됨(로컬 파일
 - P4: 업로드 매직바이트 검증 → sharp 재인코딩으로 해결(EXIF 제거 포함). CSP `unsafe-inline/eval`은 유지.
 - 신규: `ANON_SALT` 프로덕션 설정 완료 + 미설정 시 fail-closed. 보유기간 정리 cron(백업과 동일 호출). `/privacy`·`/terms` 신설.
 - 잔여 의존성: `next` 16.2.1 high(RSC DoS) — 16.3.x 업그레이드는 별도 검증 후.
+- 2026-09-03: sharp 재인코딩 라우트가 Vercel에서 libvips 미포함으로 500 → `outputFileTracingIncludes` 추가(bc4c971). 배포 후 실제 업로드로 검증 완료.
