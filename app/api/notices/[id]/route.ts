@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 import { isValidString, isAllowedCategory, parseId } from "@/lib/validation";
 
 const ALLOWED_CATEGORIES = ["공지", "행사", "학사"];
@@ -58,6 +59,7 @@ export async function PUT(
       pinned: Boolean(b.pinned),
     },
   });
+  revalidatePath("/");
   return NextResponse.json(notice);
 }
 
@@ -74,5 +76,6 @@ export async function DELETE(
 
   const { count } = await prisma.notice.deleteMany({ where: { id: numId } });
   if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  revalidatePath("/");
   return NextResponse.json({ ok: true });
 }

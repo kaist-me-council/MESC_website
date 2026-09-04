@@ -26,7 +26,7 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json(withRatings, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  return NextResponse.json(withRatings);
 }
 
 export async function POST(req: Request) {

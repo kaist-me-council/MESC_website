@@ -24,7 +24,7 @@ export async function GET() {
     title: settings.title,
     message: settings.message,
     links,
-  }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  });
 }
 
 // 인증: 팝업 설정 업데이트 (단일 행 upsert)

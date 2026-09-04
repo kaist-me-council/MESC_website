@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 import { isValidString, isAllowedCategory } from "@/lib/validation";
 
 const ALLOWED_CATEGORIES = ["공지", "행사", "학사"];
@@ -9,7 +10,7 @@ export async function GET() {
   const notices = await prisma.notice.findMany({
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
   });
-  return NextResponse.json(notices, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  return NextResponse.json(notices);
 }
 
 export async function POST(req: NextRequest) {
@@ -44,5 +45,6 @@ export async function POST(req: NextRequest) {
       pinned: Boolean(b.pinned),
     },
   });
+  revalidatePath("/");
   return NextResponse.json(notice);
 }

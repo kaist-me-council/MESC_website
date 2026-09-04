@@ -9,7 +9,7 @@ export async function GET() {
   const resources = await prisma.resource.findMany({
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json(resources, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  return NextResponse.json(resources);
 }
 
 export async function POST(req: NextRequest) {
