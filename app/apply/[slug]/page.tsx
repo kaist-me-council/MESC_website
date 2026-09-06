@@ -99,18 +99,7 @@ export default function ApplyCampaignPage() {
     <div className={`container mx-auto px-4 py-8 max-w-lg ${showSticky ? "pb-28" : ""}`}>
       <Link href="/apply" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← {t("apply.back")}</Link>
 
-      {goods && (
-        <div className="mt-3 mb-4 aspect-[4/3] w-full overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 animate-in fade-in duration-300">
-          {campaign.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={campaign.imageUrl} alt={title} className="h-full w-full object-cover" />
-          ) : (
-            <div className="h-full w-full grid place-items-center bg-gradient-to-br from-primary/15 via-accent/10 to-primary/5 tech-mesh">
-              <Shirt className="h-16 w-16 text-primary/60" strokeWidth={1.25} />
-            </div>
-          )}
-        </div>
-      )}
+      {goods && <Gallery images={campaign.images?.length ? campaign.images : campaign.imageUrl ? [campaign.imageUrl] : []} title={title} />}
 
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: "60ms" }}>
         <h1 className="text-3xl font-bold mt-2 mb-2 [text-wrap:balance]">{title}</h1>
@@ -291,6 +280,39 @@ function PageSkeleton() {
       <div className="h-4 w-1/3 rounded bg-muted" />
       <div className="h-40 w-full rounded-2xl bg-muted" />
       <div className="h-64 w-full rounded-2xl bg-muted" />
+    </div>
+  );
+}
+
+/** 상품 이미지 갤러리 — 자르지 않고(object-contain) 보여 주고, 탭하면 원본을 새 탭에서 연다. */
+function Gallery({ images, title }: { images: string[]; title: string }) {
+  const [i, setI] = useState(0);
+  const cur = images[Math.min(i, images.length - 1)];
+  return (
+    <div className="mt-3 mb-4 animate-in fade-in duration-300">
+      <div className="w-full overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-muted/30">
+        {cur ? (
+          <a href={cur} target="_blank" rel="noopener noreferrer" aria-label="원본 크게 보기">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cur} alt={`${title} ${i + 1}`} className="mx-auto max-h-[70vh] w-auto max-w-full object-contain" />
+          </a>
+        ) : (
+          <div className="aspect-[4/3] grid place-items-center bg-gradient-to-br from-primary/15 via-accent/10 to-primary/5 tech-mesh">
+            <Shirt className="h-16 w-16 text-primary/60" strokeWidth={1.25} />
+          </div>
+        )}
+      </div>
+      {images.length > 1 && (
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+          {images.map((u, k) => (
+            <button key={u} type="button" onClick={() => setI(k)} aria-label={`${k + 1}번 이미지`}
+              className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-muted/40 transition-all ${k === i ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="" className="h-full w-full object-contain" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

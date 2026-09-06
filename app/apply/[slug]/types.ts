@@ -6,7 +6,7 @@ export interface Option { id: number; group: string | null; name: string; nameEn
 
 export interface Campaign {
   slug: string; title: string; titleEn: string | null; description: string | null; descriptionEn: string | null;
-  kind: "goods" | "signup"; imageUrl: string | null;
+  kind: "goods" | "signup"; imageUrl: string | null; images?: string[];
   open: boolean; opensAt: string | null; closesAt: string | null; afterNote: string | null; afterNoteEn: string | null;
   allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: Record<string, number>; options: Option[];
   confirmEnabled: boolean; confirmDeadline: string | null; confirmNote: string | null; confirmNoteEn: string | null; confirmOpen: boolean;

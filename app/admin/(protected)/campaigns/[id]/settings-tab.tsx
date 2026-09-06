@@ -39,15 +39,31 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campa
   const tshirtPreset = () =>
     addBulk(["흰색", "검정"].flatMap((g) => SIZES.map((s) => `${g},${s},${["2XL", "3XL", "4XL"].includes(s) ? 9500 : 8000},`)).join("\n"));
 
-  async function upload(file: File) {
+  const images = useMemo<string[]>(() => {
+    const raw = c.images;
+    if (Array.isArray(raw)) return raw;
+    try { const a = raw ? JSON.parse(raw) : null; if (Array.isArray(a) && a.length) return a; } catch { /* ignore */ }
+    return c.imageUrl ? [c.imageUrl] : [];
+  }, [c.images, c.imageUrl]);
+  const setImages = (next: string[]) => setC({ ...c, images: next, imageUrl: next[0] ?? null });
+
+  async function upload(files: FileList) {
     setUploading(true); setMsg("");
-    const fd = new FormData(); fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const data = await res.json().catch(() => ({}));
+    const added: string[] = [];
+    for (const file of Array.from(files).slice(0, 8 - images.length)) {
+      const fd = new FormData(); fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg(data.error ?? "업로드 실패"); break; }
+      added.push(data.url);
+    }
     setUploading(false);
-    if (!res.ok) { setMsg(data.error ?? "업로드 실패"); return; }
-    set("imageUrl", data.url);
+    if (added.length) setImages([...images, ...added]);
   }
+  const moveImage = (i: number, d: -1 | 1) => {
+    const j = i + d; if (j < 0 || j >= images.length) return;
+    const next = [...images]; [next[i], next[j]] = [next[j], next[i]]; setImages(next);
+  };
 
   async function save() {
     setBusy(true); setMsg("");
@@ -86,13 +102,27 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campa
             <label className="flex items-center gap-2"><Checkbox checked={c.allowQty} onCheckedChange={(v) => set("allowQty", v === true)} /> 수량 선택 허용</label>
             <label className="flex items-center gap-2"><Checkbox checked={c.requireStudentId} onCheckedChange={(v) => set("requireStudentId", v === true)} /> 학번 필수</label>
           </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label>대표 이미지 (굿즈 화면 상단, JPG/PNG/WebP 5MB 이하)</Label>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>이미지 (최대 8장 — 첫 장이 대표. 시안·사이즈표 등. JPG/PNG/WebP 5MB 이하, 원본 크기 유지)</Label>
+            {images.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {images.map((u, i) => (
+                  <div key={u} className="relative w-28">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={u} alt="" className="h-28 w-28 rounded-md object-contain border bg-muted/40" />
+                    {i === 0 && <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">대표</span>}
+                    <div className="mt-1 flex justify-between text-xs">
+                      <button type="button" className="px-1 disabled:opacity-30" disabled={i === 0} onClick={() => moveImage(i, -1)} aria-label="앞으로">←</button>
+                      <button type="button" className="px-1 text-destructive" onClick={() => setImages(images.filter((_, j) => j !== i))}>삭제</button>
+                      <button type="button" className="px-1 disabled:opacity-30" disabled={i === images.length - 1} onClick={() => moveImage(i, 1)} aria-label="뒤로">→</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-3">
-              {c.imageUrl && <img src={c.imageUrl} alt="" className="h-20 w-20 rounded-md object-cover border" />}
-              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="text-sm" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
+              <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="text-sm" disabled={uploading || images.length >= 8} onChange={(e) => { if (e.target.files?.length) upload(e.target.files); e.target.value = ""; }} />
               {uploading && <span className="text-xs text-muted-foreground">업로드 중...</span>}
-              {c.imageUrl && <Button size="sm" variant="ghost" onClick={() => set("imageUrl", null)}>이미지 제거</Button>}
             </div>
           </div>
           <div className="space-y-1 sm:col-span-2"><Label>설명</Label><Textarea rows={4} value={c.description ?? ""} onChange={(e) => set("description", e.target.value || null)} /></div>

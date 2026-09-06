@@ -372,6 +372,7 @@ model Campaign {
   priceAdjust      String?   // JSON {"대학원생":1000}
   kind             String    @default("signup") // goods | signup
   imageUrl         String?
+  images           String?   // JSON string[] — 시안·사이즈표 등 여러 장. imageUrl 은 대표(=images[0])
   confirmEnabled   Boolean   @default(false)
   confirmDeadline  DateTime?
   confirmNote      String?
