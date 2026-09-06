@@ -418,6 +418,7 @@ model CampaignOrder {
   resolution    String?  // JSON Resolution[]
   confirmNote   String?
   confirmedAt   DateTime?
+  resolvedAt    DateTime?  // 못 받음 건 처리 완료(관리자) 시각
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@index([campaignId, status])

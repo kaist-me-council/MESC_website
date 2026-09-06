@@ -67,7 +67,7 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
   // 못 받음 집계 (그룹·이름·선택별)
   const shortage = useMemo(() => {
     const m = new Map<string, number>();
-    orders.filter((o) => o.confirmation === "not_received").forEach((o) => {
+    orders.filter((o) => o.confirmation === "not_received" && !o.resolvedAt).forEach((o) => {
       const res = parseResolution(o) ?? parseItems(o).map((it) => ({ ...it, choice: "pickup" as const }));
       res.forEach((r) => {
         const k = `${itemLabel(r)} · ${CHOICE_LABEL[r.choice]}${r.choice === "exchange" && r.exchangeName ? `→${r.exchangeName}` : ""}`;
@@ -157,7 +157,7 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
       )}
       {shortage.length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="text-base">못 받음 집계 (색·사이즈·선택별 벌 수)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">못 받음 집계 (처리 완료 제외) (색·사이즈·선택별 벌 수)</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {shortage.map(([k, n]) => <Badge key={k} variant="destructive" className="text-sm">{k}: <strong className="ml-1">{n}</strong></Badge>)}
           </CardContent>
@@ -215,6 +215,7 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     {o.source === "import" && <Badge variant="outline" className="text-xs">적재</Badge>}
                     {o.confirmation === "received" && <Badge className="text-xs bg-emerald-600 text-white">받음</Badge>}
                     {o.confirmation === "not_received" && <Badge variant="destructive" className="text-xs">못 받음</Badge>}
+                    {o.resolvedAt && <Badge className="text-xs bg-emerald-600 text-white">처리 완료</Badge>}
                   </div>
                   <div className="text-muted-foreground">{o.email}{o.phone ? ` · ${o.phone}` : ""}</div>
                   {o.depositorName && o.depositorName.trim() !== o.name.trim() && (
@@ -263,6 +264,9 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     : cancelId === o.id
                       ? <><Button size="sm" variant="destructive" disabled={busy} onClick={() => { setCancelId(null); setStatus(o, "cancelled"); }}>정말 취소</Button><Button size="sm" variant="ghost" onClick={() => setCancelId(null)}>아니오</Button></>
                       : <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setCancelId(o.id)}>취소</Button>}
+                  {o.confirmation === "not_received" && (o.resolvedAt
+                    ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => put({ orderId: o.id, resolved: false })}>처리 완료 취소</Button>
+                    : <Button size="sm" variant="secondary" disabled={busy} onClick={() => put({ orderId: o.id, resolved: true })}>처리 완료</Button>)}
                   <Button size="sm" variant="ghost" onClick={() => editMemo(o)}>메모</Button>
                   <Button size="sm" variant="ghost" onClick={() => editDepositor(o)}>입금자명</Button>
                   {o.status !== "cancelled" && editId !== o.id && <Button size="sm" variant="ghost" onClick={() => startEdit(o)}>항목 수정</Button>}

@@ -25,8 +25,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { rows, problems } = parseImportCsv(b.mode === "tshirt" ? "tshirt" : "generic", b.csv, studentIdHash);
   const { created } = await ensureOptions(id, rows.flatMap((r) => r.items), true);
   if (b.dryRun) {
+    const [orders, confirmed] = await Promise.all([
+      prisma.campaignOrder.count({ where: { campaignId: id, source: "import" } }),
+      prisma.campaignOrder.count({ where: { campaignId: id, source: "import", confirmation: { not: null } } }),
+    ]);
     return NextResponse.json(
-      { count: rows.length, problems, newOptions: created, preview: rows.slice(0, 5).map(({ studentIdHash: h, ...r }) => ({ ...r, hasStudentId: !!h })) },
+      { count: rows.length, problems, newOptions: created, willDelete: { orders, confirmed }, preview: rows.slice(0, 5).map(({ studentIdHash: h, ...r }) => ({ ...r, hasStudentId: !!h })) },
       noStore,
     );
   }

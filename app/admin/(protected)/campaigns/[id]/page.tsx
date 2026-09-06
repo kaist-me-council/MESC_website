@@ -12,7 +12,14 @@ import type { Campaign, Order } from "./types";
 
 export default function AdminCampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [tab, setTab] = useState<"settings" | "orders">("settings");
+  // 초기 탭은 주소(?tab=)에서. lazy initializer 라 effect 안 setState 가 아님
+  const [tab, setTabState] = useState<"settings" | "orders">(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "settings" ? "settings" : "orders");
+  // 탭을 주소(?tab=)에 남겨 새로고침·뒤로가기에도 유지
+  const setTab = (t: "settings" | "orders") => {
+    setTabState(t);
+    const u = new URL(window.location.href); u.searchParams.set("tab", t); window.history.replaceState(null, "", u.toString());
+  };
   const [c, setC] = useState<Campaign | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
 
@@ -63,8 +70,8 @@ export default function AdminCampaignDetailPage() {
       </AdminGuide>
 
       <div className="flex gap-2 mb-4">
-        <Button variant={tab === "settings" ? "default" : "outline"} size="sm" onClick={() => setTab("settings")}>설정</Button>
         <Button variant={tab === "orders" ? "default" : "outline"} size="sm" onClick={() => setTab("orders")}>신청 목록 ({orders.length})</Button>
+        <Button variant={tab === "settings" ? "default" : "outline"} size="sm" onClick={() => setTab("settings")}>설정</Button>
       </div>
 
       {tab === "settings"

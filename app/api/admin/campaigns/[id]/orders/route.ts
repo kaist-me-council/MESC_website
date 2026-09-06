@@ -30,10 +30,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   if (new URL(req.url).searchParams.get("format") === "csv") {
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const head = ["주문번호", "상태", "구분", "이름", "입금자명", "이메일", "전화", "항목", "합계", "메모", "관리자메모", "신청시각", "출처", "수령확인", "처리선택", "확인메모", "확인시각"];
+    const head = ["주문번호", "상태", "구분", "이름", "입금자명", "이메일", "전화", "항목", "합계", "메모", "관리자메모", "신청시각", "출처", "수령확인", "처리선택", "확인메모", "확인시각", "처리완료"];
     const lines = orders.map((o) =>
       [o.orderNo, STATUS_KO[o.status] ?? o.status, o.affiliation, o.name, o.depositorName, o.email, o.phone, itemStr(o.items), o.total, o.note, o.adminMemo, new Date(o.createdAt).toLocaleString("ko-KR"),
-        o.source, o.confirmation ? CONFIRM_KO[o.confirmation] : "", resStr(o.resolution), o.confirmNote, o.confirmedAt ? new Date(o.confirmedAt).toLocaleString("ko-KR") : ""].map(esc).join(","),
+        o.source, o.confirmation ? CONFIRM_KO[o.confirmation] : "", resStr(o.resolution), o.confirmNote, o.confirmedAt ? new Date(o.confirmedAt).toLocaleString("ko-KR") : "", o.resolvedAt ? "O" : ""].map(esc).join(","),
     );
     return new NextResponse("﻿" + [head.map(esc).join(","), ...lines].join("\n"), {
       headers: {
@@ -64,7 +64,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const orderId = Number(b.orderId);
   if (!Number.isInteger(orderId)) return NextResponse.json({ error: "orderId 필요" }, { status: 400 });
-  const data: { status?: string; adminMemo?: string | null; depositorName?: string | null; items?: string; total?: number; confirmation?: string | null; confirmedAt?: Date | null; resolution?: null } = {};
+  const data: { status?: string; adminMemo?: string | null; depositorName?: string | null; items?: string; total?: number; confirmation?: string | null; confirmedAt?: Date | null; resolution?: null; resolvedAt?: Date | null } = {};
   if (b.status !== undefined) {
     if (!validStatus(b.status)) return NextResponse.json({ error: "상태 값이 올바르지 않습니다." }, { status: 400 });
     data.status = String(b.status);
@@ -89,6 +89,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     data.confirmedAt = b.confirmation ? new Date() : null;
     if (!b.confirmation) data.resolution = null;
   }
+  if (typeof b.resolved === "boolean") data.resolvedAt = b.resolved ? new Date() : null; // 못 받음 건 처리 완료 표시
   const { count } = await prisma.campaignOrder.updateMany({ where: { id: orderId, campaignId: id }, data });
   if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const updated = await prisma.campaignOrder.findUniqueOrThrow({ where: { id: orderId } });

@@ -26,7 +26,7 @@ export default async function AdminPage() {
     },
     {
       href: "/admin/members",
-      label: "멤버 관리",
+      label: "학생회 구성원",
       icon: Users,
       desc: "학생회 임원진 등록·삭제",
       color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
@@ -47,7 +47,7 @@ export default async function AdminPage() {
     },
     {
       href: "/admin/events",
-      label: "행사 관리",
+      label: "행사 사진·갤러리",
       icon: Camera,
       desc: "행사 갤러리·사진 업로드",
       color: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
@@ -82,14 +82,14 @@ export default async function AdminPage() {
     },
     {
       href: "/admin/community",
-      label: "커뮤니티 모더레이션",
+      label: "커뮤니티·건의",
       icon: MessageSquare,
       desc: "건의 답변·게시글 신고 처리",
       color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
     },
     {
       href: "/admin/campaigns",
-      label: "학생회 이벤트",
+      label: "이벤트 신청·구매",
       icon: Ticket,
       desc: "신청·구매 캠페인 관리",
       color: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
@@ -102,6 +102,18 @@ export default async function AdminPage() {
       color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
     },
   ];
+
+  // 작업 목적별 4묶음 (URL 은 그대로). 순서 = 자주 쓰는 순.
+  const GROUPS: { title: string; hrefs: string[] }[] = [
+    { title: "신청·사업 운영", hrefs: ["/admin/campaigns", "/admin/snack-wishes"] },
+    { title: "소식·소통", hrefs: ["/admin/notices", "/admin/events", "/admin/community", "/admin/popup"] },
+    { title: "학과·학습 정보", hrefs: ["/admin/resources", "/admin/courses", "/admin/books", "/admin/professors", "/admin/buildings"] },
+    { title: "학생회·사이트 설정", hrefs: ["/admin/members", "/admin/site"] },
+  ];
+  const byHref = new Map(links.map((l) => [l.href, l]));
+  const grouped = GROUPS.map((g) => ({ ...g, items: g.hrefs.map((h) => byHref.get(h)).filter((l): l is (typeof links)[number] => !!l) }));
+  const leftover = links.filter((l) => !GROUPS.some((g) => g.hrefs.includes(l.href)));
+  if (leftover.length) grouped.push({ title: "기타", hrefs: [], items: leftover });
 
   return (
     <div className="min-h-screen bg-background">
@@ -160,9 +172,12 @@ export default async function AdminPage() {
           <p className="text-xs">💡 공용 컴퓨터에서 작업했다면 우상단 <strong>로그아웃</strong> 잊지 마세요. 세션은 자동 만료되지만 안전을 위해 권장합니다.</p>
         </AdminGuide>
 
-        {/* Management Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          {links.map((link) => {
+        {/* Management Cards — 4묶음 */}
+        {grouped.map((g) => (
+        <section key={g.title} className="mb-8">
+        <h2 className="text-sm font-bold text-muted-foreground mb-3">{g.title}</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {g.items.map((link) => {
             const Icon = link.icon;
             return (
               <Link key={link.href} href={link.href}>
@@ -183,6 +198,8 @@ export default async function AdminPage() {
             );
           })}
         </div>
+        </section>
+        ))}
 
         {/* Quick Links */}
         <div className="bg-muted/30 border border-border/40 rounded-2xl p-6">

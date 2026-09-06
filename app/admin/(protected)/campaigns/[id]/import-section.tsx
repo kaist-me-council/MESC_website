@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 
-interface Preview { count: number; problems: string[]; newOptions?: { group: string | null; name: string }[] }
+interface Preview { count: number; problems: string[]; newOptions?: { group: string | null; name: string }[]; willDelete?: { orders: number; confirmed: number } }
 
 export function ImportSection({ campaignId, importCount, onDone }: { campaignId: number; importCount: number; onDone: () => Promise<void> }) {
   const [csv, setCsv] = useState("");
   const [mode, setMode] = useState<"tshirt" | "generic">("tshirt");
-  const [replace, setReplace] = useState(true);
+  const [replace, setReplace] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -57,6 +57,9 @@ export function ImportSection({ campaignId, importCount, onDone }: { campaignId:
         {preview && (
           <div className="rounded-md bg-muted/40 p-3 text-sm space-y-1">
             <p><strong>{preview.count}건</strong> 해석됨{preview.problems.length ? `, 문제 ${preview.problems.length}건:` : ", 문제 없음"}</p>
+            {replace && preview.willDelete && preview.willDelete.orders > 0 && (
+              <p className="text-xs font-medium text-destructive">⚠ 적재하면 이전 적재 주문 {preview.willDelete.orders}건이 지워집니다{preview.willDelete.confirmed > 0 ? ` — 그중 수령 확인 응답이 있는 ${preview.willDelete.confirmed}건도 함께 사라집니다` : ""}.</p>
+            )}
             {preview.problems.map((p, i) => <p key={i} className="text-xs text-destructive">{p}</p>)}
             {preview.newOptions && preview.newOptions.length > 0 && (
               <p className="text-xs">새로 생길 옵션: {preview.newOptions.map((o) => `${o.group ? o.group + " " : ""}${o.name}`).join(", ")}</p>
