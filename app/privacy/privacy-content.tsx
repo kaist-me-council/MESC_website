@@ -45,6 +45,12 @@ export function PrivacyContent() {
             <li>
               <strong>Administrator accounts</strong>: Council staff usernames and hashed passwords.
             </li>
+            <li>
+              <strong>Department T-shirt orders (/shop)</strong>: affiliation, name, email, phone,
+              order items and pickup/reply status — used to hand over, refund, or exchange shirts.
+              Student IDs are stored only as a salted one-way hash for identity matching; the
+              original ID is never stored. Contact details are visible only to Council administrators.
+            </li>
           </ol>
 
           <h2>3. Third-party services</h2>
@@ -63,6 +69,7 @@ export function PrivacyContent() {
             <li>IP hashes are automatically deleted 90 days after posting, and together with the post if it is removed. Report records are deleted after 180 days.</li>
             <li>Suggestion box contact details are automatically deleted within 30 days after a reply is sent.</li>
             <li>Student IDs entered for the fee check are never stored.</li>
+            <li>T-shirt order records are deleted 180 days after being loaded (once settlement is complete).</li>
           </ul>
 
           <h2>5. Your rights</h2>
@@ -111,6 +118,11 @@ export function PrivacyContent() {
             <li>
               <strong>관리자 계정</strong>: 학생회 운영진의 아이디와 비밀번호 해시를 저장합니다.
             </li>
+            <li>
+              <strong>학과 단체복 구매 관리(/shop)</strong>: 구분, 이름, 이메일, 전화번호, 주문 항목,
+              수령·회신 상태를 옷 전달·환불·교환 목적으로 수집합니다. 학번은 본인 대조용 일방향
+              해시(salt 포함)로만 저장하며 원문은 저장하지 않습니다. 연락처는 학생회 관리자만 열람합니다.
+            </li>
           </ol>
 
           <h2>제3조 (제3자 서비스 및 쿠키)</h2>
@@ -129,6 +141,7 @@ export function PrivacyContent() {
             <li>IP 해시는 작성일로부터 90일 후 자동 삭제되며, 게시물 삭제 시 함께 삭제됩니다. 신고 기록은 180일 후 삭제됩니다.</li>
             <li>건의함 연락처는 답변 완료 후 30일 이내 자동 파기합니다.</li>
             <li>과비 확인용 학번은 저장하지 않습니다.</li>
+            <li>단체복 구매 기록은 적재일로부터 180일(정산 완료) 후 삭제합니다.</li>
           </ul>
 
           <h2>제5조 (이용자의 권리)</h2>

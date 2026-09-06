@@ -30,6 +30,8 @@ async function purgeExpired() {
   await prisma.courseReview.updateMany(old);
   // 신고 기록: 180일 지나면 삭제
   await prisma.report.deleteMany({ where: { createdAt: { lt: d180 } } });
+  // 반팔티 구매 확인 명단: 적재 후 180일(정산 완료 기준 6개월) 지나면 삭제
+  await prisma.priorPurchase.deleteMany({ where: { createdAt: { lt: d180 } } });
 }
 
 export async function GET(req: Request) {
