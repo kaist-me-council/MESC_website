@@ -66,25 +66,25 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
 
   useEffect(() => {
-    setLoading(true);
-    fetch("/api/calendar-events")
-      .then((r) => r.json())
+    const controller = new AbortController();
+    fetch("/api/calendar-events", { signal: controller.signal })
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((result) => {
-        if (result.error) {
-          setError(result.error);
-        } else {
-          setEvents(Array.isArray(result) ? result : []);
-        }
+        if (!Array.isArray(result)) throw new Error();
+        setError("");
+        setEvents(result);
       })
-      .catch(() => setError(t("calendar.loadError")))
-      .finally(() => setLoading(false));
-  }, [t]);
+      .catch(() => { if (!controller.signal.aborted) setError(t("calendar.loadError")); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [t, retry]);
 
   const handleGoogleSubscribe = () => {
     if (ICAL_URL) {
@@ -200,7 +200,7 @@ export default function CalendarPage() {
         )}
 
         {/* Calendar View */}
-        {!loading && (
+        {!loading && !error && (
           <div className="space-y-8">
             {/* Month Navigation */}
             <Card className="border-border/50 rounded-xl">
@@ -409,9 +409,10 @@ export default function CalendarPage() {
 
         {/* Error state */}
         {error && (
-          <div className="mt-8 p-5 rounded-xl bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400 text-sm font-bold flex items-center gap-2">
+          <div role="alert" className="mt-8 p-5 rounded-xl bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400 text-sm font-bold flex flex-wrap items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
+            <Button variant="outline" className="min-h-10" onClick={() => { setLoading(true); setError(""); setRetry(v => v + 1); }}>{lang === "ko" ? "다시 시도" : "Try again"}</Button>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -151,7 +151,8 @@ export function FloorMapViewer({ imageUrl, imageWidth, imageHeight, svgContent, 
     return pathToPolylinePoints(activePath, graph.nodes);
   }, [activePath, graph]);
 
-  const arrowMarkerId = "floor-map-arrow";
+  const mapId = useId();
+  const arrowMarkerId = `${mapId}-arrow`;
 
   return (
     <div className="space-y-4">
@@ -169,20 +170,26 @@ export function FloorMapViewer({ imageUrl, imageWidth, imageHeight, svgContent, 
               {/* 줌 컨트롤 */}
               <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
                 <button
+                  type="button"
+                  aria-label={lang === "ko" ? "확대" : "Zoom in"}
                   onClick={() => zoomIn()}
-                  className="w-8 h-8 rounded-lg bg-background/90 border border-border shadow flex items-center justify-center hover:bg-muted transition-colors"
+                  className="w-10 h-10 rounded-lg bg-background/90 border border-border shadow flex items-center justify-center hover:bg-muted transition-colors"
                 >
                   <ZoomIn className="h-4 w-4" />
                 </button>
                 <button
+                  type="button"
+                  aria-label={lang === "ko" ? "축소" : "Zoom out"}
                   onClick={() => zoomOut()}
-                  className="w-8 h-8 rounded-lg bg-background/90 border border-border shadow flex items-center justify-center hover:bg-muted transition-colors"
+                  className="w-10 h-10 rounded-lg bg-background/90 border border-border shadow flex items-center justify-center hover:bg-muted transition-colors"
                 >
                   <ZoomOut className="h-4 w-4" />
                 </button>
                 <button
+                  type="button"
+                  aria-label={lang === "ko" ? "지도 보기 초기화" : "Reset map view"}
                   onClick={() => resetTransform()}
-                  className="w-8 h-8 rounded-lg bg-background/90 border border-border shadow flex items-center justify-center hover:bg-muted transition-colors"
+                  className="w-10 h-10 rounded-lg bg-background/90 border border-border shadow flex items-center justify-center hover:bg-muted transition-colors"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
@@ -214,7 +221,7 @@ export function FloorMapViewer({ imageUrl, imageWidth, imageHeight, svgContent, 
                   ) : null}
 
                   {/* SVG 인터랙션 오버레이 — viewBox는 평면도 SVG와 일치 */}
-                  {regions && (
+                  {(regions || graph) && (
                     <svg
                       ref={svgRef}
                       className="absolute inset-0"
@@ -239,7 +246,7 @@ export function FloorMapViewer({ imageUrl, imageWidth, imageHeight, svgContent, 
                       </defs>
 
                       {/* 방 폴리곤 */}
-                      {regions.rooms.map((room) => {
+                      {regions?.rooms.map((room) => {
                         const hasProf = profByRoom.has(room.id);
                         return (
                           <polygon
@@ -304,12 +311,13 @@ export function FloorMapViewer({ imageUrl, imageWidth, imageHeight, svgContent, 
             {lang === "ko" ? "길 찾기" : "Navigation"}
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">{lang === "ko" ? "출발" : "From"}</label>
+            <div className="min-w-0 space-y-1">
+              <label htmlFor={`${mapId}-from`} className="text-xs text-muted-foreground">{lang === "ko" ? "출발" : "From"}</label>
               <select
+                id={`${mapId}-from`}
                 value={pathFrom}
                 onChange={(e) => { setPathFrom(e.target.value); setActivePath(null); setPathError(false); }}
-                className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                className="w-full min-w-0 h-10 rounded-lg border border-border bg-background px-3 text-sm"
               >
                 <option value="">{lang === "ko" ? "선택..." : "Select..."}</option>
                 {navigableRooms.map((n) => (
@@ -319,12 +327,13 @@ export function FloorMapViewer({ imageUrl, imageWidth, imageHeight, svgContent, 
                 ))}
               </select>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">{lang === "ko" ? "목적지" : "To"}</label>
+            <div className="min-w-0 space-y-1">
+              <label htmlFor={`${mapId}-to`} className="text-xs text-muted-foreground">{lang === "ko" ? "목적지" : "To"}</label>
               <select
+                id={`${mapId}-to`}
                 value={pathTo}
                 onChange={(e) => { setPathTo(e.target.value); setActivePath(null); setPathError(false); }}
-                className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                className="w-full min-w-0 h-10 rounded-lg border border-border bg-background px-3 text-sm"
               >
                 <option value="">{lang === "ko" ? "선택..." : "Select..."}</option>
                 {navigableRooms.map((n) => (

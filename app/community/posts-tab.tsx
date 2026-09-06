@@ -35,29 +35,43 @@ export function PostsTab() {
   const [category, setCategory] = useState<Cat>("자유");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState(false);
 
   async function load() {
-    const url = filter === "전체" ? "/api/posts" : `/api/posts?category=${filter}`;
-    const r = await fetch(url);
-    if (r.ok) setPosts(await r.json());
+    setLoadError(false);
+    try {
+      const url = filter === "전체" ? "/api/posts" : `/api/posts?category=${filter}`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error();
+      const data = await r.json();
+      if (!Array.isArray(data)) throw new Error();
+      setPosts(data);
+    } catch {
+      setLoadError(true);
+    }
   }
   useEffect(() => { load(); }, [filter]);
 
   async function submit() {
     if (!title.trim() || !content.trim()) return;
     setSubmitting(true); setError("");
-    const r = await fetch("/api/posts", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, title: title.trim(), content: content.trim() }),
-    });
-    const data = await r.json();
-    if (r.ok) {
-      setTitle(""); setContent(""); setWriting(false);
-      load();
-    } else {
-      setError(data.error ?? (language === "ko" ? "오류가 발생했습니다." : "An error occurred."));
+    try {
+      const r = await fetch("/api/posts", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, title: title.trim(), content: content.trim() }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        setTitle(""); setContent(""); setWriting(false);
+        load();
+      } else {
+        setError(data.error ?? (language === "ko" ? "오류가 발생했습니다." : "An error occurred."));
+      }
+    } catch {
+      setError(language === "ko" ? "게시하지 못했습니다. 연결을 확인하고 다시 시도해주세요." : "Could not post. Check your connection and try again.");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   return (
@@ -127,7 +141,12 @@ export function PostsTab() {
       )}
 
       {/* 게시글 목록 */}
-      {posts.length === 0 ? (
+      {loadError ? (
+        <div role="alert" className="text-center py-8 space-y-3">
+          <p className="text-sm text-destructive">{language === "ko" ? "게시글 목록을 불러오지 못했습니다." : "Could not load posts."}</p>
+          <Button variant="outline" className="min-h-10" onClick={load}>{language === "ko" ? "다시 시도" : "Try again"}</Button>
+        </div>
+      ) : posts.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-12">아직 작성된 게시글이 없습니다.</p>
       ) : (
         <div className="space-y-2">

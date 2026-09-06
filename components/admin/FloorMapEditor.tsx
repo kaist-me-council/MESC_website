@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -117,12 +117,12 @@ export default function FloorMapEditor({
   const [edgeStart, setEdgeStart] = useState<string | null>(null);
 
   // 저장
-  const [dirty, setDirty] = useState(false);
+  const currentSnapshot = JSON.stringify({ rooms, nodes, edges, imageUrl, imgW, imgH, svgContent });
+  const [savedSnapshot, setSavedSnapshot] = useState(currentSnapshot);
+  const dirty = currentSnapshot !== savedSnapshot;
+  const svgViewBox = useMemo(() => svgContent ? extractViewBox(svgContent) : null, [svgContent]);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
-
-  // 변경 감지
-  useEffect(() => { setDirty(true); }, [rooms, nodes, edges, imageUrl, svgContent]);
 
   // 이탈 경고
   useEffect(() => {
@@ -136,18 +136,21 @@ export default function FloorMapEditor({
   /* ── 이미지 업로드 ── */
   async function uploadImage(file: File) {
     setUploading(true);
-    const fd = new FormData(); fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const data = await res.json();
-    if (res.ok) {
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "업로드 실패");
       setImageUrl(data.url);
+      setSvgContent("");
       if (data.width) setImgW(data.width);
       if (data.height) setImgH(data.height);
-    } else {
-      alert(data.error ?? "업로드 실패");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
-    setUploading(false);
-    if (fileRef.current) fileRef.current.value = "";
   }
 
   /* ── SVG 파일 인라인 업로드 (DWG/PDF 변환된 SVG) ── */
@@ -158,6 +161,7 @@ export default function FloorMapEditor({
       const sanitized = sanitizeSvg(text);
       const viewBox = extractViewBox(sanitized);
 
+      if (!viewBox || viewBox.w <= 0 || viewBox.h <= 0) throw new Error("유효한 SVG 크기 정보를 찾을 수 없습니다.");
       setSvgContent(sanitized);
 
       // viewBox로 자연 크기 자동 설정
@@ -250,12 +254,13 @@ export default function FloorMapEditor({
     if (tab === "graph") {
       if (graphMode === "node") {
         // 빈 곳 클릭 → waypoint 추가
-        const n = nodes.length + 1;
+        let n = 1;
+        while (nodes.some((node) => node.id === `wp_${n}`) || rooms.some((room) => room.id === `wp_${n}`)) n++;
         const newNode: GraphNode = { id: `wp_${n}`, x, y, label: `복도 ${n}` };
         setNodes((prev) => [...prev, newNode]);
       }
     }
-  }, [tab, drawing, drawPoints, graphMode, nodes]);
+  }, [tab, drawing, drawPoints, graphMode, nodes, rooms]);
 
   const handleSvgDoubleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (tab === "rooms" && drawing && drawPoints.length >= 3) {
@@ -281,6 +286,7 @@ export default function FloorMapEditor({
 
   /* ── 방 폴리곤 클릭 ── */
   function handleRoomClick(roomId: string, e: React.MouseEvent) {
+    if (drawing) return;
     e.stopPropagation();
     if (tab === "rooms") {
       setSelectedRoomId(roomId);
@@ -306,7 +312,9 @@ export default function FloorMapEditor({
       setEdgeStart(nodeId);
     } else {
       if (edgeStart !== nodeId) {
-        setEdges((prev) => [...prev, { from: edgeStart, to: nodeId }]);
+        setEdges((prev) => prev.some((edge) =>
+          (edge.from === edgeStart && edge.to === nodeId) || (edge.from === nodeId && edge.to === edgeStart)
+        ) ? prev : [...prev, { from: edgeStart, to: nodeId }]);
       }
       setEdgeStart(null);
     }
@@ -348,26 +356,31 @@ export default function FloorMapEditor({
       ? JSON.stringify({ nodes, edges })
       : null;
 
-    const res = await fetch(`/api/buildings/floors/${floorId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        imageUrl: imageUrl || null,
-        imageWidth: imgW || null,
-        imageHeight: imgH || null,
-        svgContent: svgContent || null,
-        regionsJson,
-        graphJson,
-      }),
-    });
-    if (res.ok) {
-      setDirty(false);
-      setSaveMsg("저장 완료!");
-      setTimeout(() => setSaveMsg(""), 2000);
-    } else {
-      setSaveMsg("저장 실패");
+    try {
+      const res = await fetch(`/api/buildings/floors/${floorId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: imageUrl || null,
+          imageWidth: imgW || null,
+          imageHeight: imgH || null,
+          svgContent: svgContent || null,
+          regionsJson,
+          graphJson,
+        }),
+      });
+      if (res.ok) {
+        setSavedSnapshot(currentSnapshot);
+        setSaveMsg("저장 완료!");
+        setTimeout(() => setSaveMsg(""), 2000);
+      } else {
+        setSaveMsg("저장 실패");
+      }
+    } catch {
+      setSaveMsg("연결에 실패했습니다. 다시 저장해주세요.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   /* ── 폴리곤 포인트 문자열 ── */
@@ -475,13 +488,21 @@ export default function FloorMapEditor({
                       variant="outline"
                       className="w-full text-xs"
                       onClick={() => {
-                        if (!pendingRoomId.trim()) return;
-                        setRooms((prev) => prev.map((r) =>
-                          r.id === selectedRoomId
-                            ? { ...r, id: pendingRoomId.trim(), label: pendingRoomLabel.trim() || undefined }
-                            : r
-                        ));
-                        setSelectedRoomId(pendingRoomId.trim());
+                        const newId = pendingRoomId.trim();
+                        if (!newId) return;
+                        if (newId !== selectedRoomId && (rooms.some((room) => room.id === newId) || nodes.some((node) => node.id === newId))) {
+                          alert("이미 사용 중인 호실 또는 노드 번호입니다.");
+                          return;
+                        }
+                        const label = pendingRoomLabel.trim() || undefined;
+                        setRooms((prev) => prev.map((room) => room.id === selectedRoomId ? { ...room, id: newId, label } : room));
+                        setNodes((prev) => prev.map((node) => node.id === selectedRoomId ? { ...node, id: newId, label: label ?? newId } : node));
+                        setEdges((prev) => prev.map((edge) => ({
+                          from: edge.from === selectedRoomId ? newId : edge.from,
+                          to: edge.to === selectedRoomId ? newId : edge.to,
+                        })));
+                        if (edgeStart === selectedRoomId) setEdgeStart(newId);
+                        setSelectedRoomId(newId);
                       }}
                     >
                       저장
@@ -624,7 +645,7 @@ export default function FloorMapEditor({
           <div className="ml-auto flex items-center gap-2">
             {saveMsg && <span className="text-xs text-primary font-semibold">{saveMsg}</span>}
             {dirty && <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">미저장 변경사항</Badge>}
-            <Button size="sm" onClick={saveAll} disabled={saving} className="gap-2">
+            <Button size="sm" onClick={saveAll} disabled={saving || uploading || svgLoading || !dirty} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               저장
             </Button>
@@ -680,7 +701,7 @@ export default function FloorMapEditor({
                   height: "100%",
                   cursor: drawing ? "crosshair" : tab === "graph" ? "pointer" : "default",
                 }}
-                viewBox={`0 0 ${imgW} ${imgH}`}
+                viewBox={svgViewBox ? `${svgViewBox.x} ${svgViewBox.y} ${svgViewBox.w} ${svgViewBox.h}` : `0 0 ${imgW} ${imgH}`}
                 preserveAspectRatio="xMidYMid meet"
                 onClick={handleSvgClick}
                 onDoubleClick={handleSvgDoubleClick}

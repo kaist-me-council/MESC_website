@@ -34,6 +34,8 @@ export default function ResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [activeCategory, setActiveCategory] = useState("전체");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const { t, lang } = useLanguage();
 
   const CATEGORIES = [
@@ -45,13 +47,17 @@ export default function ResourcesPage() {
   ];
 
   useEffect(() => {
-    fetch("/api/resources")
-      .then((r) => r.json())
+    const controller = new AbortController();
+    fetch("/api/resources", { signal: controller.signal })
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => {
+        if (!Array.isArray(data)) throw new Error();
         setResources(data);
-        setLoading(false);
-      });
-  }, []);
+      })
+      .catch(() => { if (!controller.signal.aborted) setLoadError(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [retry]);
 
   const filtered =
     activeCategory === "전체"
@@ -85,6 +91,11 @@ export default function ResourcesPage() {
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">{t("resources.loading")}</div>
+      ) : loadError ? (
+        <div role="alert" className="text-center py-12 space-y-3">
+          <p className="text-destructive">{lang === "ko" ? "자료를 불러오지 못했습니다." : "Could not load resources."}</p>
+          <Button variant="outline" className="min-h-10" onClick={() => { setLoading(true); setLoadError(false); setRetry(v => v + 1); }}>{lang === "ko" ? "다시 시도" : "Try again"}</Button>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="mb-3">{t("resources.empty")}</p>

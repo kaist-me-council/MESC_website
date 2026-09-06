@@ -73,12 +73,27 @@ function CommunityPageInner() {
   const [wishSubmitting, setWishSubmitting] = useState(false);
   const [wishError, setWishError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [galleryError, setGalleryError] = useState(false);
+  const [wishLoadError, setWishLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const wishSubmittingRef = useRef(false);
 
   useEffect(() => {
-    fetch("/api/events").then(r => r.json()).then(d => { setEvents(d); setLoading(false); });
-    fetch("/api/snack-wishes").then(r => r.json()).then(setWishes);
-  }, []);
+    const controller = new AbortController();
+    async function loadList(url: string) {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error();
+      return data;
+    }
+    loadList("/api/events").then(setEvents)
+      .catch(() => { if (!controller.signal.aborted) setGalleryError(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    loadList("/api/snack-wishes").then(setWishes)
+      .catch(() => { if (!controller.signal.aborted) setWishLoadError(true); });
+    return () => controller.abort();
+  }, [retry]);
 
   useEffect(() => {
     setActiveTab(tabFromSlug(searchParams.get("tab")));
@@ -100,18 +115,23 @@ function CommunityPageInner() {
     if (!wishInput.trim() || wishSubmittingRef.current) return;
     wishSubmittingRef.current = true;
     setWishSubmitting(true); setWishError("");
-    const res = await fetch("/api/snack-wishes", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: wishInput.trim() }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setWishes(prev => [data, ...prev]); setWishInput("");
-    } else {
-      setWishError(data.error ?? (language === "ko" ? "오류가 발생했습니다." : "An error occurred."));
+    try {
+      const res = await fetch("/api/snack-wishes", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: wishInput.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWishes(prev => [data, ...prev]); setWishInput("");
+      } else {
+        setWishError(data.error ?? (language === "ko" ? "오류가 발생했습니다." : "An error occurred."));
+      }
+    } catch {
+      setWishError(language === "ko" ? "전송하지 못했습니다. 연결을 확인하고 다시 시도해주세요." : "Could not send. Check your connection and try again.");
+    } finally {
+      wishSubmittingRef.current = false;
+      setWishSubmitting(false);
     }
-    wishSubmittingRef.current = false;
-    setWishSubmitting(false);
   }
 
   const TAB_LABELS: Record<Tab, string> = {
@@ -151,6 +171,11 @@ function CommunityPageInner() {
         loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1,2,3].map(i => <div key={i} className="skeleton h-56 rounded-2xl" />)}
+          </div>
+        ) : galleryError ? (
+          <div role="alert" className="text-center py-12 space-y-3">
+            <p className="text-destructive">{language === "ko" ? "행사를 불러오지 못했습니다." : "Could not load events."}</p>
+            <Button variant="outline" className="min-h-10" onClick={() => { setLoading(true); setGalleryError(false); setWishLoadError(false); setRetry(v => v + 1); }}>{language === "ko" ? "다시 시도" : "Try again"}</Button>
           </div>
         ) : events.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
@@ -206,6 +231,10 @@ function CommunityPageInner() {
       {/* 간식 위시리스트 탭 */}
       {activeTab === "간식 위시리스트" && (
         <div className="max-w-xl">
+          {wishLoadError && <div role="alert" className="mb-4 space-y-2">
+            <p className="text-sm text-destructive">{language === "ko" ? "위시리스트를 불러오지 못했습니다." : "Could not load the wishlist."}</p>
+            <Button variant="outline" className="min-h-10" onClick={() => { setLoading(true); setGalleryError(false); setWishLoadError(false); setRetry(v => v + 1); }}>{language === "ko" ? "다시 시도" : "Try again"}</Button>
+          </div>}
           <Card className="mb-6 border-border/60 rounded-2xl">
             <CardContent className="p-5">
               <p className="text-sm font-medium mb-3 flex items-center gap-2">

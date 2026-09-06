@@ -17,20 +17,15 @@ async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
     return [];
   }
 
-  try {
-    const res = await fetch(ICAL_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error("캘린더를 불러올 수 없습니다.");
+  const res = await fetch(ICAL_URL, { cache: "no-store" });
+  if (!res.ok) throw new Error("캘린더를 불러올 수 없습니다.");
 
-    const text = await res.text();
-    const events = parseICalendar(text);
+  const text = await res.text();
+  const events = parseICalendar(text);
 
-    cachedEvents = events;
-    cacheTime = now;
-    return events;
-  } catch (error) {
-    console.error("[calendar-events]", error);
-    return [];
-  }
+  cachedEvents = events;
+  cacheTime = now;
+  return events;
 }
 
 export async function GET() {

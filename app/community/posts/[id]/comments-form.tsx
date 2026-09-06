@@ -14,19 +14,24 @@ export function PostCommentForm({ postId }: { postId: number }) {
   async function submit() {
     if (!content.trim()) return;
     setSubmitting(true); setError("");
-    const r = await fetch(`/api/posts/${postId}/comments`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: content.trim() }),
-    });
-    const data = await r.json();
-    if (r.ok) {
-      setContent("");
-      // 새로 작성된 댓글이 화면에 보이도록 reload (서버 컴포넌트라 router refresh)
-      if (typeof window !== "undefined") window.location.reload();
-    } else {
-      setError(data.error ?? "댓글 작성 실패");
+    try {
+      const r = await fetch(`/api/posts/${postId}/comments`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: content.trim() }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        setContent("");
+        // 새로 작성된 댓글이 화면에 보이도록 reload (서버 컴포넌트라 router refresh)
+        if (typeof window !== "undefined") window.location.reload();
+      } else {
+        setError(data.error ?? "댓글 작성 실패");
+      }
+    } catch {
+      setError("댓글을 전송하지 못했습니다. 연결을 확인하고 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   return (
