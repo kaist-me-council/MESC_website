@@ -29,6 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (c.requireStudentId && (studentId.length < 5 || studentId.length > 10)) return bad("학번을 입력해주세요.");
   const phone = typeof b.phone === "string" ? b.phone.trim().slice(0, 30) || null : null;
   const note = typeof b.note === "string" ? b.note.trim().slice(0, 500) || null : null;
+  const depositorName = typeof b.depositorName === "string" ? b.depositorName.trim().slice(0, 50) || null : null;
 
   // 항목 검증
   const raw = Array.isArray(b.items) ? (b.items as { optionId?: unknown; qty?: unknown }[]) : [];
@@ -68,6 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       items: JSON.stringify(items),
       total,
       note,
+      depositorName,
     },
   });
   return NextResponse.json({ order: publicOrder(order, c) }, { status: 201, ...noStore });

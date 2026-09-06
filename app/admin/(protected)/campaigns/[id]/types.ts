@@ -17,6 +17,7 @@ export interface ResolutionItem { optionId: number; group: string | null; name: 
 export interface Order {
   id: number; orderNo: string; affiliation: string; name: string; email: string; phone: string | null;
   items: OrderItem[] | string; total: number; status: Status; note: string | null; adminMemo: string | null; createdAt: string;
+  depositorName?: string | null;
   source?: "web" | "import";
   confirmation?: "received" | "not_received" | null;
   resolution?: ResolutionItem[] | string | null;

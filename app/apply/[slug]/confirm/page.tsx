@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
 import { CheckCircle2, PackageX, Lock, AlertTriangle, ClipboardCheck } from "lucide-react";
 import { LookupForm } from "../my-orders";
+import { LinkifyText } from "@/components/linkify-text";
 import { fill, localeOf, type Campaign, type Choice, type Cred, type Order, type Resolution, type T } from "../types";
 
 /** 수령 확인: 주문 조회 → 받았어요/못 받았어요 → 못 받은 항목별 처리 선택 */
@@ -67,7 +68,7 @@ export default function ConfirmPage() {
               <AlertDescription>{locked ? t("confirm.closed") : fill(t("confirm.deadlineNote"), deadline)}</AlertDescription>
             </Alert>
           )}
-          {note && <p className="mb-6 rounded-2xl bg-primary/5 p-4 text-sm whitespace-pre-line [text-wrap:pretty]">{note}</p>}
+          {note && <LinkifyText text={note} className="mb-6 rounded-2xl bg-primary/5 p-4 text-sm [text-wrap:pretty]" />}
 
           {!orders && (
             <Card className={card}>
@@ -77,7 +78,7 @@ export default function ConfirmPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <LookupForm requireStudentId={campaign.requireStudentId} loading={loading} onLookup={lookup} t={t}
-                  labels={{ byStudentId: t("confirm.modeStudent"), byEmail: t("confirm.modeEmail"), name: t("confirm.namePlaceholder"), studentId: t("confirm.studentId"), email: t("confirm.email"), button: t("confirm.checkButton"), loading: t("confirm.checking") }} />
+                  labels={{ byStudentId: t("confirm.modeStudent"), byEmail: t("confirm.modeEmail"), byOrderNo: t("apply.byOrderNo"), orderNo: t("apply.orderNoPlaceholder"), name: t("confirm.namePlaceholder"), studentId: t("confirm.studentId"), email: t("confirm.email"), button: t("confirm.checkButton"), loading: t("confirm.checking") }} />
                 {notFound && (
                   <Alert variant="destructive" className="rounded-xl"><PackageX className="h-4 w-4" /><AlertDescription>{t("confirm.notFound")}</AlertDescription></Alert>
                 )}

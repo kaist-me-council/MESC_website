@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enforce, getClientIp } from "@/lib/rate-limit";
-import { isValidString } from "@/lib/validation";
 import { studentIdHash } from "@/lib/tshirt";
-import { CHOICES, findOwnOrders, isConfirmOpen, isEmail, publicOrder, type OrderItem, type Resolution } from "@/lib/campaign";
+import { CHOICES, findOwnOrders, isConfirmOpen, parseOwnerCred, publicOrder, type OrderItem, type Resolution } from "@/lib/campaign";
 
 const noStore = { headers: { "Cache-Control": "private, no-store" } };
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status, ...noStore });
@@ -14,9 +13,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ slug: st
   const { slug } = await params;
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return bad("Invalid JSON"); }
-  const studentId = typeof b.studentId === "string" ? b.studentId.replace(/\D/g, "") : "";
-  const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
-  if (!isValidString(b.name, 50) || !isValidString(b.orderNo, 20) || (!studentId && !isEmail(email))) return bad("주문번호, 이름, 학번(또는 이메일)을 입력해주세요.");
+  const cred = parseOwnerCred(b, studentIdHash);
+  const orderNo = typeof b.orderNo === "string" ? b.orderNo.trim().toUpperCase() : "";
+  if (!cred || !orderNo) return bad("주문번호와 본인 확인 정보를 입력해주세요.");
   const confirmation = b.confirmation === "received" || b.confirmation === "not_received" ? b.confirmation : null;
   if (!confirmation) return bad("응답을 선택해주세요.");
 
@@ -24,8 +23,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ slug: st
   if (!c || !c.enabled || !c.confirmEnabled) return bad("Not found", 404);
   if (!isConfirmOpen(c)) return bad("확인 기간이 종료되었습니다.", 403);
 
-  const mine = await findOwnOrders(c.id, b.name, studentId ? studentIdHash(studentId) : null, email || null);
-  const target = mine.find((o) => o.orderNo === (b.orderNo as string).trim().toUpperCase());
+  const mine = await findOwnOrders(c.id, cred);
+  const target = mine.find((o) => o.orderNo === orderNo);
   if (!target) return bad("일치하는 신청이 없습니다.", 404);
 
   // 못 받음: 주문 항목과 optionId 로 1:1 재구성. 교환 사이즈는 같은 그룹의 옵션 이름만 허용.

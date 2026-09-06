@@ -16,20 +16,25 @@ export const statusVariant = (s: Order["status"]) =>
 /** 조회 폼 (이름 + 학번/이메일). confirm 페이지와 공유 */
 export function LookupForm({ requireStudentId, loading, onLookup, t, labels }: {
   requireStudentId: boolean; loading: boolean; onLookup: (c: Cred) => void; t: T;
-  labels: { byStudentId: string; byEmail: string; name: string; studentId: string; email: string; button: string; loading: string };
+  labels: { byStudentId: string; byEmail: string; byOrderNo: string; name: string; studentId: string; email: string; orderNo: string; button: string; loading: string };
 }) {
-  const [mode, setMode] = useState<"student" | "email">(requireStudentId ? "student" : "email");
+  const [mode, setMode] = useState<"student" | "email" | "orderNo">(requireStudentId ? "student" : "email");
   const [name, setName] = useState("");
   const [key, setKey] = useState("");
-  const go = () => name.trim() && key.trim() && onLookup({ name: name.trim(), ...(mode === "student" ? { studentId: key.trim() } : { email: key.trim() }) });
+  const go = () => {
+    if (mode === "orderNo") return key.trim() && onLookup({ orderNo: key.trim().toUpperCase() });
+    return name.trim() && key.trim() && onLookup({ name: name.trim(), ...(mode === "student" ? { studentId: key.trim() } : { email: key.trim() }) });
+  };
+  const modes = [["student", labels.byStudentId], ["email", labels.byEmail], ["orderNo", labels.byOrderNo]] as const;
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <Button type="button" size="sm" className="h-9 rounded-lg" variant={mode === "student" ? "default" : "outline"} onClick={() => setMode("student")}>{labels.byStudentId}</Button>
-        <Button type="button" size="sm" className="h-9 rounded-lg" variant={mode === "email" ? "default" : "outline"} onClick={() => setMode("email")}>{labels.byEmail}</Button>
+      <div className="flex flex-wrap gap-2">
+        {modes.map(([m, label]) => (
+          <Button key={m} type="button" size="sm" className="h-9 rounded-lg" variant={mode === m ? "default" : "outline"} onClick={() => { setMode(m); setKey(""); }}>{label}</Button>
+        ))}
       </div>
-      <Input className="h-11 rounded-xl" value={name} onChange={(e) => setName(e.target.value)} placeholder={labels.name} autoComplete="name" />
-      <Input className="h-11 rounded-xl" value={key} onChange={(e) => setKey(e.target.value)} placeholder={mode === "student" ? labels.studentId : labels.email} inputMode={mode === "student" ? "numeric" : "email"} onKeyDown={(e) => e.key === "Enter" && go()} />
+      {mode !== "orderNo" && <Input className="h-11 rounded-xl" value={name} onChange={(e) => setName(e.target.value)} placeholder={labels.name} autoComplete="name" />}
+      <Input className={`h-11 rounded-xl ${mode === "orderNo" ? "uppercase tracking-wider" : ""}`} value={key} onChange={(e) => setKey(e.target.value)} placeholder={mode === "student" ? labels.studentId : mode === "email" ? labels.email : labels.orderNo} inputMode={mode === "student" ? "numeric" : mode === "email" ? "email" : "text"} onKeyDown={(e) => e.key === "Enter" && go()} />
       <Button variant="outline" className="w-full h-11 rounded-xl" disabled={loading} onClick={go}>{loading ? labels.loading : labels.button}</Button>
       <span className="sr-only">{t("apply.privacyNote")}</span>
     </div>
@@ -75,7 +80,7 @@ export function MyOrders({ campaign, t, lang, won }: { campaign: Campaign; t: T;
       {openPanel && (
         <CardContent className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
           <LookupForm requireStudentId={campaign.requireStudentId} loading={loading} onLookup={lookup} t={t}
-            labels={{ byStudentId: t("apply.byStudentId"), byEmail: t("apply.byEmail"), name: t("apply.name"), studentId: t("apply.studentId"), email: t("apply.email"), button: t("apply.lookupButton"), loading: t("apply.loading") }} />
+            labels={{ byStudentId: t("apply.byStudentId"), byEmail: t("apply.byEmail"), byOrderNo: t("apply.byOrderNo"), name: t("apply.name"), studentId: t("apply.studentId"), email: t("apply.email"), orderNo: t("apply.orderNoPlaceholder"), button: t("apply.lookupButton"), loading: t("apply.loading") }} />
           {orders && orders.length === 0 && <p className="text-sm text-muted-foreground">{t("apply.lookupEmpty")}</p>}
           {orders?.map((o, i) => (
             <div key={o.orderNo} className="rounded-xl border border-border/60 p-3 text-sm space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-200" style={{ animationDelay: `${i * 60}ms` }}>

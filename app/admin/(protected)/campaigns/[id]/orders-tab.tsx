@@ -22,6 +22,20 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
   const [pendingBulk, setPendingBulk] = useState<Status | null>(null);
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editItems, setEditItems] = useState<{ optionId: number; qty: number }[]>([]);
+
+  // 정산 — 전체 기준 (필터 무관)
+  const settle = useMemo(() => ({
+    paidAmount: orders.filter((o) => o.status === "paid" || o.status === "delivered").reduce((a, o) => a + o.total, 0),
+    pendingAmount: orders.filter((o) => o.status === "pending").reduce((a, o) => a + o.total, 0),
+    deliveredQty: orders.filter((o) => o.status === "delivered").reduce((a, o) => a + parseItems(o).reduce((b, it) => b + it.qty, 0), 0),
+    cancelled: orders.filter((o) => o.status === "cancelled").length,
+  }), [orders]);
+
+  const adjust = useMemo<Record<string, number>>(() => { try { return c.priceAdjust ? JSON.parse(c.priceAdjust) : {}; } catch { return {}; } }, [c.priceAdjust]);
+  const editableOptions = c.options.filter((op) => op.enabled && op.id);
+  const unitPrice = (optionId: number, affiliation: string) => (editableOptions.find((op) => op.id === optionId)?.price ?? 0) + (adjust[affiliation] ?? 0);
 
   const counts = useMemo(() => ({
     all: orders.length,
@@ -76,6 +90,18 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     await put({ orderIds: [...selected], status });
     setSelected(new Set()); setPendingBulk(null);
   }
+  async function editDepositor(o: Order) {
+    const v = prompt("입금자명 (비우면 이름과 동일)", o.depositorName ?? "");
+    if (v === null) return;
+    await put({ orderId: o.id, depositorName: v });
+  }
+  const startEdit = (o: Order) => { setEditId(o.id); setEditItems(parseItems(o).map((it) => ({ optionId: it.optionId, qty: it.qty }))); };
+  async function saveEdit(o: Order) {
+    const items = editItems.filter((it) => it.optionId && it.qty >= 1);
+    if (!items.length) return;
+    await put({ orderId: o.id, items });
+    setEditId(null);
+  }
   async function editMemo(o: Order) {
     const v = prompt("관리자 메모", o.adminMemo ?? "");
     if (v === null) return;
@@ -98,6 +124,20 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {([
+          ["입금 확인 금액", `${settle.paidAmount.toLocaleString("ko-KR")}원`, "text-emerald-600"],
+          ["입금 대기 금액", `${settle.pendingAmount.toLocaleString("ko-KR")}원`, "text-amber-600"],
+          ["수령 완료", `${settle.deliveredQty.toLocaleString("ko-KR")}벌`, ""],
+          ["취소", `${settle.cancelled}건`, "text-muted-foreground"],
+        ] as [string, string, string][]).map(([label, v, cls]) => (
+          <Card key={label}><CardContent className="p-3">
+            <div className="text-xs text-muted-foreground">{label}</div>
+            <div className={`text-lg sm:text-xl font-bold tabular-nums ${cls}`}>{v}</div>
+          </CardContent></Card>
+        ))}
+      </div>
+
       <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
         {filterCards.map(([k, label, n]) => (
           <button key={k} onClick={() => setFilter(k)} className={`rounded-md border p-2 sm:p-3 text-left ${filter === k ? "ring-2 ring-primary" : ""} ${k === "unconfirmed" ? "border-l-4 border-l-amber-400" : ""}`}>
@@ -177,7 +217,32 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     {o.confirmation === "not_received" && <Badge variant="destructive" className="text-xs">못 받음</Badge>}
                   </div>
                   <div className="text-muted-foreground">{o.email}{o.phone ? ` · ${o.phone}` : ""}</div>
-                  <div>{parseItems(o).map((it) => `${itemLabel(it)}×${it.qty}`).join(", ")} · <strong>{o.total.toLocaleString("ko-KR")}원</strong></div>
+                  {o.depositorName && o.depositorName.trim() !== o.name.trim() && (
+                    <div className="text-xs font-medium text-amber-700 dark:text-amber-400">입금자명: {o.depositorName}</div>
+                  )}
+                  {editId === o.id ? (
+                    <div className="mt-1 space-y-1 rounded-md border bg-muted/30 p-2">
+                      {editItems.map((it, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <select className="h-8 flex-1 min-w-0 rounded-md border bg-background px-1 text-xs" value={it.optionId}
+                            onChange={(e) => setEditItems(editItems.map((x, j) => (j === i ? { ...x, optionId: Number(e.target.value) } : x)))}>
+                            {editableOptions.map((op) => <option key={op.id} value={op.id}>{itemLabel({ group: op.group || null, name: op.name })} ({op.price.toLocaleString("ko-KR")}원)</option>)}
+                          </select>
+                          <input type="number" min={1} className="h-8 w-14 rounded-md border bg-background px-1 text-xs" value={it.qty}
+                            onChange={(e) => setEditItems(editItems.map((x, j) => (j === i ? { ...x, qty: Math.max(1, Number(e.target.value) || 1) } : x)))} />
+                          <button type="button" className="px-1 text-xs text-destructive" onClick={() => setEditItems(editItems.filter((_, j) => j !== i))}>삭제</button>
+                        </div>
+                      ))}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <Button size="sm" variant="outline" disabled={!editableOptions.length} onClick={() => setEditItems([...editItems, { optionId: editableOptions[0]?.id ?? 0, qty: 1 }])}>줄 추가</Button>
+                        <span className="text-xs">합계 <strong>{editItems.reduce((a, it) => a + unitPrice(it.optionId, o.affiliation) * it.qty, 0).toLocaleString("ko-KR")}원</strong></span>
+                        <Button size="sm" disabled={busy || !editItems.length} onClick={() => saveEdit(o)}>저장</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>취소</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>{parseItems(o).map((it) => `${itemLabel(it)}×${it.qty}`).join(", ")} · <strong>{o.total.toLocaleString("ko-KR")}원</strong></div>
+                  )}
                   {res && <div className="text-xs">처리 선택: {res.map((r) => `${itemLabel(r)}×${r.qty} ${CHOICE_LABEL[r.choice]}${r.choice === "exchange" && r.exchangeName ? `→${r.exchangeName}` : ""}`).join(", ")}</div>}
                   {o.confirmNote && <div className="text-xs">확인 메모: {o.confirmNote}</div>}
                   {o.note && <div className="text-xs">메모: {o.note}</div>}
@@ -199,6 +264,8 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                       ? <><Button size="sm" variant="destructive" disabled={busy} onClick={() => { setCancelId(null); setStatus(o, "cancelled"); }}>정말 취소</Button><Button size="sm" variant="ghost" onClick={() => setCancelId(null)}>아니오</Button></>
                       : <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setCancelId(o.id)}>취소</Button>}
                   <Button size="sm" variant="ghost" onClick={() => editMemo(o)}>메모</Button>
+                  <Button size="sm" variant="ghost" onClick={() => editDepositor(o)}>입금자명</Button>
+                  {o.status !== "cancelled" && editId !== o.id && <Button size="sm" variant="ghost" onClick={() => startEdit(o)}>항목 수정</Button>}
                 </div>
               </CardContent>
             </Card>

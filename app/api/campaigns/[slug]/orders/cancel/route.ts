@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enforce, getClientIp } from "@/lib/rate-limit";
-import { isValidString } from "@/lib/validation";
 import { studentIdHash } from "@/lib/tshirt";
-import { findOwnOrders, isEmail, publicOrder } from "@/lib/campaign";
+import { findOwnOrders, parseOwnerCred, publicOrder } from "@/lib/campaign";
 
 const noStore = { headers: { "Cache-Control": "private, no-store" } };
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status, ...noStore });
@@ -14,14 +13,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params;
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return bad("Invalid JSON"); }
-  const studentId = typeof b.studentId === "string" ? b.studentId.replace(/\D/g, "") : "";
-  const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
-  if (!isValidString(b.name, 50) || !isValidString(b.orderNo, 20) || (!studentId && !isEmail(email))) return bad("주문번호, 이름, 학번(또는 이메일)을 입력해주세요.");
+  const cred = parseOwnerCred(b, studentIdHash);
+  const orderNo = typeof b.orderNo === "string" ? b.orderNo.trim().toUpperCase() : "";
+  if (!cred || !orderNo) return bad("주문번호와 본인 확인 정보를 입력해주세요.");
 
   const c = await prisma.campaign.findUnique({ where: { slug } });
   if (!c) return bad("Not found", 404);
-  const mine = await findOwnOrders(c.id, b.name, studentId ? studentIdHash(studentId) : null, email || null);
-  const target = mine.find((o) => o.orderNo === (b.orderNo as string).trim().toUpperCase());
+  const mine = await findOwnOrders(c.id, cred);
+  const target = mine.find((o) => o.orderNo === orderNo);
   if (!target) return bad("일치하는 신청이 없습니다.", 404);
   if (target.status === "cancelled") return NextResponse.json({ order: publicOrder(target, c) }, noStore);
   if (target.status !== "pending") return bad("입금 확인 후에는 학생회에 문의해 취소해주세요.", 409);

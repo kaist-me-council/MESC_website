@@ -18,7 +18,7 @@ export interface Resolution extends OrderItem { choice: Choice; exchangeName?: s
 
 export interface Order {
   orderNo: string; status: "pending" | "paid" | "delivered" | "cancelled"; items: OrderItem[]; total: number; createdAt: string;
-  affiliation: string; name: string; source?: "web" | "import";
+  affiliation: string; name: string; depositorName?: string | null; source?: "web" | "import";
   confirmation?: "received" | "not_received" | null; resolution?: Resolution[] | null; confirmNote?: string | null; confirmedAt?: string | null;
   canCancel?: boolean; bankInfo?: string | null; afterNote?: string | null; afterNoteEn?: string | null;
 }
@@ -29,7 +29,7 @@ export const fill = (s: string, v: string | number) => s.replace("{n}", String(v
 export const localeOf = (lang: string) => (lang === "ko" ? "ko-KR" : "en-US");
 
 /** 본인 확인용 자격 증명 (이름 + 학번 또는 이메일) */
-export interface Cred { name: string; studentId?: string; email?: string }
+export interface Cred { name?: string; studentId?: string; email?: string; orderNo?: string }
 
 export async function copyText(text: string) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }

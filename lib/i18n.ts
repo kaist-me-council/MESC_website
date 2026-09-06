@@ -117,6 +117,10 @@ export const translations = {
         label: "학습자료",
         desc: "강의자료 및 시험 정보 공유",
       },
+      events: {
+        label: "학생회 이벤트",
+        desc: "단체복·행사 신청과 내 신청 확인",
+      },
     },
     // Notices Page
     notices: {
@@ -305,6 +309,11 @@ export const translations = {
       lookupEmpty: "일치하는 신청이 없습니다.",
       byStudentId: "학번으로",
       byEmail: "이메일로",
+      byOrderNo: "주문번호로",
+      orderNoPlaceholder: "주문번호 (예: TSHI-7K2M9Q)",
+      depositorName: "입금자명 (선택)",
+      depositorPlaceholder: "비우면 이름과 동일",
+      depositorLabel: "입금자명",
       status_pending: "입금 대기",
       status_paid: "입금 확인",
       status_delivered: "수령 완료",
@@ -496,6 +505,10 @@ export const translations = {
         label: "Learning Resources",
         desc: "Share lecture materials and exam information",
       },
+      events: {
+        label: "Council Events",
+        desc: "Sign up for merch & events, check your order",
+      },
     },
     // Notices Page
     notices: {
@@ -684,6 +697,11 @@ export const translations = {
       lookupEmpty: "No matching application.",
       byStudentId: "By student ID",
       byEmail: "By email",
+      byOrderNo: "By order no.",
+      orderNoPlaceholder: "Order number (e.g. TSHI-7K2M9Q)",
+      depositorName: "Depositor name (optional)",
+      depositorPlaceholder: "Leave blank if same as your name",
+      depositorLabel: "Depositor",
       status_pending: "Awaiting payment",
       status_paid: "Payment confirmed",
       status_delivered: "Delivered",

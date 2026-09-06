@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
 import { CheckCircle2, AlertTriangle, Lock, Minus, Plus, Landmark, Copy, Check, Shirt, ClipboardCheck } from "lucide-react";
 import { GoodsPicker } from "./goods-picker";
+import { LinkifyText } from "@/components/linkify-text";
 import { MyOrders } from "./my-orders";
 import { AFFILIATIONS, copyText, fill, localeOf, type Affiliation, type Campaign, type Option, type Order } from "./types";
 
@@ -27,6 +28,7 @@ export default function ApplyCampaignPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
+  const [depositorName, setDepositorName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
@@ -63,7 +65,7 @@ export default function ApplyCampaignPage() {
     setSubmitting(true); setError("");
     const res = await fetch(`/api/campaigns/${slug}/orders`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, note: note.trim() || undefined, items }),
+      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, items }),
     });
     const d = await res.json().catch(() => ({}));
     setSubmitting(false);
@@ -109,7 +111,7 @@ export default function ApplyCampaignPage() {
           {campaign.confirmOpen && <Badge variant="secondary" className="text-xs">{t("apply.confirmOpenBadge")}</Badge>}
           {campaign.closesAt && <span className="text-xs text-muted-foreground">{t("apply.until")} {fmt(campaign.closesAt)}</span>}
         </div>
-        {description && <p className="text-muted-foreground whitespace-pre-line mb-6 [text-wrap:pretty]">{description}</p>}
+        {description && <LinkifyText text={description} className="text-muted-foreground mb-6 [text-wrap:pretty]" />}
       </div>
 
       {campaign.confirmOpen && !order && (
@@ -184,6 +186,7 @@ export default function ApplyCampaignPage() {
             <Field label={campaign.requireStudentId ? t("apply.studentId") : t("apply.studentIdOptional")} htmlFor="sid"><Input id="sid" className="h-11 rounded-xl" inputMode="numeric" value={studentId} disabled={!campaign.open} onChange={(e) => setStudentId(e.target.value)} placeholder="20250001" /></Field>
             <Field label={t("apply.email")} htmlFor="email"><Input id="email" className="h-11 rounded-xl" type="email" value={email} disabled={!campaign.open} onChange={(e) => setEmail(e.target.value)} placeholder="id@kaist.ac.kr" autoComplete="email" /></Field>
             <Field label={t("apply.phoneOptional")} htmlFor="phone"><Input id="phone" className="h-11 rounded-xl" type="tel" value={phone} disabled={!campaign.open} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" autoComplete="tel" /></Field>
+            <Field label={t("apply.depositorName")} htmlFor="depositor"><Input id="depositor" className="h-11 rounded-xl" value={depositorName} disabled={!campaign.open} onChange={(e) => setDepositorName(e.target.value)} placeholder={t("apply.depositorPlaceholder")} /></Field>
             <Field label={t("apply.note")} htmlFor="note"><Textarea id="note" className="rounded-xl" rows={2} value={note} disabled={!campaign.open} onChange={(e) => setNote(e.target.value)} /></Field>
 
             <div className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-3">
@@ -261,9 +264,10 @@ function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: num
             </div>
             <p className="whitespace-pre-line select-all">{order.bankInfo}</p>
             <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
+            <p className="text-xs">{t("apply.depositorLabel")}: <strong>{order.depositorName || order.name}</strong></p>
           </div>
         )}
-        {after && <p className="text-sm whitespace-pre-line [text-wrap:pretty]">{after}</p>}
+        {after && <LinkifyText text={after} className="text-sm [text-wrap:pretty]" />}
         <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.screenshot")}</AlertDescription></Alert>
         <Button variant="outline" className="w-full h-11 rounded-xl" onClick={onReset}>{t("apply.newOrder")}</Button>
       </CardContent>

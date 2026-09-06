@@ -412,6 +412,7 @@ model CampaignOrder {
   status        String   @default("pending") // pending | paid | delivered | cancelled
   note          String?
   adminMemo     String?
+  depositorName String?  // 입금자명. null = 이름과 동일
   source        String   @default("web") // web | import
   confirmation  String?  // received | not_received
   resolution    String?  // JSON Resolution[]
