@@ -370,3 +370,63 @@ model PriorPurchase {
   @@index([studentIdHash])
   @@index([email])
 }
+
+// 학생회 이벤트(신청·구매 캠페인). 설계: docs/superpowers/specs/2026-09-07-campaign-system-design.md
+model Campaign {
+  id               Int       @id @default(autoincrement())
+  slug             String    @unique
+  title            String
+  titleEn          String?
+  description      String?
+  descriptionEn    String?
+  enabled          Boolean   @default(false)
+  opensAt          DateTime?
+  closesAt         DateTime?
+  bankInfo         String?
+  afterNote        String?
+  afterNoteEn      String?
+  allowQty         Boolean   @default(true)
+  maxPerPerson     Int?
+  requireStudentId Boolean   @default(true)
+  priceAdjust      String?   // JSON {"대학원생":1000}
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  options          CampaignOption[]
+  orders           CampaignOrder[]
+}
+
+model CampaignOption {
+  id         Int      @id @default(autoincrement())
+  campaignId Int
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  group      String?
+  name       String
+  nameEn     String?
+  price      Int      @default(0)
+  stock      Int?
+  order      Int      @default(0)
+  enabled    Boolean  @default(true)
+  @@index([campaignId, order])
+}
+
+model CampaignOrder {
+  id            Int      @id @default(autoincrement())
+  campaignId    Int
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  orderNo       String   @unique
+  affiliation   String
+  name          String
+  studentIdHash String?
+  email         String
+  phone         String?
+  items         String   // JSON [{optionId, group, name, qty, unitPrice}]
+  total         Int
+  status        String   @default("pending") // pending | paid | delivered | cancelled
+  note          String?
+  adminMemo     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([campaignId, status])
+  @@index([campaignId, studentIdHash])
+  @@index([campaignId, email])
+}

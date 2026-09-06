@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { auth, signOut } from "@/lib/auth";
-import { Settings, Bell, BookOpen, BookMarked, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera, Cookie, Megaphone, Building2, UserSquare, MessageSquare, Wrench, Shirt } from "lucide-react";
+import { Settings, Bell, BookOpen, BookMarked, Users, Home, ExternalLink, ShieldCheck, LogOut, GraduationCap, Camera, Cookie, Megaphone, Building2, UserSquare, MessageSquare, Wrench, Shirt, Ticket } from "lucide-react";
 import { AdminGuide } from "@/components/admin-guide";
 
 export default async function AdminPage() {
@@ -93,6 +93,13 @@ export default async function AdminPage() {
       icon: Shirt,
       desc: "1차 구매 명단 적재·수령 확인 응답 관리",
       color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+    },
+    {
+      href: "/admin/campaigns",
+      label: "학생회 이벤트",
+      icon: Ticket,
+      desc: "신청·구매 캠페인 관리",
+      color: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
     },
     {
       href: "/admin/site",

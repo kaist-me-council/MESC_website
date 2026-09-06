@@ -29,6 +29,7 @@ export default function AdminShopPage() {
   const [preview, setPreview] = useState<{ count: number; problems: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [copied, setCopied] = useState("");
 
   async function load() {
     const res = await fetch("/api/admin/shop/prior", { cache: "no-store" });
@@ -36,7 +37,7 @@ export default function AdminShopPage() {
     const data = await res.json();
     setRows(data.rows);
   }
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { Promise.resolve().then(load); }, []);
 
   const stats = useMemo(() => ({
     total: rows.length,
@@ -88,6 +89,12 @@ export default function AdminShopPage() {
     await fetch("/api/admin/shop/prior", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: r.id, response }) });
     load();
   }
+  async function copyEmails() {
+    const emails = [...new Set(visible.map((r) => r.email.trim().toLowerCase()).filter(Boolean))];
+    await navigator.clipboard.writeText(emails.join(", "));
+    setCopied(`${emails.length}개 복사됨`);
+    setTimeout(() => setCopied(""), 2500);
+  }
   async function editNote(r: Row) {
     const v = prompt("관리자 메모", r.responseNote ?? "");
     if (v === null) return;
@@ -121,7 +128,9 @@ export default function AdminShopPage() {
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={replace} onCheckedChange={(v) => setReplace(v === true)} /> 기존 명단 지우고 새로 넣기</label>
             <Button size="sm" variant="outline" disabled={!csvText.trim() || busy} onClick={dryRun}>미리보기</Button>
             <Button size="sm" disabled={!preview || busy} onClick={doImport}>적재</Button>
-            {rows.length > 0 && <a className="text-sm underline ml-auto" href="/api/admin/shop/prior?format=csv">CSV 내보내기</a>}
+            {rows.length > 0 && <Button size="sm" variant="outline" className="ml-auto" disabled={visible.length === 0} onClick={copyEmails}>이메일 복사 (현재 필터)</Button>}
+            {copied && <span className="text-sm text-muted-foreground">{copied}</span>}
+            {rows.length > 0 && <a className="text-sm underline" href="/api/admin/shop/prior?format=csv">CSV 내보내기</a>}
           </div>
           {preview && (
             <div className="rounded-md bg-muted/40 p-3 text-sm space-y-1">
