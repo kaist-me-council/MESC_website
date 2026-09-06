@@ -351,25 +351,6 @@ model AdminAccount {
   createdAt    DateTime @default(now())
 }
 
-// 반팔티 1차 구매 확인 (2026-09). 학번 원문 미저장 — studentIdHash 만.
-model PriorPurchase {
-  id            Int       @id @default(autoincrement())
-  affiliation   String
-  name          String
-  studentIdHash String?
-  email         String
-  phone         String?
-  items         String    // JSON Item[]
-  pickedUp      Boolean   @default(false)
-  memo          String?
-  response      String?   // received | not_received
-  resolution    String?   // JSON Resolution[]
-  responseNote  String?
-  respondedAt   DateTime?
-  createdAt     DateTime  @default(now())
-  @@index([studentIdHash])
-  @@index([email])
-}
 
 // 학생회 이벤트(신청·구매 캠페인). 설계: docs/superpowers/specs/2026-09-07-campaign-system-design.md
 model Campaign {
@@ -389,6 +370,12 @@ model Campaign {
   maxPerPerson     Int?
   requireStudentId Boolean   @default(true)
   priceAdjust      String?   // JSON {"대학원생":1000}
+  kind             String    @default("signup") // goods | signup
+  imageUrl         String?
+  confirmEnabled   Boolean   @default(false)
+  confirmDeadline  DateTime?
+  confirmNote      String?
+  confirmNoteEn    String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   options          CampaignOption[]
@@ -424,6 +411,11 @@ model CampaignOrder {
   status        String   @default("pending") // pending | paid | delivered | cancelled
   note          String?
   adminMemo     String?
+  source        String   @default("web") // web | import
+  confirmation  String?  // received | not_received
+  resolution    String?  // JSON Resolution[]
+  confirmNote   String?
+  confirmedAt   DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@index([campaignId, status])

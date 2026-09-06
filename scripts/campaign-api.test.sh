@@ -72,5 +72,68 @@ curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$CID" -d "{\"slug\":\"$SLUG\",\
 echo "## delete empty campaign -> ok"
 C2=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d "{\"slug\":\"$SLUG-empty\",\"title\":\"빈 캠페인\"}" | py "print(d['campaign']['id'])")
 curl -s "${A[@]}" -X DELETE "$B/api/admin/campaigns/$C2" | py "assert d['ok']; print('ok')"
+
+# ===================== v2 =====================
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$CID" -d "{\"slug\":\"$SLUG\",\"title\":\"API 테스트\",\"enabled\":true}" >/dev/null
+echo "## v2: self-cancel — new order pending -> cancel ok; paid -> 409"
+ORD2=$(curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$SLUG/orders" -d "{\"affiliation\":\"학부생\",\"name\":\"취소 테스트\",\"studentId\":\"20990003\",\"email\":\"c@kaist.ac.kr\",\"items\":[{\"optionId\":$O2,\"qty\":1}]}")
+NO2=$(echo "$ORD2" | py "o=d['order']; assert o['canCancel'] and o['status']=='pending'; print(o['orderNo'])")
+curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$SLUG/orders/cancel" -d "{\"orderNo\":\"$NO2\",\"name\":\"취소테스트\",\"studentId\":\"20990003\"}" | py "assert d['order']['status']=='cancelled' and not d['order']['canCancel']; print('cancel ok')"
+ORD3=$(curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$SLUG/orders" -d "{\"affiliation\":\"학부생\",\"name\":\"입금 테스트\",\"studentId\":\"20990004\",\"email\":\"p@kaist.ac.kr\",\"items\":[{\"optionId\":$O2,\"qty\":1}]}")
+NO3=$(echo "$ORD3" | py "print(d['order']['orderNo'])")
+OID3=$(curl -s "${A[@]}" "$B/api/admin/campaigns/$CID/orders" | py "print([o['id'] for o in d['orders'] if o['orderNo']=='$NO3'][0])")
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$CID/orders" -d "{\"orderId\":$OID3,\"status\":\"paid\"}" >/dev/null
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$SLUG/orders/cancel" -d "{\"orderNo\":\"$NO3\",\"name\":\"입금 테스트\",\"studentId\":\"20990004\"}"); [ "$RC" = 409 ] || fail "paid order cancellable ($RC)"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$SLUG/orders/cancel" -d "{\"orderNo\":\"$NO3\",\"name\":\"입금 테스트\",\"studentId\":\"20990009\"}"); [ "$RC" = 404 ] || fail "wrong cred cancel ($RC)"
+echo "paid cancel blocked ok"
+
+echo "## v2: bulk status + 입금 취소(paid->pending)"
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$CID/orders" -d "{\"orderIds\":[$OID,$OID3],\"status\":\"delivered\"}" | py "assert d['updated']==2; print('bulk ok')"
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$CID/orders" -d "{\"orderId\":$OID3,\"status\":\"pending\"}" | py "assert d['ok']; print('입금 취소 ok')"
+curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$SLUG/lookup" -d '{"name":"입금테스트","studentId":"20990004"}' | py "assert d['orders'][0]['status']=='pending' and d['orders'][0]['canCancel']; print('ok')"
+
+echo "## v2: preset tshirt campaign (create, dup -> 409)"
+PRE=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d '{"preset":"tshirt-2026-spring"}')
+PID=$(echo "$PRE" | py "c=d['campaign']; assert c['slug']=='2026-spring-tshirt' and c['kind']=='goods' and c['confirmEnabled'] and len(c['options'])==14; print(c['id'])")
+RC=$(code "${A[@]}" -X POST "$B/api/admin/campaigns" -d '{"preset":"tshirt-2026-spring"}'); [ "$RC" = 409 ] || fail "preset dup ($RC)"
+curl -s "$B/api/campaigns/2026-spring-tshirt" | py "c=d['campaign']; assert c['confirmOpen'] and not c['open'] and c['kind']=='goods'; print('public ok: confirmOpen, closed for orders')"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/2026-spring-tshirt/orders" -d "{\"affiliation\":\"학부생\",\"name\":\"x\",\"studentId\":\"20990001\",\"email\":\"x@kaist.ac.kr\",\"items\":[]}"); [ "$RC" = 403 ] || fail "closed campaign accepted order ($RC)"
+
+echo "## v2: tshirt-mode import dryRun -> run (no new options), generic import creates option"
+CSV=$(printf '%s\n' '구분,이름,학번,전화번호,이메일,흰색,검정,배부자,픽업 유무,,메일' '학부생,수령 확인일,20990011,01000000001,i1@kaist.ac.kr,XL 1개,L 2개,신예승,TRUE,,"a@x, b@y"' '교수님,확인교수,,01000000002,i2@kaist.ac.kr,,M 1개,,FALSE,,' '대학원생,확인삼,20990013,,i3@kaist.ac.kr,2XL 1개 --> XL 1개로 수정,이상함,,FALSE,,')
+J1=$(python3 -c "import json,sys;print(json.dumps({'csv':sys.argv[1],'mode':'tshirt','dryRun':True}))" "$CSV")
+curl -s "${A[@]}" -X POST "$B/api/admin/campaigns/$PID/orders/import" -d "$J1" | py "assert d['count']==3 and d['newOptions']==[] and len(d['problems'])==1 and 'studentIdHash' not in json.dumps(d); print('dryRun ok', d['problems'])"
+J2=$(python3 -c "import json,sys;print(json.dumps({'csv':sys.argv[1],'mode':'tshirt','replace':True}))" "$CSV")
+curl -s "${A[@]}" -X POST "$B/api/admin/campaigns/$PID/orders/import" -d "$J2" | py "assert d['imported']==3 and d['createdOptions']==[]; print('import ok')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$PID/orders" | py "st={o['name']:(o['status'],o['source']) for o in d['orders']}; assert st['수령 확인일']==('delivered','import') and st['확인교수']==('paid','import'); print('statuses ok')"
+curl -s "${A[@]}" -X POST "$B/api/admin/campaigns/$PID/orders/import" -d "$J2" | py "assert d['imported']==3; print('replace ok')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$PID/orders" | py "assert len(d['orders'])==3; print('replace kept 3')"
+GEN=$(printf '%s\n' '구분,이름,학번,전화,이메일,항목,상태' '학부생,일반 적재,20990021,,g@kaist.ac.kr,흰색 XL×1; 후드 L x2,입금')
+J3=$(python3 -c "import json,sys;print(json.dumps({'csv':sys.argv[1],'mode':'generic','dryRun':True}))" "$GEN")
+curl -s "${A[@]}" -X POST "$B/api/admin/campaigns/$PID/orders/import" -d "$J3" | py "assert d['newOptions']==[{'group':'후드','name':'L'}], d; print('generic dryRun ok')"
+J4=$(python3 -c "import json,sys;print(json.dumps({'csv':sys.argv[1],'mode':'generic'}))" "$GEN")
+curl -s "${A[@]}" -X POST "$B/api/admin/campaigns/$PID/orders/import" -d "$J4" | py "assert d['imported']==1 and d['createdOptions']==[{'group':'후드','name':'L'}]; print('generic import ok')"
+
+echo "## v2: confirm — received / not_received with exchange / wrong exchange group ignored"
+IMPNO=$(curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/2026-spring-tshirt/lookup" -d '{"name":"수령확인일","studentId":"20990011"}' | py "o=d['orders'][0]; assert o['source']=='import' and o['confirmation'] is None and o['campaign']['confirmOpen']; print(o['orderNo'])")
+curl -s -H 'Content-Type: application/json' -X PUT "$B/api/campaigns/2026-spring-tshirt/confirm" -d "{\"orderNo\":\"$IMPNO\",\"name\":\"수령 확인일\",\"studentId\":\"20990011\",\"confirmation\":\"received\"}" | py "o=d['order']; assert o['confirmation']=='received' and o['resolution'] is None and o['confirmedAt']; print('received ok')"
+OPTS=$(curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/2026-spring-tshirt/lookup" -d '{"name":"수령확인일","studentId":"20990011"}' | py "o=d['orders'][0]; print(' '.join(str(i['optionId']) for i in o['items']))")
+W=${OPTS% *}; K=${OPTS#* }
+curl -s -H 'Content-Type: application/json' -X PUT "$B/api/campaigns/2026-spring-tshirt/confirm" -d "{\"orderNo\":\"$IMPNO\",\"name\":\"수령 확인일\",\"studentId\":\"20990011\",\"confirmation\":\"not_received\",\"resolution\":[{\"optionId\":$K,\"choice\":\"exchange\",\"exchangeName\":\"XL\"},{\"optionId\":$W,\"choice\":\"refund\"}],\"note\":\"검정만 못 받음\"}" \
+  | py "o=d['order']; r={x['optionId']:x for x in o['resolution']}; assert r[$W]['choice']=='refund' and r[$K]['choice']=='exchange' and r[$K]['exchangeName']=='XL' and o['confirmNote']=='검정만 못 받음'; print('not_received ok')"
+curl -s -H 'Content-Type: application/json' -X PUT "$B/api/campaigns/2026-spring-tshirt/confirm" -d "{\"orderNo\":\"$IMPNO\",\"name\":\"수령 확인일\",\"studentId\":\"20990011\",\"confirmation\":\"not_received\",\"resolution\":[{\"optionId\":$K,\"choice\":\"exchange\",\"exchangeName\":\"없는사이즈\"}]}" \
+  | py "r={x['optionId']:x for x in d['order']['resolution']}; assert r[$K]['choice']=='exchange' and 'exchangeName' not in r[$K] or r[$K].get('exchangeName') is None; assert r[$W]['choice']=='pickup'; print('bad exchange ignored, default pickup ok')"
+RC=$(code -H 'Content-Type: application/json' -X PUT "$B/api/campaigns/2026-spring-tshirt/confirm" -d "{\"orderNo\":\"$IMPNO\",\"name\":\"엉뚱\",\"studentId\":\"20990011\",\"confirmation\":\"received\"}"); [ "$RC" = 404 ] || fail "confirm wrong name ($RC)"
+RC=$(code -H 'Content-Type: application/json' -X PUT "$B/api/campaigns/$SLUG/confirm" -d "{\"orderNo\":\"$NO3\",\"name\":\"입금 테스트\",\"studentId\":\"20990004\",\"confirmation\":\"received\"}"); [ "$RC" = 404 ] || fail "confirm on campaign without confirmEnabled ($RC)"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$PID/orders?format=csv" | head -1 | grep -q "수령확인" || fail "csv missing confirm columns"
+curl -s "${A[@]}" "$B/api/admin/campaigns" | py "c=[c for c in d['campaigns'] if c['id']==$PID][0]; assert c['confirmedCount']==1; print('confirmedCount ok')"
+echo "## v2: confirm deadline passed -> 403"
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$PID" -d '{"slug":"2026-spring-tshirt","title":"t","enabled":true,"kind":"goods","confirmEnabled":true,"confirmDeadline":"2020-01-01T00:00:00Z"}' | py "assert d['campaign']['confirmEnabled']; print('deadline set')"
+RC=$(code -H 'Content-Type: application/json' -X PUT "$B/api/campaigns/2026-spring-tshirt/confirm" -d "{\"orderNo\":\"$IMPNO\",\"name\":\"수령 확인일\",\"studentId\":\"20990011\",\"confirmation\":\"received\"}")
+if [ "$RC" = 429 ]; then echo "rate-limited (20/min) — waiting 61s"; sleep 61; RC=$(code -H 'Content-Type: application/json' -X PUT "$B/api/campaigns/2026-spring-tshirt/confirm" -d "{\"orderNo\":\"$IMPNO\",\"name\":\"수령 확인일\",\"studentId\":\"20990011\",\"confirmation\":\"received\"}"); fi
+[ "$RC" = 403 ] || fail "confirm after deadline ($RC)"
+echo "## v2: /shop/check redirects"
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$B/shop/check"); case "$RC" in 200|307|308) echo "redirect ok ($RC)";; *) fail "/shop/check $RC";; esac
+case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug='2026-spring-tshirt'" && echo "preset test campaign removed";; esac
 case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug LIKE 'apitest-%'" && echo "local dev.db test rows removed";; esac
 echo "ALL PASSED"

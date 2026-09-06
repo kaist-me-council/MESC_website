@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { enforce, getClientIp } from "@/lib/rate-limit";
 import { isValidString } from "@/lib/validation";
 import { studentIdHash } from "@/lib/tshirt";
-import { isEmail, normName, publicOrder } from "@/lib/campaign";
+import { findOwnOrders, isEmail, publicOrder } from "@/lib/campaign";
 
 const noStore = { headers: { "Cache-Control": "private, no-store" } };
 
@@ -22,10 +22,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const c = await prisma.campaign.findUnique({ where: { slug } });
   if (!c) return NextResponse.json({ orders: [] }, noStore);
 
-  const or = [];
-  if (studentId) or.push({ studentIdHash: studentIdHash(studentId) });
-  if (email) or.push({ email });
-  const rows = await prisma.campaignOrder.findMany({ where: { campaignId: c.id, OR: or }, orderBy: { createdAt: "desc" } });
-  const mine = rows.filter((o) => normName(o.name) === normName(b.name as string));
+  const mine = await findOwnOrders(c.id, b.name as string, studentId ? studentIdHash(studentId) : null, email || null);
   return NextResponse.json({ orders: mine.map((o) => publicOrder(o, c)) }, noStore);
 }
