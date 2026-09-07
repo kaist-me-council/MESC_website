@@ -58,10 +58,10 @@ export function unitPrice(option: Pick<CampaignOption, "price">, campaign: Pick<
 
 /** optionId → 남은 수량 (stock null 이면 null). 취소 제외 주문 수량 합을 뺀다. */
 export async function availability(campaignId: number): Promise<Map<number, number | null>> {
-  const [options, orders] = await Promise.all([
-    prisma.campaignOption.findMany({ where: { campaignId }, select: { id: true, stock: true } }),
-    prisma.campaignOrder.findMany({ where: { campaignId, status: { not: "cancelled" } }, select: { items: true } }),
-  ]);
+  const options = await prisma.campaignOption.findMany({ where: { campaignId }, select: { id: true, stock: true } });
+  // 재고 제한 옵션이 하나도 없으면 주문 스캔 생략 (공개 페이지 조회마다 호출되므로)
+  if (options.every((o) => o.stock === null)) return new Map(options.map((o) => [o.id, null]));
+  const orders = await prisma.campaignOrder.findMany({ where: { campaignId, status: { not: "cancelled" } }, select: { items: true } });
   const used = new Map<number, number>();
   for (const o of orders) {
     for (const it of JSON.parse(o.items) as OrderItem[]) used.set(it.optionId, (used.get(it.optionId) ?? 0) + it.qty);
