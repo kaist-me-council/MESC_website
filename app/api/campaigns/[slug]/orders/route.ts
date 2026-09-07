@@ -11,7 +11,7 @@ const bad = (error: string, status = 400, extra: Record<string, unknown> = {}) =
 
 // 공개: 신청 생성. 금액·재고는 서버가 계산/검증한다.
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
-  if (!enforce(getClientIp(req), "apply", 20, 60_000).ok) return bad("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", 429);
+  if (!enforce(getClientIp(req), "apply", 60, 60_000).ok) return bad("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", 429);
   const { slug } = await params;
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return bad("Invalid JSON"); }
