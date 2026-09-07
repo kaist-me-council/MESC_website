@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { parseId } from "@/lib/validation";
 import { studentIdHash } from "@/lib/tshirt";
 import { ensureOptions, importOrders, parseImportCsv } from "@/lib/campaign";
@@ -17,7 +18,8 @@ const noStore = { headers: { "Cache-Control": "private, no-store" } };
  * 학번은 파서에서 즉시 해시, 원문은 응답에 없다.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await auth())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = parseId((await params).id);
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   let b: Record<string, unknown>;
@@ -48,5 +50,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (b.replace) await tx.campaignOrder.deleteMany({ where: { campaignId: id, source: "import" } });
     return importOrders(campaign, rows, tx);
   });
+  await audit(session.user?.name ?? "unknown", "order.import", `campaign:${id}`, `${rows.length}건 적재${b.replace ? " (기존 적재분 교체)" : ""}`);
   return NextResponse.json({ ...result, problems }, noStore);
 }

@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/lib/language-context";
+import { request, type ReqFail } from "@/lib/fetch-state";
+import { LoadError } from "@/components/load-error";
 
 interface Notice {
   id: number;
@@ -44,6 +46,8 @@ function NoticesContent() {
     categoryFromSlug(searchParams.get("category"))
   );
   const [loading, setLoading] = useState(true);
+  const [fail, setFail] = useState<ReqFail | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
   const { t, lang } = useLanguage();
 
   const CATEGORIES = [
@@ -54,13 +58,16 @@ function NoticesContent() {
   ];
 
   useEffect(() => {
-    fetch("/api/notices")
-      .then((r) => r.json())
-      .then((data) => {
-        setNotices(data);
-        setLoading(false);
-      });
-  }, []);
+    let alive = true;
+    // 통신 실패를 "공지 없음"으로 보여 주지 않기 위해 결과를 판별해서 담는다.
+    request<Notice[]>("/api/notices").then((r) => {
+      if (!alive) return;
+      if (r.ok && Array.isArray(r.data)) { setNotices(r.data); setFail(null); }
+      else setFail(r.ok ? { ok: false, kind: "server", status: 200, body: {} } : r);
+      setLoading(false);
+    });
+    return () => { alive = false; };
+  }, [retryTick]);
 
   // 뒤로가기 등으로 URL의 category 쿼리가 바뀌면 탭 상태를 동기화한다.
   useEffect(() => {
@@ -95,6 +102,8 @@ function NoticesContent() {
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">{t("notices.loading")}</div>
+      ) : fail ? (
+        <LoadError fail={fail} t={t} onRetry={() => { setLoading(true); setFail(null); setRetryTick((v) => v + 1); }} />
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">{t("notices.empty")}</div>
       ) : (

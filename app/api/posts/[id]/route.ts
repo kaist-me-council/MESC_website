@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { parseId } from "@/lib/validation";
+import { readVisitorToken, visitorHash } from "@/lib/visitor";
 
 // 공개: 게시글 1개 + 댓글
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +19,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       content: true,
       authorTag: true,
       commentCount: true,
+      viewCount: true,
+      likeCount: true,
       createdAt: true,
       comments: {
         where: { hidden: false },
@@ -27,7 +30,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     },
   });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(post);
+
+  // 현재 방문자가 좋아요를 눌렀는지 (쿠키가 없으면 false — 여기서 발급하지는 않는다)
+  const token = await readVisitorToken();
+  const liked = token
+    ? !!(await prisma.postLike.findUnique({
+        where: { postId_voterHash: { postId: id, voterHash: visitorHash(token, "like") } },
+        select: { id: true },
+      }))
+    : false;
+  return NextResponse.json({ ...post, liked });
 }
 
 // 관리자만: 강제 삭제 + hidden 토글

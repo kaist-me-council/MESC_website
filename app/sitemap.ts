@@ -16,6 +16,10 @@ const STATIC_PATHS = [
   "/courses",
   "/members",
   "/department-info",
+  "/apply",
+  "/library",
+  "/privacy",
+  "/terms",
 ];
 
 export const dynamic = "force-dynamic";
@@ -49,6 +53,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch {
     // 무시: 정적 경로만으로 사이트맵 반환
+  }
+
+  try {
+    // 공개된 캠페인만 (비공개는 노출하지 않는다)
+    const campaigns = await prisma.campaign.findMany({
+      where: { enabled: true },
+      select: { slug: true, updatedAt: true },
+      take: 200,
+    });
+    for (const c of campaigns) {
+      dynamicEntries.push({
+        url: `${BASE_URL}/apply/${encodeURIComponent(c.slug)}`,
+        lastModified: c.updatedAt ?? now,
+        changeFrequency: "weekly",
+        priority: 0.6,
+      });
+    }
+  } catch {
+    // 무시
   }
 
   try {

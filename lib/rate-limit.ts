@@ -63,6 +63,11 @@ export function enforce(ip: string, bucket: string, max: number, windowMs: numbe
   };
 }
 
+/** 버킷 카운터를 지운다 (로그인 성공 시 실패 카운터 초기화 등). */
+export function reset(ip: string, bucket: string): void {
+  store.delete(`${bucket}:${ip}`);
+}
+
 /**
  * Request 에서 IP 를 추출. Vercel/CDN 환경에서는 x-forwarded-for 첫 번째 값.
  */

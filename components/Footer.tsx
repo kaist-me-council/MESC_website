@@ -1,50 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Settings, MapPin, Mail, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
+import { FOOTER_FALLBACK, type FooterData } from "@/lib/site-settings";
 
-const FALLBACK_CONTACT = {
-  locationKo: "N7동 학생회실",
-  locationEn: "Student Council Room, N7",
-  email: "kaist.mesc@gmail.com",
-};
-
-type SnsLink = {
-  label: string;
-  labelEn: string | null;
-  url: string;
-  icon: string | null;
-};
-
-const FALLBACK_SNS: SnsLink[] = [
-  { label: "인스타 (학생회)", labelEn: "Instagram (Council)", url: "https://www.instagram.com/i_love_mesc/", icon: null },
-  { label: "인스타 (학과)", labelEn: "Instagram (ME)", url: "https://www.instagram.com/kaist_me/", icon: null },
-  { label: "네이버 카페", labelEn: "Naver Cafe", url: "https://cafe.naver.com/kaistme", icon: null },
-];
-
-export default function Footer() {
+/** 데이터는 서버(app/layout.tsx)에서 읽어 props 로 내려온다 — 페이지마다 API 를 호출하지 않는다. */
+export default function Footer({ data = FOOTER_FALLBACK }: { data?: FooterData }) {
   const currentYear = new Date().getFullYear();
   const { t, lang } = useLanguage();
 
-  const [contact, setContact] = useState(FALLBACK_CONTACT);
-  const [sns, setSns] = useState<SnsLink[]>(FALLBACK_SNS);
-
-  useEffect(() => {
-    fetch("/api/site-settings")
-      .then((r) => r.json())
-      .then((d) =>
-        setContact({ locationKo: d.locationKo, locationEn: d.locationEn, email: d.email })
-      )
-      .catch(() => {});
-    fetch("/api/site-links?category=community")
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d) && d.length) setSns(d);
-      })
-      .catch(() => {});
-  }, []);
+  const { contact, sns } = data;
 
   const quickLinks = [
     { label: t("navbar.notices"), href: "/notices" },

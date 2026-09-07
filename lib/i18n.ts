@@ -42,6 +42,12 @@ export const translations = {
     },
     // Common
     common: {
+      errNetwork: "연결에 실패했습니다. 인터넷 상태를 확인하고 다시 시도해주세요.",
+      errRateLimit: "요청이 많습니다. 잠시 후 다시 시도해주세요.",
+      errServer: "서버 오류입니다. 잠시 후 다시 시도해주세요.",
+      genericError: "오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+      retry: "다시 시도",
+      loadFailed: "불러오지 못했습니다.",
       english: "English",
       korean: "한국어",
       date: "날짜",
@@ -59,6 +65,7 @@ export const translations = {
       switchToLight: "라이트 모드로 전환",
       switchToDark: "다크 모드로 전환",
       toggleTheme: "테마 전환",
+      views: "조회수",
     },
     // Footer
     footer: {
@@ -447,6 +454,12 @@ export const translations = {
     },
     // Common
     common: {
+      errNetwork: "Connection failed. Check your internet and try again.",
+      errRateLimit: "Too many requests. Please wait a moment and try again.",
+      errServer: "Server error. Please try again in a moment.",
+      genericError: "Something went wrong. Please try again.",
+      retry: "Try again",
+      loadFailed: "Could not load.",
       english: "English",
       korean: "Korean",
       date: "Date",
@@ -464,6 +477,7 @@ export const translations = {
       switchToLight: "Switch to light mode",
       switchToDark: "Switch to dark mode",
       toggleTheme: "Toggle theme",
+      views: "Views",
     },
     // Footer
     footer: {

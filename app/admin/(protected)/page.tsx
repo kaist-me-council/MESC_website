@@ -1,12 +1,37 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { ExternalLink, ShieldCheck } from "lucide-react";
 import { AdminGuide } from "@/components/admin-guide";
 import { ADMIN_GROUPS } from "@/lib/admin-menu";
 
+/** 오늘 처리할 일 — 기존 테이블 집계만 쓴다. 실패는 0 이 아니라 null 로 구분한다. */
+async function todoCounts() {
+  try {
+    const [payment, unconfirmed, suggestions, reportedPosts, reportedSuggestions] = await Promise.all([
+      prisma.campaignOrder.count({ where: { status: "pending" } }),
+      prisma.campaignOrder.count({
+        where: { status: { not: "cancelled" }, confirmation: null, campaign: { confirmEnabled: true } },
+      }),
+      prisma.suggestion.count({ where: { response: null, hidden: false } }),
+      prisma.post.count({ where: { reportCount: { gt: 0 }, hidden: false } }),
+      prisma.suggestion.count({ where: { reportCount: { gt: 0 }, hidden: false } }),
+    ]);
+    return { payment, unconfirmed, suggestions, reports: reportedPosts + reportedSuggestions };
+  } catch {
+    return null; // DB 조회 실패를 "0건"으로 위장하지 않는다
+  }
+}
+
 export default async function AdminPage() {
-  const session = await auth();
+  const [session, todo] = await Promise.all([auth(), todoCounts()]);
+  const TODO = [
+    { label: "입금 대기", n: todo?.payment, href: "/admin/campaigns" },
+    { label: "수령 확인 미응답", n: todo?.unconfirmed, href: "/admin/campaigns" },
+    { label: "미답변 건의", n: todo?.suggestions, href: "/admin/community" },
+    { label: "미처리 신고", n: todo?.reports, href: "/admin/community" },
+  ];
 
   return (
     <div className="py-8 max-w-5xl">
@@ -16,6 +41,23 @@ export default async function AdminPage() {
           안녕하세요, <span className="font-semibold text-foreground">{session?.user?.name ?? "관리자"}</span>님. 오늘도 투명한 학생회 운영 화이팅!
         </p>
       </div>
+
+      <section className="mb-8" aria-labelledby="todo-heading">
+        <h2 id="todo-heading" className="text-sm font-bold text-muted-foreground mb-3">오늘 처리할 일</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {TODO.map((c) => (
+            <Link key={c.label} href={c.href} className="group">
+              <Card className="h-full rounded-2xl border-border/60 transition-colors hover:border-primary/40 hover:bg-muted/40">
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">{c.label}</p>
+                  <p className={`text-2xl font-black tabular-nums ${c.n ? "text-primary" : ""}`}>{c.n ?? "-"}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+        {!todo && <p className="mt-2 text-xs text-destructive">집계를 불러오지 못했습니다. 새로고침해 주세요.</p>}
+      </section>
 
       <AdminGuide id="dashboard" title="관리자 시스템 안내">
         <p>왼쪽 메뉴(모바일은 상단 <strong>메뉴</strong> 버튼) 또는 아래 카드에서 작업할 영역을 고르세요. 각 페이지 위쪽에 그 페이지의 사용법이 있고, 한 번 접어두면 다음 방문 때도 접힌 상태로 열립니다.</p>
