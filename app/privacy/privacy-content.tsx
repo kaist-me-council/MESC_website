@@ -70,7 +70,7 @@ export function PrivacyContent() {
             <li>IP hashes are automatically deleted 90 days after posting, and together with the post if it is removed. Report records are deleted after 180 days.</li>
             <li>Suggestion box contact details are automatically deleted within 30 days after a reply is sent.</li>
             <li>Student IDs entered for the fee check are never stored.</li>
-            <li>Event sign-up and purchase records are deleted 180 days after the event closes (once settlement is complete).</li>
+            <li>Event sign-up and purchase records: personal fields (name, student-ID hash, email, phone, depositor name, messages) are anonymized 180 days after the event closes; only item, amount and status data are kept for statistics.</li>
           </ul>
 
           <h2>5. Your rights</h2>
@@ -142,7 +142,7 @@ export function PrivacyContent() {
             <li>IP 해시는 작성일로부터 90일 후 자동 삭제되며, 게시물 삭제 시 함께 삭제됩니다. 신고 기록은 180일 후 삭제됩니다.</li>
             <li>건의함 연락처는 답변 완료 후 30일 이내 자동 파기합니다.</li>
             <li>과비 확인용 학번은 저장하지 않습니다.</li>
-            <li>이벤트 신청·구매 기록은 캠페인 마감 후 180일(정산 완료) 지나면 삭제합니다.</li>
+            <li>이벤트 신청·구매 기록은 캠페인 마감 후 180일(정산 완료) 지나면 개인정보 항목(이름·학번 해시·이메일·전화·입금자명·메모)을 익명화하며, 항목·금액·상태 등 통계 정보만 남깁니다.</li>
           </ul>
 
           <h2>제5조 (이용자의 권리)</h2>

@@ -398,6 +398,7 @@ export function parseCampaignBody(b: Record<string, unknown>) {
     afterNoteEn: str(b.afterNoteEn, 1000),
     allowQty: b.allowQty === undefined ? true : Boolean(b.allowQty),
     maxPerPerson: int(b.maxPerPerson, null),
+    order: int(b.order, 0) ?? 0,
     requireStudentId: b.requireStudentId === undefined ? true : Boolean(b.requireStudentId),
     priceAdjust,
     confirmEnabled: Boolean(b.confirmEnabled),

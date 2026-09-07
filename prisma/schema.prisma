@@ -369,6 +369,7 @@ model Campaign {
   allowQty         Boolean   @default(true)
   maxPerPerson     Int?
   requireStudentId Boolean   @default(true)
+  order            Int       @default(0)      // 목록 표시 순서 (작을수록 위)
   priceAdjust      String?   // JSON {"대학원생":1000}
   kind             String    @default("signup") // goods | signup
   imageUrl         String?

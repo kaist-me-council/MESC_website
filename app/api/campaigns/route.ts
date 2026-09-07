@@ -6,7 +6,7 @@ import { isOpen } from "@/lib/campaign";
 export async function GET() {
   const rows = await prisma.campaign.findMany({
     where: { enabled: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     select: { slug: true, title: true, titleEn: true, enabled: true, opensAt: true, closesAt: true },
   });
   return NextResponse.json(

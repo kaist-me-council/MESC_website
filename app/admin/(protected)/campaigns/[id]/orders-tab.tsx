@@ -17,6 +17,7 @@ type Filter = "all" | Status | "unconfirmed" | "received" | "not_received";
 export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[]; reload: () => Promise<void> }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
+  const [sort, setSort] = useState<"newest" | "oldest" | "name" | "status" | "total">("newest");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [copied, setCopied] = useState("");
   const [pendingBulk, setPendingBulk] = useState<Status | null>(null);
@@ -48,11 +49,18 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     not_received: orders.filter((o) => o.confirmation === "not_received").length,
   }), [orders]);
 
+  const STATUS_RANK: Record<Status, number> = { pending: 0, paid: 1, delivered: 2, cancelled: 3 };
   const visible = orders.filter((o) => {
     if (filter === "unconfirmed") { if (o.status === "cancelled" || o.confirmation) return false; }
     else if (filter === "received" || filter === "not_received") { if (o.confirmation !== filter) return false; }
     else if (filter !== "all" && o.status !== filter) return false;
     return !q || `${o.name} ${o.email} ${o.orderNo} ${o.affiliation}`.toLowerCase().includes(q.toLowerCase());
+  }).sort((a, b) => {
+    if (sort === "oldest") return a.createdAt.localeCompare(b.createdAt);
+    if (sort === "name") return a.name.localeCompare(b.name, "ko") || b.createdAt.localeCompare(a.createdAt);
+    if (sort === "status") return STATUS_RANK[a.status] - STATUS_RANK[b.status] || b.createdAt.localeCompare(a.createdAt);
+    if (sort === "total") return b.total - a.total || b.createdAt.localeCompare(a.createdAt);
+    return b.createdAt.localeCompare(a.createdAt);
   });
 
   // 옵션별 합계 (취소 제외) — 발주표
@@ -168,6 +176,9 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
 
       <div className="flex flex-wrap items-center gap-3">
         <Input placeholder="이름·이메일·주문번호 검색" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="정렬">
+          <option value="newest">최신순</option><option value="oldest">오래된순</option><option value="name">이름순</option><option value="status">상태순</option><option value="total">금액순</option>
+        </select>
         <Button size="sm" variant="outline" disabled={visible.length === 0} onClick={() => copyEmails(visible)}>이메일 복사 (현재 필터)</Button>
         {copied && <span className="text-sm text-muted-foreground">{copied}</span>}
         <a className="text-sm underline ml-auto" href={`/api/admin/campaigns/${c.id}/orders?format=csv`}>CSV 내보내기</a>

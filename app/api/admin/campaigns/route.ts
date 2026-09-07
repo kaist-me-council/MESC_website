@@ -11,7 +11,7 @@ const unauthorized = () => NextResponse.json({ error: "Unauthorized" }, { status
 export async function GET() {
   if (!(await auth())) return unauthorized();
   const rows = await prisma.campaign.findMany({
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     include: { orders: { select: { status: true, confirmation: true } }, _count: { select: { options: true } } },
   });
   return NextResponse.json({

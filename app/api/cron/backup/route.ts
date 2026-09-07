@@ -30,8 +30,11 @@ async function purgeExpired() {
   await prisma.courseReview.updateMany(old);
   // 신고 기록: 180일 지나면 삭제
   await prisma.report.deleteMany({ where: { createdAt: { lt: d180 } } });
-  // 학생회 이벤트 신청: 캠페인 마감(closesAt) 후 180일 지나면 삭제
-  await prisma.campaignOrder.deleteMany({ where: { campaign: { closesAt: { lt: d180 } } } });
+  // 학생회 이벤트 신청: 캠페인 마감(closesAt) 후 180일 지나면 개인정보만 익명화 (주문 항목·금액·상태는 통계용으로 보존)
+  await prisma.campaignOrder.updateMany({
+    where: { campaign: { closesAt: { lt: d180 } }, email: { not: "" } },
+    data: { name: "(익명화)", email: "", phone: null, studentIdHash: null, depositorName: null, note: null, confirmNote: null, adminMemo: null },
+  });
 }
 
 export async function GET(req: Request) {

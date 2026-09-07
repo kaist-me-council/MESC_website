@@ -130,6 +130,7 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campa
           <div className="space-y-1"><Label>시작 (비우면 즉시)</Label><Input type="datetime-local" value={toLocal(c.opensAt)} onChange={(e) => set("opensAt", toIso(e.target.value))} /></div>
           <div className="space-y-1"><Label>마감 (비우면 무기한)</Label><Input type="datetime-local" value={toLocal(c.closesAt)} onChange={(e) => set("closesAt", toIso(e.target.value))} /></div>
           <div className="space-y-1"><Label>1인 최대 수량 (비우면 무제한)</Label><Input type="number" min={1} value={c.maxPerPerson ?? ""} onChange={(e) => set("maxPerPerson", e.target.value ? Number(e.target.value) : null)} /></div>
+          <div className="space-y-1"><Label>표시 순서 (작을수록 목록 위, 같으면 최신순)</Label><Input type="number" value={c.order ?? 0} onChange={(e) => set("order", Number(e.target.value) || 0)} /></div>
           <div className="space-y-1"><Label>입금 계좌 (완료 화면에만 표시)</Label><Input value={c.bankInfo ?? ""} onChange={(e) => set("bankInfo", e.target.value || null)} placeholder="예: 카카오뱅크 3333-00-0000000 홍길동" /></div>
           <div className="space-y-1 sm:col-span-2"><Label>완료 안내</Label><Textarea rows={2} value={c.afterNote ?? ""} onChange={(e) => set("afterNote", e.target.value || null)} placeholder="예: 입금자명은 본인 이름으로. 수령은 종강 직전 학생회실(N7)." /></div>
           <div className="space-y-1 sm:col-span-2"><Label>완료 안내 (EN)</Label><Textarea rows={2} value={c.afterNoteEn ?? ""} onChange={(e) => set("afterNoteEn", e.target.value || null)} /></div>

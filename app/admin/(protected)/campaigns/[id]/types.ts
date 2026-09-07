@@ -4,7 +4,7 @@ export interface Campaign {
   id: number; slug: string; title: string; titleEn: string | null; description: string | null; descriptionEn: string | null;
   kind: "goods" | "signup"; imageUrl: string | null; images?: string | string[] | null;
   enabled: boolean; opensAt: string | null; closesAt: string | null; bankInfo: string | null; afterNote: string | null; afterNoteEn: string | null;
-  allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: string | null;
+  allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: string | null; order?: number;
   confirmEnabled: boolean; confirmDeadline: string | null; confirmNote: string | null; confirmNoteEn: string | null;
   options: Option[];
 }
