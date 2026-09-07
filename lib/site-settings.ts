@@ -103,3 +103,21 @@ export function getClubColor(preset: string | null | undefined): string {
 // ── 링크 카테고리 ─────────────────────────────────────────
 export const LINK_CATEGORIES = ["important", "community"] as const;
 export type LinkCategory = (typeof LINK_CATEGORIES)[number];
+
+// ── 푸터 데이터 (서버에서 읽어 클라이언트로 내려주는 형태) ──────────────
+export interface FooterContact { locationKo: string; locationEn: string; email: string }
+export interface FooterSns { label: string; labelEn: string | null; url: string; icon: string | null }
+export interface FooterData { contact: FooterContact; sns: FooterSns[] }
+
+export const FOOTER_FALLBACK: FooterData = {
+  contact: {
+    locationKo: "N7동 학생회실",
+    locationEn: "Student Council Room, N7",
+    email: "kaist.mesc@gmail.com",
+  },
+  sns: [
+    { label: "인스타 (학생회)", labelEn: "Instagram (Council)", url: "https://www.instagram.com/i_love_mesc/", icon: null },
+    { label: "인스타 (학과)", labelEn: "Instagram (ME)", url: "https://www.instagram.com/kaist_me/", icon: null },
+    { label: "네이버 카페", labelEn: "Naver Cafe", url: "https://cafe.naver.com/kaistme", icon: null },
+  ],
+};

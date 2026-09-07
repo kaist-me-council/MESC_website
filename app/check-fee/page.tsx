@@ -9,13 +9,27 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
 import { CheckCircle2, XCircle, AlertTriangle, Lock } from "lucide-react";
 
+// 통신 실패 유형별 안내. i18n 파일을 다른 작업과 동시에 건드리지 않으려고 이 화면에 둔다.
+const FAIL_TEXT = {
+  ko: {
+    network: "연결에 실패했습니다. 인터넷 상태를 확인하고 다시 시도해주세요.",
+    ratelimit: "조회가 너무 잦습니다. 잠시 후 다시 시도해주세요.",
+    server: "서버에 문제가 있습니다. 잠시 후 다시 시도해주세요.",
+  },
+  en: {
+    network: "Connection failed. Check your network and try again.",
+    ratelimit: "Too many lookups. Please wait a moment and try again.",
+    server: "Server error. Please try again shortly.",
+  },
+} as const;
+
 export default function CheckFeePage() {
   const [studentId, setStudentId] = useState("");
   const [result, setResult] = useState<{ found: boolean; count: number } | null>(null);
   // count는 소수점 포함 가능 (e.g. 1.5)
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   async function handleCheck() {
     if (!studentId.trim()) {
@@ -25,15 +39,30 @@ export default function CheckFeePage() {
     setLoading(true);
     setError("");
     setResult(null);
+    const fail = FAIL_TEXT[lang === "en" ? "en" : "ko"];
 
-    const res = await fetch(`/api/check-fee?id=${encodeURIComponent(studentId.trim())}`);
-    const data = await res.json();
-    setLoading(false);
+    // 학번은 본문으로만 보낸다 (URL·기록에 남기지 않음). 실패해도 입력값은 그대로 두고 버튼을 푼다.
+    try {
+      const res = await fetch("/api/check-fee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: studentId.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      setError(data.error ?? t("checkFee.genericError"));
-    } else {
-      setResult(data);
+      if (res.ok) {
+        setResult(data);
+      } else if (res.status === 429) {
+        setError(data.error ?? fail.ratelimit);
+      } else if (res.status >= 500) {
+        setError(fail.server);
+      } else {
+        setError(data.error ?? t("checkFee.genericError"));
+      }
+    } catch {
+      setError(fail.network);
+    } finally {
+      setLoading(false);
     }
   }
 

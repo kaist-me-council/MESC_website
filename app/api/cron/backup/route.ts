@@ -30,6 +30,10 @@ async function purgeExpired() {
   await prisma.courseReview.updateMany(old);
   // 신고 기록: 180일 지나면 삭제
   await prisma.report.deleteMany({ where: { createdAt: { lt: d180 } } });
+  // 조회수 중복 판정 기록: 90일이면 역할이 끝난다 (viewCount 는 그대로 남는다)
+  await prisma.contentView.deleteMany({ where: { createdAt: { lt: d90 } } });
+  // 관리자 감사 로그: 180일 보관
+  await prisma.adminAudit.deleteMany({ where: { createdAt: { lt: d180 } } });
   // 학생회 이벤트 신청: 캠페인 마감(closesAt) 후 180일 지나면 개인정보만 익명화 (주문 항목·금액·상태는 통계용으로 보존)
   await prisma.campaignOrder.updateMany({
     where: { campaign: { closesAt: { lt: d180 } }, email: { not: "" } },

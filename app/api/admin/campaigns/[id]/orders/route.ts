@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { parseId } from "@/lib/validation";
 import { ORDER_STATUSES, rebuildItems, type OrderItem, type Resolution } from "@/lib/campaign";
 
@@ -51,7 +52,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await auth())) return unauthorized();
+  const session = await auth();
+  if (!session) return unauthorized();
+  const actor = session.user?.name ?? "unknown";
   const id = parseId((await params).id);
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   let b: Record<string, unknown>;
@@ -65,6 +68,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const bulkData: { status: string; handedBy?: string | null } = { status: String(b.status) };
     if (typeof b.handedBy === "string") bulkData.handedBy = b.handedBy.trim().slice(0, 50) || null; // 수령 일괄 처리 시 배부자
     const { count } = await prisma.campaignOrder.updateMany({ where: { id: { in: ids }, campaignId: id }, data: bulkData });
+    await audit(actor, "order.bulkStatus", `campaign:${id}`, `${count}건 → ${bulkData.status}`);
     return NextResponse.json({ updated: count }, noStore);
   }
 
@@ -101,5 +105,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { count } = await prisma.campaignOrder.updateMany({ where: { id: orderId, campaignId: id }, data });
   if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const updated = await prisma.campaignOrder.findUniqueOrThrow({ where: { id: orderId } });
+  // 상태·항목 변경만 남긴다 (메모·입금자명 등 사소한 편집은 제외)
+  if (data.status) await audit(actor, "order.status", `campaign:${id}/order:${orderId}`, `→ ${data.status}`);
+  if (data.items) await audit(actor, "order.items", `campaign:${id}/order:${orderId}`, `합계 ${data.total}원`);
   return NextResponse.json({ ok: true, order: adminRow(updated) }, noStore);
 }

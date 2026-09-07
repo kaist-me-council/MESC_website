@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { parseId } from "@/lib/validation";
 import { parseCampaignBody, type OrderItem } from "@/lib/campaign";
 
@@ -58,12 +59,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 /** 주문 0건일 때만 삭제 */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await auth())) return unauthorized();
+  const session = await auth();
+  if (!session) return unauthorized();
   const id = parseId((await params).id);
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   const orders = await prisma.campaignOrder.count({ where: { campaignId: id } });
   if (orders > 0) return NextResponse.json({ error: `신청 ${orders}건이 있어 삭제할 수 없습니다. 비공개로 전환하세요.` }, { status: 409 });
   const { count } = await prisma.campaign.deleteMany({ where: { id } });
   if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  await audit(session.user?.name ?? "unknown", "campaign.delete", `campaign:${id}`);
   return NextResponse.json({ ok: true }, noStore);
 }

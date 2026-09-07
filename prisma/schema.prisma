@@ -8,6 +8,7 @@ datasource db {
 }
 
 model Notice {
+  viewCount    Int      @default(0)
   id        Int      @id @default(autoincrement())
   title     String
   titleEn   String?
@@ -92,6 +93,7 @@ model Book {
 }
 
 model Event {
+  viewCount     Int             @default(0)
   id            Int             @id @default(autoincrement())
   title         String
   date          DateTime
@@ -254,6 +256,8 @@ model Suggestion {
 
 // 익명 자유게시판 게시글
 model Post {
+  viewCount    Int       @default(0)
+  likeCount    Int       @default(0)
   id           Int       @id @default(autoincrement())
   category     String    @default("자유")
   title        String
@@ -265,6 +269,7 @@ model Post {
   ipHash       String?
   createdAt    DateTime  @default(now())
   comments     Comment[]
+  likes        PostLike[]
   @@index([hidden, createdAt])
 }
 
@@ -430,4 +435,36 @@ model CampaignOrder {
   @@index([campaignId, status])
   @@index([campaignId, studentIdHash])
   @@index([campaignId, email])
+}
+
+// 관리자 행위 감사 로그 (개인정보 원문·CSV 본문은 저장하지 않는다)
+model AdminAudit {
+  id        Int      @id @default(autoincrement())
+  actor     String   // 세션의 관리자 표시 이름
+  action    String   // order.status | order.bulkStatus | order.import | campaign.delete | notice.delete ...
+  target    String   // "campaign:12/order:34" 처럼 식별자만
+  detail    String?  // 짧은 요약 (건수·변경 전후 상태 등)
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}
+
+// 조회수 중복 제거 — 방문자 토큰 해시 기준. 콘텐츠별 쿠키를 쓰지 않는다.
+model ContentView {
+  id         Int      @id @default(autoincrement())
+  kind       String   // notice | event | post
+  contentId  Int
+  viewerHash String
+  createdAt  DateTime @default(now())
+  @@unique([kind, contentId, viewerHash])
+  @@index([createdAt])
+}
+
+// 자유게시판 좋아요 — 브라우저 토큰당 게시글 1개, 토글 가능
+model PostLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  voterHash String
+  createdAt DateTime @default(now())
+  @@unique([postId, voterHash])
 }

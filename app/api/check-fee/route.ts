@@ -68,7 +68,18 @@ async function fetchSheetData(): Promise<string[][]> {
   return rows;
 }
 
-export async function GET(req: NextRequest) {
+/**
+ * 학번은 POST 본문으로만 받는다 — URL 쿼리에 두면 브라우저 기록·서버 접근 로그·리퍼러에 남는다.
+ * 구 GET 경로는 410 으로 명시 종료(캐시된 클라이언트가 조용히 깨지지 않게).
+ */
+export async function GET() {
+  return NextResponse.json(
+    { error: "이 방식은 더 이상 지원하지 않습니다. 페이지를 새로고침한 뒤 다시 조회해주세요." },
+    { status: 410, headers: { "Cache-Control": "private, no-store" } }
+  );
+}
+
+export async function POST(req: NextRequest) {
   // Rate limit 체크
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
@@ -82,8 +93,13 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { searchParams } = new URL(req.url);
-  const studentId = searchParams.get("id")?.trim();
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
+  }
+  const studentId = typeof body.id === "string" ? body.id.trim() : "";
 
   if (!studentId) {
     return NextResponse.json({ error: "학번을 입력해주세요." }, { status: 400 });
@@ -101,7 +117,7 @@ export async function GET(req: NextRequest) {
     const rows = await fetchSheetData();
 
     if (rows.length === 0) {
-      return NextResponse.json({ count: 0, found: false });
+      return NextResponse.json({ count: 0, found: false }, { headers: { "Cache-Control": "private, no-store" } });
     }
 
     const headerRow = rows[0].map((h) => h.toLowerCase().replace(/\s/g, ""));

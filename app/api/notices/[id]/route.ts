@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { isValidString, isAllowedCategory, parseId } from "@/lib/validation";
 
@@ -76,6 +77,7 @@ export async function DELETE(
 
   const { count } = await prisma.notice.deleteMany({ where: { id: numId } });
   if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  await audit(session.user?.name ?? "unknown", "notice.delete", `notice:${numId}`);
   revalidatePath("/");
   return NextResponse.json({ ok: true });
 }

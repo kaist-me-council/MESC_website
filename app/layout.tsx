@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { LayoutWrapper } from "@/components/layout-wrapper";
+import { getFooterData } from "@/lib/site-data";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,18 +46,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const footerData = await getFooterData();
   return (
     <html lang="ko" suppressHydrationWarning className={`${geistSans.variable} h-full antialiased`}>
       <head>
         <meta name="theme-color" content="#2563eb" />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <LayoutWrapper>{children}</LayoutWrapper>
+        <LayoutWrapper footerData={footerData}>{children}</LayoutWrapper>
       </body>
     </html>
   );

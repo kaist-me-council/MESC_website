@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Send, Inbox, CheckCircle2, Flag } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
+import { request, type ReqFail } from "@/lib/fetch-state";
+import { LoadError } from "@/components/load-error";
 
 interface Suggestion {
   id: number;
@@ -22,7 +24,7 @@ interface Suggestion {
 const CATEGORIES = ["행사", "시설", "학사", "기타"] as const;
 
 export function SuggestionsTab() {
-  const { lang: language } = useLanguage();
+  const { lang: language, t } = useLanguage();
   const locale = language === "ko" ? "ko-KR" : "en-US";
   const [items, setItems] = useState<Suggestion[]>([]);
   const [content, setContent] = useState("");
@@ -31,12 +33,17 @@ export function SuggestionsTab() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [fail, setFail] = useState<ReqFail | null>(null);
 
+  // 통신 실패를 "건의 없음"으로 보여 주지 않는다.
   async function load() {
-    const r = await fetch("/api/suggestions");
-    if (r.ok) setItems(await r.json());
+    const r = await request<Suggestion[]>("/api/suggestions");
+    if (r.ok && Array.isArray(r.data)) { setItems(r.data); setFail(null); }
+    else if (!r.ok) setFail(r);
+    setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { Promise.resolve().then(load); }, []);
 
   async function submit() {
     if (!content.trim()) return;
@@ -116,7 +123,11 @@ export function SuggestionsTab() {
       <h3 className="text-sm font-semibold text-muted-foreground mb-3">
         지난 건의 ({items.length}건)
       </h3>
-      {items.length === 0 ? (
+      {loading ? (
+        <p className="text-sm text-muted-foreground text-center py-12">{language === "ko" ? "불러오는 중..." : "Loading..."}</p>
+      ) : fail ? (
+        <LoadError fail={fail} t={t} onRetry={() => { setLoading(true); setFail(null); Promise.resolve().then(load); }} />
+      ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-12">등록된 건의가 없습니다.</p>
       ) : (
         <div className="space-y-3">
@@ -130,7 +141,7 @@ export function SuggestionsTab() {
                       {new Date(s.createdAt).toLocaleDateString(locale)}
                     </span>
                   </div>
-                  <button onClick={() => report(s.id)} className="p-2 -m-2 text-muted-foreground hover:text-destructive" title={language === "ko" ? "신고" : "Report"}>
+                  <button onClick={() => report(s.id)} className="p-2 -m-2 text-muted-foreground hover:text-destructive" aria-label={language === "ko" ? "이 건의 신고" : "Report this suggestion"} title={language === "ko" ? "신고" : "Report"}>
                     <Flag className="h-3.5 w-3.5" />
                   </button>
                 </div>

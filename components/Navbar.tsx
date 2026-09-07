@@ -2,7 +2,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Menu, X, Bell, BookOpen, BookMarked, Calendar, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, ListChecks, PartyPopper, Images, Inbox, MessagesSquare, Cookie, Ticket, type LucideIcon } from "lucide-react";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { useLanguage } from "@/lib/language-context";
 import {
@@ -33,7 +33,20 @@ function NavbarWithSearchParams() {
 function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const { lang, setLang, t } = useLanguage();
+
+  // 모바일 메뉴: ESC 로 닫고 초점을 연 버튼으로 되돌린다 (데스크톱 드롭다운은 Radix 가 처리)
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setIsMobileMenuOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isMobileMenuOpen]);
 
   // 하위 항목 활성 판정: 경로가 같고, 같은 그룹의 형제 항목들이 사용하는 쿼리 키에 대해
   // 현재 URL 값과 항목 값이 일치할 때만 활성 (쿼리 없는 항목은 해당 키가 URL에 없어야 활성)
@@ -235,7 +248,9 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
 
             {/* Mobile Menu Toggle */}
             <button
+              ref={menuButtonRef}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-controls="mobile-nav"
               aria-label={isMobileMenuOpen ? (lang === "ko" ? "메뉴 닫기" : "Close menu") : (lang === "ko" ? "메뉴 열기" : "Open menu")}
               aria-expanded={isMobileMenuOpen}
               className="lg:hidden p-2 rounded-lg hover:bg-muted/60 transition-colors duration-300 text-muted-foreground hover:text-foreground"
@@ -248,7 +263,7 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
 
       {/* Mobile Navigation Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-border/40 bg-background/95 backdrop-blur-md animate-in slide-in-from-top-2 duration-300 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain">
+        <div id="mobile-nav" className="lg:hidden border-t border-border/40 bg-background/95 backdrop-blur-md animate-in slide-in-from-top-2 duration-300 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain">
           <nav className="container mx-auto px-4 py-6 space-y-5">
             {navItems.map((item) => {
               if (item.type === "link") {
