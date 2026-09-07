@@ -93,9 +93,22 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     await reload();
     setBusy(false);
   }
-  const setStatus = (o: Order, status: Status) => put({ orderId: o.id, status });
+  // 수령 처리 시 배부 담당자 이름을 묻는다 (마지막 입력을 기억)
+  const askHandedBy = (): string | null => {
+    const last = (() => { try { return localStorage.getItem("handedBy") ?? ""; } catch { return ""; } })();
+    const v = prompt("배부 담당자 이름 (옷을 건네준 사람)", last);
+    if (v === null) return null;
+    try { localStorage.setItem("handedBy", v.trim()); } catch { /* ignore */ }
+    return v.trim();
+  };
+  const setStatus = (o: Order, status: Status) => {
+    if (status === "delivered") { const h = askHandedBy(); if (h === null) return Promise.resolve(); return put({ orderId: o.id, status, handedBy: h }); }
+    return put({ orderId: o.id, status });
+  };
   async function bulk(status: Status) {
-    await put({ orderIds: [...selected], status });
+    let handedBy: string | undefined;
+    if (status === "delivered") { const h = askHandedBy(); if (h === null) return; handedBy = h; }
+    await put({ orderIds: [...selected], status, ...(handedBy !== undefined ? { handedBy } : {}) });
     setSelected(new Set()); setPendingBulk(null);
   }
   async function editDepositor(o: Order) {
@@ -227,6 +240,7 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     {o.confirmation === "received" && <Badge className="text-xs bg-emerald-600 text-white">받음</Badge>}
                     {o.confirmation === "not_received" && <Badge variant="destructive" className="text-xs">못 받음</Badge>}
                     {o.resolvedAt && <Badge className="text-xs bg-emerald-600 text-white">처리 완료</Badge>}
+                    {o.handedBy && <Badge variant="outline" className="text-xs">배부: {o.handedBy}</Badge>}
                   </div>
                   <div className="text-muted-foreground">{o.email}{o.phone ? ` · ${o.phone}` : ""}</div>
                   {o.depositorName && o.depositorName.trim() !== o.name.trim() && (

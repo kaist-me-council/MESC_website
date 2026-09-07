@@ -83,6 +83,7 @@ export interface ImportRow {
   items: Item[];
   pickedUp: boolean;
   memo: string | null;
+  handedBy: string | null;
 }
 
 /**
@@ -99,9 +100,9 @@ export function parseDistributionCsv(
   const col = (label: string) => header.findIndex((h) => h.includes(label));
   const ci = {
     aff: col("구분"), name: col("이름"), sid: col("학번"), phone: col("전화"),
-    email: col("이메일"), white: col("흰"), black: col("검"), picked: col("픽업"),
+    email: col("이메일"), white: col("흰"), black: col("검"), picked: col("픽업"), handed: col("배부자"),
   };
-  const missing = Object.entries(ci).filter(([, v]) => v < 0).map(([k]) => k);
+  const missing = Object.entries(ci).filter(([k, v]) => v < 0 && k !== "handed").map(([k]) => k);
   if (missing.length) return { rows: [], problems: [`헤더에서 열을 찾지 못함: ${missing.join(", ")}`] };
 
   const rows: ImportRow[] = [];
@@ -124,6 +125,7 @@ export function parseDistributionCsv(
       items: [...w.items, ...b.items],
       pickedUp: ["TRUE", "O", "Y", "1", "✓"].includes(pickedRaw),
       memo: [w.note, b.note].filter(Boolean).join("; ") || null,
+      handedBy: ci.handed >= 0 ? (r[ci.handed] ?? "").trim() || null : null,
     });
   });
   return { rows, problems };
