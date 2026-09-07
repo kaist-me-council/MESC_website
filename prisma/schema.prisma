@@ -420,9 +420,13 @@ model CampaignOrder {
   confirmNote   String?
   confirmedAt   DateTime?
   resolvedAt    DateTime?  // 못 받음 건 처리 완료(관리자) 시각
+  refundedAt    DateTime?  // 환불 완료 처리 시각 (관리자 체크)
   handedBy      String?    // 배부 담당자 이름 (수령 처리 시 기록)
+  manageCodeHash String?   // 본인 취소용 관리 코드 해시 (평문 미저장). 적재 주문은 null
+  idempotencyKey String?   // 클라이언트 생성 키 — 재전송 시 중복 주문 방지
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@unique([campaignId, idempotencyKey])
   @@index([campaignId, status])
   @@index([campaignId, studentIdHash])
   @@index([campaignId, email])

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,11 +52,8 @@ export default function AdminCampaignsPage() {
   const preset = () => post({ preset: "tshirt-2026-spring" });
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground">← 대시보드</Link>
-        <h1 className="text-2xl font-bold">학생회 이벤트 (신청·구매)</h1>
-      </div>
+    <div className="py-6 max-w-5xl">
+      <h1 className="text-2xl font-bold mb-6">학생회 이벤트 (신청·구매)</h1>
 
       <AdminGuide id="campaigns" title="학생회 이벤트 사용법">
         <ol className="list-decimal pl-5 space-y-1">
@@ -83,7 +79,7 @@ export default function AdminCampaignsPage() {
           <Button disabled={busy || !title.trim() || !slug.trim()} onClick={create}>만들기</Button>
           <div className="sm:col-span-3 flex flex-wrap items-center gap-2 pt-1">
             <Button size="sm" variant="outline" disabled={busy} onClick={preset}>상반기 반팔티(수령 확인용) 만들기</Button>
-            <span className="text-xs text-muted-foreground">주소 2026-spring-tshirt · 흰/검 × 7사이즈 · 수령 확인 9/13 마감</span>
+            <span className="text-xs text-muted-foreground">주소 2026-spring-tshirt · 흰/검 × 7사이즈 · 수령 확인 켜짐 (마감은 설정 탭에서)</span>
           </div>
           {err && <p className="text-sm text-destructive sm:col-span-3">{err}</p>}
         </CardContent>

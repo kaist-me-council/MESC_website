@@ -7,20 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { type Campaign, type Option, toLocal, toIso } from "./types";
+
+/** images 는 JSON 문자열 또는 배열로 온다. 없으면 대표 이미지 한 장. */
+function readImages(c: Campaign): string[] {
+  const raw = c.images;
+  if (Array.isArray(raw)) return raw;
+  try { const a = raw ? JSON.parse(raw) : null; if (Array.isArray(a) && a.length) return a; } catch { /* ignore */ }
+  return c.imageUrl ? [c.imageUrl] : [];
+}
 
 const ADJ_KEYS = ["대학원생", "교수님", "졸업생", "기타"] as const;
 const SIZES = ["S", "M", "L", "XL", "2XL", "3XL", "4XL"];
 
-export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campaign) => void; onSaved: () => Promise<void> }) {
+export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (update: (prev: Campaign) => Campaign) => void; onSaved: () => Promise<void> }) {
   const [bulk, setBulk] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [uploading, setUploading] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const adj = useMemo<Record<string, number>>(() => { try { return c.priceAdjust ? JSON.parse(c.priceAdjust) : {}; } catch { return {}; } }, [c.priceAdjust]);
-  const set = <K extends keyof Campaign>(k: K, v: Campaign[K]) => setC({ ...c, [k]: v });
-  const setOpt = (i: number, patch: Partial<Option>) => set("options", c.options.map((o, j) => (j === i ? { ...o, ...patch } : o)));
+  // 항상 함수형 갱신 — 업로드·저장이 도는 동안 최신 입력을 덮어쓰지 않게
+  const set = <K extends keyof Campaign>(k: K, v: Campaign[K]) => setC((prev) => ({ ...prev, [k]: v }));
+  const setOpt = (i: number, patch: Partial<Option>) => setC((prev) => ({ ...prev, options: prev.options.map((o, j) => (j === i ? { ...o, ...patch } : o)) }));
   const setAdj = (k: string, v: string) => {
     const next = { ...adj };
     if (v === "" || Number(v) === 0) delete next[k]; else next[k] = Number(v);
@@ -28,24 +38,25 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campa
   };
 
   function addBulk(text: string) {
-    const start = c.options.length;
-    const added: Option[] = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l, i) => {
-      const [group = "", name = "", price = "0", stock = ""] = l.split(",").map((s) => s.trim());
-      return { group, name, nameEn: "", price: Number(price) || 0, stock: stock === "" ? null : Number(stock), order: start + i, enabled: true };
-    }).filter((o) => o.name);
-    set("options", [...c.options, ...added]);
+    setC((prev) => {
+      const start = prev.options.length;
+      const added: Option[] = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l, i) => {
+        const [group = "", name = "", price = "0", stock = ""] = l.split(",").map((s) => s.trim());
+        return { group, name, nameEn: "", price: Number(price) || 0, stock: stock === "" ? null : Number(stock), order: start + i, enabled: true };
+      }).filter((o) => o.name);
+      return { ...prev, options: [...prev.options, ...added] };
+    });
     setBulk("");
   }
   const tshirtPreset = () =>
     addBulk(["흰색", "검정"].flatMap((g) => SIZES.map((s) => `${g},${s},${["2XL", "3XL", "4XL"].includes(s) ? 9500 : 8000},`)).join("\n"));
 
-  const images = useMemo<string[]>(() => {
-    const raw = c.images;
-    if (Array.isArray(raw)) return raw;
-    try { const a = raw ? JSON.parse(raw) : null; if (Array.isArray(a) && a.length) return a; } catch { /* ignore */ }
-    return c.imageUrl ? [c.imageUrl] : [];
-  }, [c.images, c.imageUrl]);
-  const setImages = (next: string[]) => setC({ ...c, images: next, imageUrl: next[0] ?? null });
+  const images = useMemo<string[]>(() => readImages(c), [c]);
+  const setImages = (next: string[]) => setC((prev) => ({ ...prev, images: next, imageUrl: next[0] ?? null }));
+  const appendImages = (urls: string[]) => setC((prev) => {
+    const cur = readImages(prev).concat(urls).slice(0, 8);
+    return { ...prev, images: cur, imageUrl: cur[0] ?? null };
+  });
 
   async function upload(files: FileList) {
     setUploading(true); setMsg("");
@@ -58,7 +69,7 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campa
       added.push(data.url);
     }
     setUploading(false);
-    if (added.length) setImages([...images, ...added]);
+    if (added.length) appendImages(added);
   }
   const moveImage = (i: number, d: -1 | 1) => {
     const j = i + d; if (j < 0 || j >= images.length) return;
@@ -66,10 +77,12 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campa
   };
 
   async function save() {
+    if (busy) return; // 중복 제출 방지
+    const snapshot = c; // 저장 시점 값을 그대로 보낸다
     setBusy(true); setMsg("");
-    const res = await fetch(`/api/admin/campaigns/${c.id}`, {
+    const res = await fetch(`/api/admin/campaigns/${snapshot.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...c, options: c.options.map((o) => ({ ...o, group: o.group || null, nameEn: o.nameEn || null })) }),
+      body: JSON.stringify({ ...snapshot, options: snapshot.options.map((o) => ({ ...o, group: o.group || null, nameEn: o.nameEn || null })) }),
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
@@ -112,9 +125,9 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campa
                     <img src={u} alt="" className="h-28 w-28 rounded-md object-contain border bg-muted/40" />
                     {i === 0 && <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">대표</span>}
                     <div className="mt-1 flex justify-between text-xs">
-                      <button type="button" className="px-1 disabled:opacity-30" disabled={i === 0} onClick={() => moveImage(i, -1)} aria-label="앞으로">←</button>
+                      <button type="button" className="px-1 disabled:opacity-30" disabled={i === 0} onClick={() => moveImage(i, -1)} aria-label="앞으로"><ChevronLeft className="h-4 w-4" /></button>
                       <button type="button" className="px-1 text-destructive" onClick={() => setImages(images.filter((_, j) => j !== i))}>삭제</button>
-                      <button type="button" className="px-1 disabled:opacity-30" disabled={i === images.length - 1} onClick={() => moveImage(i, 1)} aria-label="뒤로">→</button>
+                      <button type="button" className="px-1 disabled:opacity-30" disabled={i === images.length - 1} onClick={() => moveImage(i, 1)} aria-label="뒤로"><ChevronRight className="h-4 w-4" /></button>
                     </div>
                   </div>
                 ))}
@@ -171,7 +184,7 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (c: Campa
               <Input type="number" value={o.stock ?? ""} onChange={(e) => setOpt(i, { stock: e.target.value === "" ? null : Number(e.target.value) })} placeholder="∞" />
               <Input type="number" value={o.order} onChange={(e) => setOpt(i, { order: Number(e.target.value) || 0 })} />
               <Checkbox checked={o.enabled} onCheckedChange={(v) => setOpt(i, { enabled: v === true })} />
-              <Button size="sm" variant="ghost" onClick={() => set("options", c.options.filter((_, j) => j !== i))}>✕</Button>
+              <Button size="sm" variant="ghost" aria-label="옵션 삭제" onClick={() => setC((prev) => ({ ...prev, options: prev.options.filter((_, j) => j !== i) }))}><X className="h-4 w-4" /></Button>
             </div>
           ))}
           <div className="rounded-md bg-muted/40 p-3 space-y-2">

@@ -15,6 +15,8 @@ export function ImportSection({ campaignId, importCount, onDone }: { campaignId:
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [confirmRun, setConfirmRun] = useState(false);
+  // 미리보기가 깨끗할 때만 적재 (서버도 같은 조건으로 거부한다)
+  const canRun = !!preview && preview.problems.length === 0 && preview.count > 0 && !busy;
 
   async function post(body: object) {
     const res = await fetch(`/api/admin/campaigns/${campaignId}/orders/import`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -25,9 +27,10 @@ export function ImportSection({ campaignId, importCount, onDone }: { campaignId:
     const { ok, data } = await post({ csv, mode, dryRun: true });
     setBusy(false);
     if (!ok) { setMsg(data.error ?? "미리보기 실패"); return; }
-    setPreview({ count: data.count, problems: data.problems ?? [], newOptions: data.newOptions ?? [] });
+    setPreview({ count: data.count, problems: data.problems ?? [], newOptions: data.newOptions ?? [], willDelete: data.willDelete });
   }
   async function run() {
+    if (!canRun) return;
     setBusy(true); setMsg(""); setConfirmRun(false);
     const { ok, data } = await post({ csv, mode, replace });
     setBusy(false);
@@ -51,8 +54,8 @@ export function ImportSection({ campaignId, importCount, onDone }: { campaignId:
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={replace} onCheckedChange={(v) => setReplace(v === true)} /> 이전에 적재한 주문({importCount}건)을 지우고 새로 넣기 (웹 신청은 보존)</label>
           <Button size="sm" variant="outline" disabled={!csv.trim() || busy} onClick={dryRun}>미리보기</Button>
           {confirmRun
-            ? <><Button size="sm" disabled={busy} onClick={run}>정말 적재</Button><Button size="sm" variant="ghost" onClick={() => setConfirmRun(false)}>아니오</Button></>
-            : <Button size="sm" disabled={!preview || busy} onClick={() => setConfirmRun(true)}>적재</Button>}
+            ? <><Button size="sm" disabled={!canRun} onClick={run}>정말 적재</Button><Button size="sm" variant="ghost" onClick={() => setConfirmRun(false)}>아니오</Button></>
+            : <Button size="sm" disabled={!canRun} onClick={() => setConfirmRun(true)}>적재</Button>}
         </div>
         {preview && (
           <div className="rounded-md bg-muted/40 p-3 text-sm space-y-1">
@@ -60,6 +63,8 @@ export function ImportSection({ campaignId, importCount, onDone }: { campaignId:
             {replace && preview.willDelete && preview.willDelete.orders > 0 && (
               <p className="text-xs font-medium text-destructive">⚠ 적재하면 이전 적재 주문 {preview.willDelete.orders}건이 지워집니다{preview.willDelete.confirmed > 0 ? ` — 그중 수령 확인 응답이 있는 ${preview.willDelete.confirmed}건도 함께 사라집니다` : ""}.</p>
             )}
+            {preview.problems.length > 0 && <p className="text-xs font-medium text-destructive">문제 행이 있어 적재할 수 없습니다. CSV 를 고친 뒤 다시 미리보기 하세요.</p>}
+            {preview.count === 0 && <p className="text-xs font-medium text-destructive">해석된 행이 없어 적재할 수 없습니다.</p>}
             {preview.problems.map((p, i) => <p key={i} className="text-xs text-destructive">{p}</p>)}
             {preview.newOptions && preview.newOptions.length > 0 && (
               <p className="text-xs">새로 생길 옵션: {preview.newOptions.map((o) => `${o.group ? o.group + " " : ""}${o.name}`).join(", ")}</p>

@@ -13,9 +13,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ slug: st
   const { slug } = await params;
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return bad("Invalid JSON"); }
-  const cred = parseOwnerCred(b, studentIdHash);
+  // 상태 변경이므로 주문번호 단독은 받지 않는다 (이름 + 학번|이메일 필요).
+  const cred = parseOwnerCred(b, studentIdHash, false);
   const orderNo = typeof b.orderNo === "string" ? b.orderNo.trim().toUpperCase() : "";
-  if (!cred || !orderNo) return bad("주문번호와 본인 확인 정보를 입력해주세요.");
+  if (!cred || !orderNo) return bad("주문번호와 이름·학번(또는 이메일)을 입력해주세요.");
   const confirmation = b.confirmation === "received" || b.confirmation === "not_received" ? b.confirmation : null;
   if (!confirmation) return bad("응답을 선택해주세요.");
 

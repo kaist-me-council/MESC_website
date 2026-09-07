@@ -15,7 +15,7 @@ import { CheckCircle2, AlertTriangle, Lock, Minus, Plus, Landmark, Copy, Check, 
 import { GoodsPicker } from "./goods-picker";
 import { LinkifyText } from "@/components/linkify-text";
 import { MyOrders } from "./my-orders";
-import { AFFILIATIONS, copyText, fill, localeOf, type Affiliation, type Campaign, type Option, type Order } from "./types";
+import { AFFILIATIONS, copyText, errText, fill, localeOf, newIdemKey, request, type Affiliation, type Campaign, type Option, type Order, type ReqFail, type T } from "./types";
 
 export default function ApplyCampaignPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -31,15 +31,19 @@ export default function ApplyCampaignPage() {
   const [depositorName, setDepositorName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [retryHint, setRetryHint] = useState(false); // 네트워크 실패 — 이미 접수됐을 수 있음
   const [order, setOrder] = useState<Order | null>(null);
+  const [loadFail, setLoadFail] = useState<ReqFail | null>(null);
+  // 한 번 작성한 폼에 대해 재전송해도 주문이 중복 생성되지 않도록 고정. 성공하면 새로 발급.
+  const [idemKey, setIdemKey] = useState(newIdemKey);
 
-  const load = useCallback(() => {
-    fetch(`/api/campaigns/${slug}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setCampaign(d?.campaign ?? null))
-      .catch(() => setCampaign(null));
+  const load = useCallback(async () => {
+    const r = await request<{ campaign: Campaign }>(`/api/campaigns/${slug}`);
+    if (r.ok) { setCampaign(r.data.campaign ?? null); setLoadFail(null); }
+    else if (r.kind === "client") { setCampaign(null); setLoadFail(null); } // 404 = 없는 이벤트
+    else { setCampaign(undefined); setLoadFail(r); }
   }, [slug]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { Promise.resolve().then(load); }, [load]);
 
   const won = (n: number) => fill(t("apply.won"), n.toLocaleString());
   const optName = (o: Option) => (lang === "en" && o.nameEn ? o.nameEn : o.name);
@@ -62,25 +66,41 @@ export default function ApplyCampaignPage() {
     const items = campaign.options.filter((o) => (qty[o.id] ?? 0) > 0).map((o) => ({ optionId: o.id, qty: qty[o.id] }));
     if (!items.length) { setError(t("apply.selectError")); return; }
     if (!name.trim() || !email.trim() || (campaign.requireStudentId && !studentId.trim())) { setError(t("apply.formError")); return; }
-    setSubmitting(true); setError("");
-    const res = await fetch(`/api/campaigns/${slug}/orders`, {
+    setSubmitting(true); setError(""); setRetryHint(false);
+    const r = await request<{ order: Order }>(`/api/campaigns/${slug}/orders`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, items }),
+      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, items, idempotencyKey: idemKey }),
     });
-    const d = await res.json().catch(() => ({}));
-    setSubmitting(false);
-    if (res.status === 409 && d.optionId) {
-      const o = campaign.options.find((x) => x.id === d.optionId);
-      setError(fill(t("apply.stockError"), o ? optName(o) : "?"));
-      load();
+    setSubmitting(false); // 실패해도 버튼을 다시 열어 재시도 가능하게. 입력값은 그대로 유지.
+    if (!r.ok) {
+      if (r.status === 409 && typeof r.body.optionId === "number") {
+        const o = campaign.options.find((x) => x.id === r.body.optionId);
+        setError(fill(t("apply.stockError"), o ? optName(o) : "?"));
+        Promise.resolve().then(load);
+        return;
+      }
+      setError(errText(r, t));
+      if (r.kind === "network") setRetryHint(true); // 이미 접수됐을 수 있으니 조회 먼저
       return;
     }
-    if (!res.ok) { setError(d.error ?? t("apply.genericError")); return; }
-    setOrder(d.order);
+    setOrder(r.data.order);
     setQty({});
+    setIdemKey(newIdemKey());
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  if (loadFail) return (
+    <div className="container mx-auto px-4 py-8 max-w-lg space-y-4">
+      <Link href="/apply" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← {t("apply.back")}</Link>
+      <Alert variant="destructive" className="rounded-2xl">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription className="flex flex-wrap items-center gap-3">
+          <span className="flex-1">{errText(loadFail, t)}</span>
+          <Button size="sm" variant="outline" className="h-9 rounded-lg" onClick={() => Promise.resolve().then(load)}>{t("apply.retry")}</Button>
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
   if (campaign === undefined) return <PageSkeleton />;
   if (campaign === null) return (
     <div className="container mx-auto px-4 py-8 max-w-lg">
@@ -101,7 +121,7 @@ export default function ApplyCampaignPage() {
     <div className={`container mx-auto px-4 py-8 max-w-lg ${showSticky ? "pb-28" : ""}`}>
       <Link href="/apply" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← {t("apply.back")}</Link>
 
-      {goods && <Gallery images={campaign.images?.length ? campaign.images : campaign.imageUrl ? [campaign.imageUrl] : []} title={title} />}
+      {goods && <Gallery images={campaign.images?.length ? campaign.images : campaign.imageUrl ? [campaign.imageUrl] : []} title={title} t={t} />}
 
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: "60ms" }}>
         <h1 className="text-3xl font-bold mt-2 mb-2 [text-wrap:balance]">{title}</h1>
@@ -194,6 +214,9 @@ export default function ApplyCampaignPage() {
               <span className="text-lg font-bold tabular-nums">{won(total)}</span>
             </div>
             {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+            {retryHint && (
+              <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.submitNetworkHint")}</AlertDescription></Alert>
+            )}
             <Button onClick={submit} disabled={!campaign.open || submitting} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{submitting ? t("apply.submitting") : t("apply.submit")}</Button>
             <p className="text-xs text-muted-foreground flex items-start gap-1.5"><Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />{t("apply.privacyNote")}</p>
           </CardContent>
@@ -245,11 +268,27 @@ function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: num
         <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-primary" />{t("apply.doneTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-xl bg-primary/5 p-4 text-center space-y-1">
-          <p className="text-xs text-muted-foreground">{t("apply.orderNo")}</p>
-          <p className="text-3xl font-black tracking-[0.15em] tabular-nums">{order.orderNo}</p>
-          <CopyButton text={order.orderNo} t={t} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl bg-primary/5 p-4 text-center space-y-1">
+            <p className="text-xs text-muted-foreground">{t("apply.orderNo")}</p>
+            <p className="text-2xl font-black tracking-[0.15em] tabular-nums">{order.orderNo}</p>
+            <CopyButton text={order.orderNo} t={t} />
+          </div>
+          {order.manageCode ? (
+            <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 text-center space-y-1">
+              <p className="text-xs text-muted-foreground">{t("apply.manageCode")}</p>
+              <p className="text-2xl font-black tracking-[0.15em]">{order.manageCode}</p>
+              <CopyButton text={order.manageCode} t={t} />
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border/60 p-4 text-center text-sm text-muted-foreground grid place-items-center">
+              {t("apply.alreadyReceived")}
+            </div>
+          )}
         </div>
+        {order.manageCode && (
+          <Alert className="rounded-xl border-primary/40"><Lock className="h-4 w-4" /><AlertDescription>{t("apply.manageCodeHint")}</AlertDescription></Alert>
+        )}
         <ul className="text-sm space-y-1">
           {order.items.map((i, idx) => (
             <li key={idx} className="flex justify-between"><span>{i.group ? `${i.group} · ` : ""}{i.name} × {i.qty}</span><span className="tabular-nums">{won(i.unitPrice * i.qty)}</span></li>
@@ -289,14 +328,14 @@ function PageSkeleton() {
 }
 
 /** 상품 이미지 갤러리 — 자르지 않고(object-contain) 보여 주고, 탭하면 원본을 새 탭에서 연다. */
-function Gallery({ images, title }: { images: string[]; title: string }) {
+function Gallery({ images, title, t }: { images: string[]; title: string; t: T }) {
   const [i, setI] = useState(0);
   const cur = images[Math.min(i, images.length - 1)];
   return (
     <div className="mt-3 mb-4 animate-in fade-in duration-300">
       <div className="w-full overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-muted/30">
         {cur ? (
-          <a href={cur} target="_blank" rel="noopener noreferrer" aria-label="원본 크게 보기">
+          <a href={cur} target="_blank" rel="noopener noreferrer" aria-label={t("apply.imageOriginal")}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={cur} alt={`${title} ${i + 1}`} className="mx-auto max-h-[70vh] w-auto max-w-full object-contain" />
           </a>
@@ -309,7 +348,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
       {images.length > 1 && (
         <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
           {images.map((u, k) => (
-            <button key={u} type="button" onClick={() => setI(k)} aria-label={`${k + 1}번 이미지`}
+            <button key={u} type="button" onClick={() => setI(k)} aria-label={fill(t("apply.imageNth"), k + 1)}
               className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-muted/40 transition-all ${k === i ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={u} alt="" className="h-full w-full object-contain" />

@@ -24,6 +24,7 @@ export interface Order {
   confirmNote?: string | null;
   confirmedAt?: string | null;
   resolvedAt?: string | null;
+  refundedAt?: string | null;
   handedBy?: string | null;
 }
 
@@ -46,3 +47,26 @@ export const toLocal = (iso: string | null) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 export const toIso = (local: string) => (local ? new Date(local).toISOString() : null);
+
+/** 주문 상태·메모 갱신 (단건 또는 일괄). 신청 목록·수령 확인 탭 공용. */
+export async function putOrder(campaignId: number, body: object) {
+  await fetch(`/api/admin/campaigns/${campaignId}/orders`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** 중복 제거한 이메일을 클립보드로. 복사한 개수를 반환. */
+export async function copyEmails(rows: Order[]): Promise<number> {
+  const emails = [...new Set(rows.map((o) => o.email.trim().toLowerCase()).filter(Boolean))];
+  await navigator.clipboard.writeText(emails.join(", "));
+  return emails.length;
+}
+
+/** 환불이 필요해 보이는 주문: 입금 후 취소됐거나, 못 받음 응답에서 환불을 희망한 건. */
+export const needsRefund = (o: Order): boolean => {
+  if (o.total <= 0) return false;
+  if (o.status === "cancelled") return true;
+  return o.confirmation === "not_received" && (parseResolution(o) ?? []).some((r) => r.choice === "refund");
+};
