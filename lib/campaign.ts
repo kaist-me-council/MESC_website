@@ -197,6 +197,7 @@ export interface ImportOrderRow {
   phone: string | null;
   items: { group: string | null; name: string; qty: number }[];
   status: (typeof ORDER_STATUSES)[number];
+  handedBy?: string | null;
 }
 
 const keyOf = (group: string | null, name: string) => `${(group ?? "").trim()} ${name.trim()}`;
@@ -239,6 +240,7 @@ export async function importOrders(campaign: Campaign, rows: ImportOrderRow[]) {
         items: JSON.stringify(items),
         total: items.reduce((a, it) => a + it.qty * it.unitPrice, 0),
         status: r.status,
+        handedBy: r.handedBy ?? null,
         source: "import",
       };
     }),
@@ -307,6 +309,7 @@ export function tshirtRowsToOrders(rows: ImportRow[]): ImportOrderRow[] {
       phone: r.phone,
       items: r.items.map((it) => ({ group: it.color === "white" ? "흰색" : "검정", name: it.size, qty: it.qty })),
       status: r.pickedUp ? "delivered" : "paid",
+      handedBy: r.pickedUp ? r.handedBy ?? null : null,
     };
   });
 }

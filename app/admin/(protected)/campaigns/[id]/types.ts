@@ -24,6 +24,7 @@ export interface Order {
   confirmNote?: string | null;
   confirmedAt?: string | null;
   resolvedAt?: string | null;
+  handedBy?: string | null;
 }
 
 export const STATUS_LABEL: Record<Status, string> = { pending: "대기", paid: "입금", delivered: "수령", cancelled: "취소" };

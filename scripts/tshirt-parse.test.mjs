@@ -30,6 +30,8 @@ assert.equal(rows.length, 3);
 assert.equal(rows[0].studentIdHash, "h(20250001)");
 assert.equal(rows[0].email, "hong@kaist.ac.kr");
 assert.equal(rows[0].pickedUp, true);
+assert.equal(rows[0].handedBy, "신예승");
+assert.equal(rows[1].handedBy, null);
 assert.deepEqual(rows[0].items, [{ color: "white", size: "XL", qty: 1 }, { color: "black", size: "L", qty: 2 }]);
 assert.equal(rows[1].studentIdHash, null);
 assert.equal(rows[1].pickedUp, false);
