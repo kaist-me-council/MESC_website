@@ -1,6 +1,6 @@
 # 배포 판단 보고서 — feat/tshirt-check (학생회 이벤트 시스템 + 반팔티 수령 확인)
 
-작성 2026-09-08 새벽 · 대상 브랜치 `feat/tshirt-check` (HEAD 7a9ddad) · PR #1 · 프리뷰 https://mesc-website-git-feat-tshirt-check-kaist-mesc-s-projects.vercel.app
+작성 2026-09-08 새벽 · 대상 브랜치 `feat/tshirt-check` (HEAD 5c9c742 이후) · PR #1 · 프리뷰 https://mesc-website-git-feat-tshirt-check-kaist-mesc-s-projects.vercel.app
 
 읽는 사람: 회장. 목적: **오늘 main 에 병합해 배포할지** 결정.
 
@@ -10,7 +10,7 @@
 
 **배포해도 됩니다. 단, 아래 "배포 후 필수 3단계"를 메일 전에 끝내야 합니다.**
 
-근거: 새 기능은 전부 새 테이블·새 경로에 추가된 것이고, 기존 화면에 손댄 곳은 홈 카드 1개·관리자 대시보드 정리·공지 API 캐시 제거(이미 프로덕션에 나감)뿐입니다. 로컬 프로덕션 빌드에서 end-to-end 시나리오 전부 통과, 프리뷰에서 라이브 확인, 자체 코드 리뷰 결과는 §5.
+근거: 새 기능은 전부 새 테이블·새 경로에 추가된 것이고, 기존 화면에 손댄 곳은 홈 카드 1개·관리자 대시보드 정리·공지 API 캐시 제거(이미 프로덕션에 나감)뿐입니다. 로컬 프로덕션 빌드에서 end-to-end 시나리오 전부 통과, 프리뷰에서 라이브 확인, 자체 코드 리뷰 결과는 §6.
 
 ## 2. 무엇이 들어가나 (사용자 관점)
 
