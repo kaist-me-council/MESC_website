@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, Bell, BookOpen, BookMarked, Calendar, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, ListChecks, PartyPopper, Images, Inbox, MessagesSquare, Cookie, type LucideIcon } from "lucide-react";
+import { Menu, X, Bell, BookOpen, BookMarked, Calendar, CreditCard, Users, Settings, GraduationCap, MessageSquare, MapPin, LifeBuoy, ChevronDown, ListChecks, PartyPopper, Images, Inbox, MessagesSquare, Cookie, Ticket, type LucideIcon } from "lucide-react";
 import { Suspense, useState } from "react";
 import { ModeToggle } from "./mode-toggle";
 import { useLanguage } from "@/lib/language-context";
@@ -92,6 +92,7 @@ function NavbarContent({ search }: { search: ReadonlyURLSearchParams | null }) {
       items: [
         { href: "/members", label: t("navbar.members"), icon: Users },
         { href: "/department-info", label: t("navbar.deptInfo"), icon: MapPin },
+        { href: "/apply", label: t("navbar.events"), icon: Ticket },
       ],
     },
     {

@@ -1,0 +1,2 @@
+-- 캠페인 표시 순서
+ALTER TABLE "Campaign" ADD COLUMN "order" INTEGER NOT NULL DEFAULT 0;

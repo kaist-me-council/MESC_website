@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight, Bell, BookOpen, Calendar, CreditCard, ChevronRight, Pin,
-  Zap, ArrowUpRight
+  Zap, ArrowUpRight, Ticket
 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import HomePopupModal from "@/components/HomePopupModal";
@@ -48,6 +48,13 @@ export function HomeClient({ notices }: HomeClientProps) {
       label: t("features.resources.label"),
       desc: t("features.resources.desc"),
       lightColor: "bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-300"
+    },
+    {
+      href: "/apply",
+      icon: Ticket,
+      label: t("features.events.label"),
+      desc: t("features.events.desc"),
+      lightColor: "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
     },
   ];
 
