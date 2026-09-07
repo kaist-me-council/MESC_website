@@ -6,18 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ImportSection } from "./import-section";
 import {
   type Campaign, type Order, type Status, STATUS_LABEL, STATUS_VARIANT, CHOICE_LABEL,
-  parseItems, parseResolution, itemLabel,
+  copyEmails, itemLabel, parseItems, parseResolution, putOrder,
+  needsRefund,
 } from "./types";
 
-type Filter = "all" | Status | "unconfirmed" | "received" | "not_received";
+type Filter = "all" | Status;
+type Sort = "newest" | "oldest" | "name" | "status" | "total";
 
 export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[]; reload: () => Promise<void> }) {
-  const [filter, setFilter] = useState<Filter>("all");
-  const [q, setQ] = useState("");
-  const [sort, setSort] = useState<"newest" | "oldest" | "name" | "status" | "total">("newest");
+  const [filter, setFilterState] = useState<Filter>("all");
+  const [q, setQState] = useState("");
+  const [sort, setSortState] = useState<Sort>("newest");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [copied, setCopied] = useState("");
   const [pendingBulk, setPendingBulk] = useState<Status | null>(null);
@@ -26,12 +27,20 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
   const [editId, setEditId] = useState<number | null>(null);
   const [editItems, setEditItems] = useState<{ optionId: number; qty: number }[]>([]);
 
+  // 필터·검색·정렬이 바뀌면 선택을 비운다 (화면 밖 주문이 일괄 처리에 딸려가는 것 방지)
+  const clearSelection = () => { setSelected(new Set()); setPendingBulk(null); };
+  const setFilter = (v: Filter) => { setFilterState(v); clearSelection(); };
+  const setQ = (v: string) => { setQState(v); clearSelection(); };
+  const setSort = (v: Sort) => { setSortState(v); clearSelection(); };
+
   // 정산 — 전체 기준 (필터 무관)
   const settle = useMemo(() => ({
     paidAmount: orders.filter((o) => o.status === "paid" || o.status === "delivered").reduce((a, o) => a + o.total, 0),
     pendingAmount: orders.filter((o) => o.status === "pending").reduce((a, o) => a + o.total, 0),
     deliveredQty: orders.filter((o) => o.status === "delivered").reduce((a, o) => a + parseItems(o).reduce((b, it) => b + it.qty, 0), 0),
     cancelled: orders.filter((o) => o.status === "cancelled").length,
+    refundDue: orders.filter((o) => needsRefund(o) && !o.refundedAt).length,
+    refundDueAmount: orders.filter((o) => needsRefund(o) && !o.refundedAt).reduce((a, o) => a + o.total, 0),
   }), [orders]);
 
   const adjust = useMemo<Record<string, number>>(() => { try { return c.priceAdjust ? JSON.parse(c.priceAdjust) : {}; } catch { return {}; } }, [c.priceAdjust]);
@@ -44,16 +53,11 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     paid: orders.filter((o) => o.status === "paid").length,
     delivered: orders.filter((o) => o.status === "delivered").length,
     cancelled: orders.filter((o) => o.status === "cancelled").length,
-    unconfirmed: orders.filter((o) => o.status !== "cancelled" && !o.confirmation).length,
-    received: orders.filter((o) => o.confirmation === "received").length,
-    not_received: orders.filter((o) => o.confirmation === "not_received").length,
   }), [orders]);
 
   const STATUS_RANK: Record<Status, number> = { pending: 0, paid: 1, delivered: 2, cancelled: 3 };
   const visible = orders.filter((o) => {
-    if (filter === "unconfirmed") { if (o.status === "cancelled" || o.confirmation) return false; }
-    else if (filter === "received" || filter === "not_received") { if (o.confirmation !== filter) return false; }
-    else if (filter !== "all" && o.status !== filter) return false;
+    if (filter !== "all" && o.status !== filter) return false;
     return !q || `${o.name} ${o.email} ${o.orderNo} ${o.affiliation}`.toLowerCase().includes(q.toLowerCase());
   }).sort((a, b) => {
     if (sort === "oldest") return a.createdAt.localeCompare(b.createdAt);
@@ -72,24 +76,9 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     return [...m.entries()].sort((a, b) => (order.get(a[0]) ?? 999) - (order.get(b[0]) ?? 999));
   }, [orders, c.options]);
 
-  // 못 받음 집계 (그룹·이름·선택별)
-  const shortage = useMemo(() => {
-    const m = new Map<string, number>();
-    orders.filter((o) => o.confirmation === "not_received" && !o.resolvedAt).forEach((o) => {
-      const res = parseResolution(o) ?? parseItems(o).map((it) => ({ ...it, choice: "pickup" as const }));
-      res.forEach((r) => {
-        const k = `${itemLabel(r)} · ${CHOICE_LABEL[r.choice]}${r.choice === "exchange" && r.exchangeName ? `→${r.exchangeName}` : ""}`;
-        m.set(k, (m.get(k) ?? 0) + r.qty);
-      });
-    });
-    return [...m.entries()].sort();
-  }, [orders]);
-
-  const importCount = orders.filter((o) => o.source === "import").length;
-
   async function put(body: object) {
     setBusy(true);
-    await fetch(`/api/admin/campaigns/${c.id}/orders`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    await putOrder(c.id, body);
     await reload();
     setBusy(false);
   }
@@ -109,7 +98,7 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     let handedBy: string | undefined;
     if (status === "delivered") { const h = askHandedBy(); if (h === null) return; handedBy = h; }
     await put({ orderIds: [...selected], status, ...(handedBy !== undefined ? { handedBy } : {}) });
-    setSelected(new Set()); setPendingBulk(null);
+    clearSelection();
   }
   async function editDepositor(o: Order) {
     const v = prompt("입금자명 (비우면 이름과 동일)", o.depositorName ?? "");
@@ -128,10 +117,9 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     if (v === null) return;
     await put({ orderId: o.id, adminMemo: v });
   }
-  async function copyEmails(rows: Order[]) {
-    const emails = [...new Set(rows.map((o) => o.email.trim().toLowerCase()).filter(Boolean))];
-    await navigator.clipboard.writeText(emails.join(", "));
-    setCopied(`${emails.length}개 복사됨`);
+  async function copy(rows: Order[], scope: string) {
+    const n = await copyEmails(rows);
+    setCopied(`${n}명 복사됨 (${scope} ${rows.length}건)`);
     setTimeout(() => setCopied(""), 2500);
   }
   const toggle = (id: number) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -139,31 +127,32 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
   const toggleAll = () => setSelected(allVisibleSelected ? new Set() : new Set(visible.map((o) => o.id)));
 
   const filterCards: [Filter, string, number][] = [
-    ["all", "전체", counts.all], ["pending", "대기", counts.pending], ["paid", "입금", counts.paid], ["delivered", "수령", counts.delivered], ["cancelled", "취소", counts.cancelled],
-    ...(c.confirmEnabled ? ([["unconfirmed", "미응답", counts.unconfirmed], ["received", "받음", counts.received], ["not_received", "못 받음", counts.not_received]] as [Filter, string, number][]) : []),
+    ["all", "전체", counts.all], ["pending", "대기", counts.pending], ["paid", "입금", counts.paid],
+    ["delivered", "수령", counts.delivered], ["cancelled", "취소", counts.cancelled],
   ];
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {([
-          ["입금 확인 금액", `${settle.paidAmount.toLocaleString("ko-KR")}원`, "text-emerald-600"],
-          ["입금 대기 금액", `${settle.pendingAmount.toLocaleString("ko-KR")}원`, "text-amber-600"],
-          ["수령 완료", `${settle.deliveredQty.toLocaleString("ko-KR")}벌`, ""],
-          ["취소", `${settle.cancelled}건`, "text-muted-foreground"],
-        ] as [string, string, string][]).map(([label, v, cls]) => (
+          ["입금 확인 금액", `${settle.paidAmount.toLocaleString("ko-KR")}원`],
+          ["입금 대기 금액", `${settle.pendingAmount.toLocaleString("ko-KR")}원`],
+          ["환불 대기", `${settle.refundDue}건 · ${settle.refundDueAmount.toLocaleString("ko-KR")}원`],
+          ["수령 완료", `${settle.deliveredQty.toLocaleString("ko-KR")}벌`],
+          ["취소", `${settle.cancelled}건`],
+        ] as [string, string][]).map(([label, v]) => (
           <Card key={label}><CardContent className="p-3">
             <div className="text-xs text-muted-foreground">{label}</div>
-            <div className={`text-lg sm:text-xl font-bold tabular-nums ${cls}`}>{v}</div>
+            <div className="text-lg sm:text-xl font-bold tabular-nums">{v}</div>
           </CardContent></Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
         {filterCards.map(([k, label, n]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`rounded-md border p-2 sm:p-3 text-left ${filter === k ? "ring-2 ring-primary" : ""} ${k === "unconfirmed" ? "border-l-4 border-l-amber-400" : ""}`}>
+          <button key={k} onClick={() => setFilter(k)} className={`rounded-md border p-2 sm:p-3 text-left ${filter === k ? "ring-2 ring-primary" : ""}`}>
             <div className="text-xs text-muted-foreground">{label}</div>
-            <div className="text-lg sm:text-xl font-bold">{n}</div>
+            <div className="text-lg sm:text-xl font-bold tabular-nums">{n}</div>
           </button>
         ))}
       </div>
@@ -176,25 +165,15 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
           </CardContent>
         </Card>
       )}
-      {shortage.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">못 받음 집계 (처리 완료 제외) (색·사이즈·선택별 벌 수)</CardTitle></CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {shortage.map(([k, n]) => <Badge key={k} variant="destructive" className="text-sm">{k}: <strong className="ml-1">{n}</strong></Badge>)}
-          </CardContent>
-        </Card>
-      )}
-
-      <ImportSection campaignId={c.id} importCount={importCount} onDone={reload} />
 
       <div className="flex flex-wrap items-center gap-3">
         <Input placeholder="이름·이메일·주문번호 검색" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="정렬">
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="정렬">
           <option value="newest">최신순</option><option value="oldest">오래된순</option><option value="name">이름순</option><option value="status">상태순</option><option value="total">금액순</option>
         </select>
-        <Button size="sm" variant="outline" disabled={visible.length === 0} onClick={() => copyEmails(visible)}>이메일 복사 (현재 필터)</Button>
+        <Button size="sm" variant="outline" disabled={visible.length === 0} onClick={() => copy(visible, "현재 필터")}>이메일 복사 (현재 필터 {visible.length}건)</Button>
         {copied && <span className="text-sm text-muted-foreground">{copied}</span>}
-        <a className="text-sm underline ml-auto" href={`/api/admin/campaigns/${c.id}/orders?format=csv`}>CSV 내보내기</a>
+        <a className="text-sm underline ml-auto" href={`/api/admin/campaigns/${c.id}/orders?format=csv`}>전체 CSV 내보내기 ({orders.length}건)</a>
       </div>
 
       {selected.size > 0 && (
@@ -202,20 +181,20 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
           <span className="text-sm font-medium mr-1">{selected.size}건 선택:</span>
           {pendingBulk ? (
             <>
-              <span className="text-sm">「{STATUS_LABEL[pendingBulk]}」(으)로 바꿀까요?</span>
+              <span className="text-sm">선택한 {selected.size}건을 「{STATUS_LABEL[pendingBulk]}」(으)로 바꿀까요?</span>
               <Button size="sm" disabled={busy} onClick={() => bulk(pendingBulk)}>네</Button>
               <Button size="sm" variant="ghost" onClick={() => setPendingBulk(null)}>아니오</Button>
             </>
           ) : (
             <>
               <Button size="sm" onClick={() => setPendingBulk("paid")}>입금 확인</Button>
-              <Button size="sm" variant="outline" onClick={() => setPendingBulk("pending")}>입금 취소 (대기로)</Button>
+              <Button size="sm" variant="outline" onClick={() => setPendingBulk("pending")}>입금 취소</Button>
               <Button size="sm" onClick={() => setPendingBulk("delivered")}>수령 완료</Button>
-              <Button size="sm" variant="destructive" onClick={() => setPendingBulk("cancelled")}>취소</Button>
-              <Button size="sm" variant="outline" onClick={() => copyEmails(orders.filter((o) => selected.has(o.id)))}>선택 이메일 복사</Button>
+              <Button size="sm" variant="outline" onClick={() => copy(orders.filter((o) => selected.has(o.id)), "선택")}>선택 이메일 복사</Button>
+              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setPendingBulk("cancelled")}>신청 취소</Button>
             </>
           )}
-          <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setSelected(new Set())}>선택 해제</Button>
+          <Button size="sm" variant="ghost" className="ml-auto" onClick={clearSelection}>선택 해제</Button>
         </div>
       )}
 
@@ -237,26 +216,27 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     <Badge variant="secondary" className="text-xs">{o.affiliation}</Badge>
                     <Badge variant={STATUS_VARIANT[o.status]} className="text-xs">{STATUS_LABEL[o.status]}</Badge>
                     {o.source === "import" && <Badge variant="outline" className="text-xs">적재</Badge>}
-                    {o.confirmation === "received" && <Badge className="text-xs bg-emerald-600 text-white">받음</Badge>}
+                    {o.confirmation === "received" && <Badge className="text-xs">받음</Badge>}
                     {o.confirmation === "not_received" && <Badge variant="destructive" className="text-xs">못 받음</Badge>}
-                    {o.resolvedAt && <Badge className="text-xs bg-emerald-600 text-white">처리 완료</Badge>}
                     {o.handedBy && <Badge variant="outline" className="text-xs">배부: {o.handedBy}</Badge>}
+                    {o.refundedAt && <Badge className="text-xs bg-emerald-600 text-white">환불 완료</Badge>}
+                    {needsRefund(o) && !o.refundedAt && <Badge variant="destructive" className="text-xs">환불 필요</Badge>}
                   </div>
                   <div className="text-muted-foreground">{o.email}{o.phone ? ` · ${o.phone}` : ""}</div>
                   {o.depositorName && o.depositorName.trim() !== o.name.trim() && (
-                    <div className="text-xs font-medium text-amber-700 dark:text-amber-400">입금자명: {o.depositorName}</div>
+                    <div className="text-xs font-medium">입금자명: {o.depositorName}</div>
                   )}
                   {editId === o.id ? (
                     <div className="mt-1 space-y-1 rounded-md border bg-muted/30 p-2">
                       {editItems.map((it, i) => (
                         <div key={i} className="flex items-center gap-1">
-                          <select className="h-8 flex-1 min-w-0 rounded-md border bg-background px-1 text-xs" value={it.optionId}
+                          <select className="h-8 flex-1 min-w-0 rounded-md border bg-background px-1 text-xs" value={it.optionId} aria-label="옵션"
                             onChange={(e) => setEditItems(editItems.map((x, j) => (j === i ? { ...x, optionId: Number(e.target.value) } : x)))}>
                             {editableOptions.map((op) => <option key={op.id} value={op.id}>{itemLabel({ group: op.group || null, name: op.name })} ({op.price.toLocaleString("ko-KR")}원)</option>)}
                           </select>
-                          <input type="number" min={1} className="h-8 w-14 rounded-md border bg-background px-1 text-xs" value={it.qty}
+                          <Input type="number" min={1} className="h-8 w-16 px-1 text-xs" aria-label="수량" value={it.qty}
                             onChange={(e) => setEditItems(editItems.map((x, j) => (j === i ? { ...x, qty: Math.max(1, Number(e.target.value) || 1) } : x)))} />
-                          <button type="button" className="px-1 text-xs text-destructive" onClick={() => setEditItems(editItems.filter((_, j) => j !== i))}>삭제</button>
+                          <Button size="sm" variant="ghost" className="text-destructive px-2" onClick={() => setEditItems(editItems.filter((_, j) => j !== i))}>삭제</Button>
                         </div>
                       ))}
                       <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -269,13 +249,10 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                   ) : (
                     <div>{parseItems(o).map((it) => `${itemLabel(it)}×${it.qty}`).join(", ")} · <strong>{o.total.toLocaleString("ko-KR")}원</strong></div>
                   )}
-                  {res && <div className="text-xs">처리 선택: {res.map((r) => `${itemLabel(r)}×${r.qty} ${CHOICE_LABEL[r.choice]}${r.choice === "exchange" && r.exchangeName ? `→${r.exchangeName}` : ""}`).join(", ")}</div>}
-                  {o.confirmNote && <div className="text-xs">확인 메모: {o.confirmNote}</div>}
+                  {res && <div className="text-xs">희망 처리: {res.map((r) => `${itemLabel(r)}×${r.qty} ${CHOICE_LABEL[r.choice]}${r.choice === "exchange" && r.exchangeName ? `→${r.exchangeName}` : ""}`).join(", ")}</div>}
                   {o.note && <div className="text-xs">메모: {o.note}</div>}
                   {o.adminMemo && <div className="text-xs text-muted-foreground">관리자: {o.adminMemo}</div>}
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(o.createdAt).toLocaleString("ko-KR")}{o.confirmedAt && ` · 확인 ${new Date(o.confirmedAt).toLocaleString("ko-KR")}`}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString("ko-KR")}</div>
                 </div>
                 <div className="flex flex-wrap gap-1 shrink-0">
                   {o.status === "pending" && <Button size="sm" disabled={busy} onClick={() => setStatus(o, "paid")}>입금 확인</Button>}
@@ -289,9 +266,9 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     : cancelId === o.id
                       ? <><Button size="sm" variant="destructive" disabled={busy} onClick={() => { setCancelId(null); setStatus(o, "cancelled"); }}>정말 취소</Button><Button size="sm" variant="ghost" onClick={() => setCancelId(null)}>아니오</Button></>
                       : <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setCancelId(o.id)}>취소</Button>}
-                  {o.confirmation === "not_received" && (o.resolvedAt
-                    ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => put({ orderId: o.id, resolved: false })}>처리 완료 취소</Button>
-                    : <Button size="sm" variant="secondary" disabled={busy} onClick={() => put({ orderId: o.id, resolved: true })}>처리 완료</Button>)}
+                  {(needsRefund(o) || o.refundedAt) && (o.refundedAt
+                    ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => put({ orderId: o.id, refunded: false })}>환불 완료 취소</Button>
+                    : <Button size="sm" variant="secondary" disabled={busy} onClick={() => put({ orderId: o.id, refunded: true })}>환불 완료</Button>)}
                   <Button size="sm" variant="ghost" onClick={() => editMemo(o)}>메모</Button>
                   <Button size="sm" variant="ghost" onClick={() => editDepositor(o)}>입금자명</Button>
                   {o.status !== "cancelled" && editId !== o.id && <Button size="sm" variant="ghost" onClick={() => startEdit(o)}>항목 수정</Button>}

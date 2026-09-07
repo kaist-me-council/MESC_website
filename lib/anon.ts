@@ -37,6 +37,18 @@ export function ipHash(ip: string): string {
   return createHash("sha256").update(`${salt}:ip:${ip}`).digest("hex").slice(0, 16);
 }
 
+/** 신청 관리 코드 해시 (본인 취소용). 평문은 저장하지 않고 발급 시 1회만 보여 준다. */
+export function manageCodeHash(code: string): string {
+  const salt = getAnonSalt();
+  return createHash("sha256").update(`${salt}:mc:${code.trim().toUpperCase()}`).digest("hex").slice(0, 32);
+}
+
+/** 같은 길이 hex 해시 상수 시간 비교 (길이 다르면 false) */
+export function hashEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
 /** 비밀번호 해시 "saltHex:hashHex" (scrypt 64바이트, 레코드별 salt). AdminAccount·CourseReview 공용. */
 export function hashPassword(password: string): string {
   const salt = randomBytes(16);

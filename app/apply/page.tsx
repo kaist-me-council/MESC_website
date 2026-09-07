@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
-import { Ticket, ChevronRight, Shirt, ClipboardCheck } from "lucide-react";
+import { Ticket, ChevronRight, Shirt, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { errText, request, type ReqFail } from "./[slug]/types";
 
 interface CampaignSummary {
   slug: string;
@@ -22,13 +25,14 @@ interface CampaignSummary {
 export default function ApplyListPage() {
   const { t, lang } = useLanguage();
   const [items, setItems] = useState<CampaignSummary[] | null>(null);
+  const [fail, setFail] = useState<ReqFail | null>(null);
 
-  useEffect(() => {
-    fetch("/api/campaigns", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { campaigns: [] }))
-      .then((d) => setItems(d.campaigns ?? []))
-      .catch(() => setItems([]));
+  const load = useCallback(async () => {
+    const r = await request<{ campaigns: CampaignSummary[] }>("/api/campaigns");
+    if (r.ok) { setItems(r.data.campaigns ?? []); setFail(null); }
+    else { setItems(null); setFail(r); }
   }, []);
+  useEffect(() => { Promise.resolve().then(load); }, [load]);
 
   const fmt = (iso: string) => new Date(iso).toLocaleString(lang === "ko" ? "ko-KR" : "en-US", { dateStyle: "medium", timeStyle: "short" });
   const status = (c: CampaignSummary) => {
@@ -42,7 +46,16 @@ export default function ApplyListPage() {
       <h1 className="text-3xl font-bold mb-2 flex items-center gap-2 [text-wrap:balance]"><Ticket className="h-7 w-7 text-primary" />{t("apply.listTitle")}</h1>
       <p className="text-muted-foreground mb-8 [text-wrap:pretty]">{t("apply.listSubtitle")}</p>
 
-      {items === null && (
+      {fail && (
+        <Alert variant="destructive" className="rounded-2xl">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span className="flex-1">{errText(fail, t)}</span>
+            <Button size="sm" variant="outline" className="h-9 rounded-lg" onClick={() => Promise.resolve().then(load)}>{t("apply.retry")}</Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {items === null && !fail && (
         <div className="space-y-3 animate-pulse" aria-busy="true">
           {[0, 1].map((i) => <div key={i} className="h-24 rounded-2xl bg-muted" />)}
         </div>

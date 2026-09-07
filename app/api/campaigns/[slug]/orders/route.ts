@@ -3,13 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { enforce, getClientIp } from "@/lib/rate-limit";
 import { isValidString } from "@/lib/validation";
 import { studentIdHash } from "@/lib/tshirt";
-import { AFFILIATIONS, availability, isEmail, isOpen, makeOrderNo, publicOrder, unitPrice, type OrderItem } from "@/lib/campaign";
+import { manageCodeHash } from "@/lib/anon";
+import {
+  AFFILIATIONS, availability, isEmail, isOpen, makeManageCode, makeOrderNo, personQtyUsed, publicOrder, unitPrice,
+  type Db, type OrderItem,
+} from "@/lib/campaign";
 
 const noStore = { headers: { "Cache-Control": "private, no-store" } };
 const bad = (error: string, status = 400, extra: Record<string, unknown> = {}) =>
   NextResponse.json({ error, ...extra }, { status, ...noStore });
 
-// 공개: 신청 생성. 금액·재고는 서버가 계산/검증한다.
+/** 재고 부족·1인 한도 초과를 트랜잭션 안에서 던지기 위한 표식 */
+class Rejected extends Error {
+  constructor(readonly reason: string, readonly optionId?: number) { super(reason); }
+}
+
+// 공개: 신청 생성. 금액·재고·1인 한도는 서버가 계산/검증한다.
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   if (!enforce(getClientIp(req), "apply", 60, 60_000).ok) return bad("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", 429);
   const { slug } = await params;
@@ -30,6 +39,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const phone = typeof b.phone === "string" ? b.phone.trim().slice(0, 30) || null : null;
   const note = typeof b.note === "string" ? b.note.trim().slice(0, 500) || null : null;
   const depositorName = typeof b.depositorName === "string" ? b.depositorName.trim().slice(0, 50) || null : null;
+  const name = (b.name as string).trim();
+  const sidHash = studentId ? studentIdHash(studentId) : null;
+
+  // 재전송 방지 키 (클라이언트 생성). 형식만 검증하고 유일성은 DB 제약에 맡긴다.
+  const idempotencyKey = typeof b.idempotencyKey === "string" && /^[A-Za-z0-9._~-]{8,64}$/.test(b.idempotencyKey.trim())
+    ? b.idempotencyKey.trim()
+    : null;
+  if (idempotencyKey) {
+    const dup = await prisma.campaignOrder.findFirst({ where: { campaignId: c.id, idempotencyKey } });
+    if (dup) return NextResponse.json({ order: publicOrder(dup, c), replayed: true }, noStore);
+  }
 
   // 항목 검증
   const raw = Array.isArray(b.items) ? (b.items as { optionId?: unknown; qty?: unknown }[]) : [];
@@ -46,31 +66,64 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const totalQty = [...merged.values()].reduce((a, q) => a + q, 0);
   if (c.maxPerPerson && totalQty > c.maxPerPerson) return bad(`1인당 최대 ${c.maxPerPerson}개까지 신청할 수 있습니다.`);
 
-  // ponytail: 재고는 읽고-검사-쓰기 (동시 신청 시 초과 가능). 초과가 실제로 나면 트랜잭션+재검사로 올릴 것
-  const avail = await availability(c.id);
-  const items: OrderItem[] = [];
-  for (const [id, qty] of merged) {
+  const items: OrderItem[] = [...merged].map(([id, qty]) => {
     const o = byId.get(id)!;
-    const rem = avail.get(id);
-    if (rem !== null && rem !== undefined && rem < qty) return bad(`'${o.group ? o.group + " " : ""}${o.name}' 남은 수량이 부족합니다. (남음 ${Math.max(rem, 0)})`, 409, { optionId: id });
-    items.push({ optionId: id, group: o.group, name: o.name, qty, unitPrice: unitPrice(o, c, affiliation) });
-  }
-  const total = items.reduce((a, it) => a + it.qty * it.unitPrice, 0);
-
-  const order = await prisma.campaignOrder.create({
-    data: {
-      campaignId: c.id,
-      orderNo: makeOrderNo(c.slug),
-      affiliation,
-      name: b.name.trim(),
-      studentIdHash: studentId ? studentIdHash(studentId) : null,
-      email,
-      phone,
-      items: JSON.stringify(items),
-      total,
-      note,
-      depositorName,
-    },
+    return { optionId: id, group: o.group, name: o.name, qty, unitPrice: unitPrice(o, c, affiliation) };
   });
-  return NextResponse.json({ order: publicOrder(order, c) }, { status: 201, ...noStore });
+  const total = items.reduce((a, it) => a + it.qty * it.unitPrice, 0);
+  const manageCode = makeManageCode();
+
+  // 재고 재검사 + 1인 누적 한도 + 생성. 검사와 쓰기 사이가 갈라지면 초과 판매가 나므로 한 트랜잭션에서 한다.
+  const create = async (db: Db) => {
+    const hasStock = [...merged.keys()].some((id) => byId.get(id)!.stock !== null);
+    if (hasStock) {
+      const avail = await availability(c.id, db);
+      for (const [id, qty] of merged) {
+        const rem = avail.get(id);
+        if (rem !== null && rem !== undefined && rem < qty) {
+          const o = byId.get(id)!;
+          throw new Rejected(`'${o.group ? o.group + " " : ""}${o.name}' 남은 수량이 부족합니다. (남음 ${Math.max(rem, 0)})`, id);
+        }
+      }
+    }
+    if (c.maxPerPerson) {
+      const used = await personQtyUsed(db, c.id, { studentIdHash: sidHash, email, name });
+      if (used + totalQty > c.maxPerPerson) {
+        throw new Rejected(`1인당 최대 ${c.maxPerPerson}개까지 신청할 수 있습니다. (이미 ${used}개 신청)`);
+      }
+    }
+    return db.campaignOrder.create({
+      data: {
+        campaignId: c.id,
+        orderNo: makeOrderNo(c.slug),
+        affiliation,
+        name,
+        studentIdHash: sidHash,
+        email,
+        phone,
+        items: JSON.stringify(items),
+        total,
+        note,
+        depositorName,
+        manageCodeHash: manageCodeHash(manageCode),
+        idempotencyKey,
+      },
+    });
+  };
+
+  const needsTx = [...merged.keys()].some((id) => byId.get(id)!.stock !== null) || !!c.maxPerPerson;
+  try {
+    const order = needsTx ? await prisma.$transaction(create) : await create(prisma);
+    return NextResponse.json({ order: publicOrder(order, c, manageCode) }, { status: 201, ...noStore });
+  } catch (e) {
+    if (e instanceof Rejected) return bad(e.reason, 409, e.optionId ? { optionId: e.optionId } : {});
+    // 재전송이 동시에 들어와 unique 제약에 걸린 경우 기존 주문을 돌려준다.
+    if (idempotencyKey) {
+      const dup = await prisma.campaignOrder.findFirst({ where: { campaignId: c.id, idempotencyKey } });
+      if (dup) return NextResponse.json({ order: publicOrder(dup, c), replayed: true }, noStore);
+    }
+    // SQLite 쓰기 경합(SQLITE_BUSY) 등 — 재고 경쟁에서 진 쪽. 다시 시도하면 정확한 사유를 받는다.
+    console.error("[campaign order] create failed", e);
+    return bad("동시에 신청이 몰렸습니다. 잠시 후 다시 시도해주세요.", 409);
+  }
 }

@@ -13,7 +13,7 @@ import { useLanguage } from "@/lib/language-context";
 import { CheckCircle2, PackageX, Lock, AlertTriangle, ClipboardCheck } from "lucide-react";
 import { LookupForm } from "../my-orders";
 import { LinkifyText } from "@/components/linkify-text";
-import { fill, localeOf, type Campaign, type Choice, type Cred, type Order, type Resolution, type T } from "../types";
+import { errText, fill, localeOf, request, type Campaign, type Choice, type Cred, type Order, type ReqFail, type Resolution, type T } from "../types";
 
 /** 수령 확인: 주문 조회 → 받았어요/못 받았어요 → 못 받은 항목별 처리 선택 */
 export default function ConfirmPage() {
@@ -24,25 +24,41 @@ export default function ConfirmPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [loadFail, setLoadFail] = useState<ReqFail | null>(null);
+  const [lookupFail, setLookupFail] = useState<ReqFail | null>(null);
 
-  const load = useCallback(() => {
-    fetch(`/api/campaigns/${slug}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setCampaign(d?.campaign ?? null))
-      .catch(() => setCampaign(null));
+  const load = useCallback(async () => {
+    const r = await request<{ campaign: Campaign }>(`/api/campaigns/${slug}`);
+    if (r.ok) { setCampaign(r.data.campaign ?? null); setLoadFail(null); }
+    else if (r.kind === "client") { setCampaign(null); setLoadFail(null); }
+    else { setCampaign(undefined); setLoadFail(r); }
   }, [slug]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { Promise.resolve().then(load); }, [load]);
 
   async function lookup(c: Cred) {
-    setLoading(true); setOrders(null); setNotFound(false); setCred(c);
-    const res = await fetch(`/api/campaigns/${slug}/lookup`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) });
-    const d = await res.json().catch(() => ({ orders: [] }));
+    setLoading(true); setOrders(null); setNotFound(false); setLookupFail(null); setCred(c);
+    const r = await request<{ orders: Order[] }>(`/api/campaigns/${slug}/lookup`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c),
+    });
     setLoading(false);
-    const list: Order[] = (d.orders ?? []).filter((o: Order) => o.status !== "cancelled");
+    if (!r.ok) { setLookupFail(r); return; } // 통신 실패는 "주문 없음"과 구분
+    const list: Order[] = (r.data.orders ?? []).filter((o) => o.status !== "cancelled");
     if (!list.length) { setNotFound(true); return; }
     setOrders(list);
   }
 
+  if (loadFail) return (
+    <div className="container mx-auto px-4 py-8 max-w-lg space-y-4">
+      <Link href={`/apply/${slug}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">← {t("confirm.backToCampaign")}</Link>
+      <Alert variant="destructive" className="rounded-2xl">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription className="flex flex-wrap items-center gap-3">
+          <span className="flex-1">{errText(loadFail, t)}</span>
+          <Button size="sm" variant="outline" className="h-9 rounded-lg" onClick={() => Promise.resolve().then(load)}>{t("apply.retry")}</Button>
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
   if (campaign === undefined) return <div className="container mx-auto px-4 py-8 max-w-lg space-y-3 animate-pulse"><div className="h-8 w-2/3 rounded bg-muted" /><div className="h-4 w-1/2 rounded bg-muted" /><div className="h-64 rounded-2xl bg-muted" /></div>;
   if (campaign === null) return <div className="container mx-auto px-4 py-8 max-w-lg"><p className="text-muted-foreground">{t("apply.notFound")}</p></div>;
 
@@ -82,6 +98,15 @@ export default function ConfirmPage() {
                 {notFound && (
                   <Alert variant="destructive" className="rounded-xl"><PackageX className="h-4 w-4" /><AlertDescription>{t("confirm.notFound")}</AlertDescription></Alert>
                 )}
+                {lookupFail && (
+                  <Alert variant="destructive" className="rounded-xl">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="flex flex-wrap items-center gap-3">
+                      <span className="flex-1">{errText(lookupFail, t)}</span>
+                      {cred && <Button size="sm" variant="outline" className="h-9 rounded-lg" onClick={() => lookup(cred)}>{t("apply.retry")}</Button>}
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <p className="text-xs text-muted-foreground flex items-start gap-1.5"><Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />{t("confirm.privacyNote")}</p>
               </CardContent>
             </Card>
@@ -119,20 +144,21 @@ function OrderConfirmCard({ slug, campaign, order, cred, locked, t, lang, onSave
   const sameGroupNames = (group: string | null) => campaign.options.filter((o) => (o.group ?? null) === group).map((o) => o.name);
   const setRes = (idx: number, patch: Partial<Resolution>) => setResolution(resolution.map((x, i) => (i === idx ? { ...x, ...patch } : x)));
 
+  const needsIdentity = !cred.name; // 주문번호만으로 조회한 경우 — 상태 변경은 본인 확인 필요
+
   async function submit() {
     if (!response) return;
     setSaving(true); setError(""); setSaved(false);
-    const res = await fetch(`/api/campaigns/${slug}/confirm`, {
+    const r = await request<{ order?: Order }>(`/api/campaigns/${slug}/confirm`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...cred, orderNo: order.orderNo, confirmation: response, note,
-        resolution: response === "not_received" ? resolution.map((r) => ({ optionId: r.optionId, choice: r.choice, exchangeName: r.choice === "exchange" ? r.exchangeName ?? r.name : undefined })) : undefined,
+        resolution: response === "not_received" ? resolution.map((r2) => ({ optionId: r2.optionId, choice: r2.choice, exchangeName: r2.choice === "exchange" ? r2.exchangeName ?? r2.name : undefined })) : undefined,
       }),
     });
-    const d = await res.json().catch(() => ({}));
-    setSaving(false);
-    if (!res.ok) { setError(d.error ?? t("confirm.genericError")); return; }
-    setSaved(true); onSaved(d.order ?? { ...order, confirmation: response, resolution, confirmNote: note, confirmedAt: new Date().toISOString() });
+    setSaving(false); // 실패해도 선택·입력값 유지하고 버튼을 다시 연다
+    if (!r.ok) { setError(errText(r, t)); return; }
+    setSaved(true); onSaved(r.data.order ?? { ...order, confirmation: response, resolution, confirmNote: note, confirmedAt: new Date().toISOString() });
   }
 
   const choiceBtn = (active: boolean) =>
@@ -206,10 +232,13 @@ function OrderConfirmCard({ slug, campaign, order, cred, locked, t, lang, onSave
         )}
 
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+        {needsIdentity && !locked && (
+          <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("confirm.needIdentity")}</AlertDescription></Alert>
+        )}
         {locked ? (
           <p className="text-sm text-muted-foreground">{t("confirm.closed")}</p>
         ) : (
-          <Button onClick={submit} disabled={!response || saving} className="w-full h-12 rounded-xl font-semibold shadow-lg shadow-primary/30">{saving ? t("confirm.saving") : order.confirmation ? t("confirm.update") : t("confirm.submit")}</Button>
+          <Button onClick={submit} disabled={!response || saving || needsIdentity} className="w-full h-12 rounded-xl font-semibold shadow-lg shadow-primary/30">{saving ? t("confirm.saving") : order.confirmation ? t("confirm.update") : t("confirm.submit")}</Button>
         )}
         {saved && (
           <Alert className="rounded-xl animate-in fade-in duration-200">

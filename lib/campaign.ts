@@ -3,7 +3,7 @@
  * 설계: docs/superpowers/specs/2026-09-07-campaign-system-design.md §3, campaign-v2-design.md §2
  */
 import { randomBytes } from "node:crypto";
-import type { Campaign, CampaignOption, CampaignOrder } from "@prisma/client";
+import type { Campaign, CampaignOption, CampaignOrder, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isValidString } from "@/lib/validation";
 import { parseCsv, parseDistributionCsv, type ImportRow } from "@/lib/tshirt-parse";
@@ -56,12 +56,15 @@ export function unitPrice(option: Pick<CampaignOption, "price">, campaign: Pick<
   return option.price + (parsePriceAdjust(campaign.priceAdjust)[affiliation] ?? 0);
 }
 
+/** prisma 또는 $transaction 콜백의 tx 클라이언트 */
+export type Db = Prisma.TransactionClient;
+
 /** optionId → 남은 수량 (stock null 이면 null). 취소 제외 주문 수량 합을 뺀다. */
-export async function availability(campaignId: number): Promise<Map<number, number | null>> {
-  const options = await prisma.campaignOption.findMany({ where: { campaignId }, select: { id: true, stock: true } });
+export async function availability(campaignId: number, db: Db = prisma): Promise<Map<number, number | null>> {
+  const options = await db.campaignOption.findMany({ where: { campaignId }, select: { id: true, stock: true } });
   // 재고 제한 옵션이 하나도 없으면 주문 스캔 생략 (공개 페이지 조회마다 호출되므로)
   if (options.every((o) => o.stock === null)) return new Map(options.map((o) => [o.id, null]));
-  const orders = await prisma.campaignOrder.findMany({ where: { campaignId, status: { not: "cancelled" } }, select: { items: true } });
+  const orders = await db.campaignOrder.findMany({ where: { campaignId, status: { not: "cancelled" } }, select: { items: true } });
   const used = new Map<number, number>();
   for (const o of orders) {
     for (const it of JSON.parse(o.items) as OrderItem[]) used.set(it.optionId, (used.get(it.optionId) ?? 0) + it.qty);
@@ -69,14 +72,21 @@ export async function availability(campaignId: number): Promise<Map<number, numb
   return new Map(options.map((o) => [o.id, o.stock === null ? null : o.stock - (used.get(o.id) ?? 0)]));
 }
 
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0/O/1/I 제외
+function randCode(len: number): string {
+  const bytes = randomBytes(len);
+  let s = "";
+  for (let i = 0; i < len; i++) s += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  return s;
+}
+
 export function makeOrderNo(slug: string): string {
   const prefix = slug.replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase().padEnd(4, "X");
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0/O/1/I 제외
-  const bytes = randomBytes(6);
-  let s = "";
-  for (let i = 0; i < 6; i++) s += alphabet[bytes[i] % alphabet.length];
-  return `${prefix}-${s}`;
+  return `${prefix}-${randCode(6)}`;
 }
+
+/** 본인 취소용 관리 코드 (8자, 32^8 ≈ 1.1조). 평문은 발급 응답에만. */
+export const makeManageCode = () => randCode(8);
 
 /** images JSON → string[] (없으면 imageUrl 하나) */
 export function parseImages(c: { images: string | null; imageUrl: string | null }): string[] {
@@ -119,8 +129,11 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
 export function publicOrder(
   o: CampaignOrder,
   c: Pick<Campaign, "bankInfo" | "afterNote" | "afterNoteEn" | "title" | "titleEn" | "slug" | "enabled" | "confirmEnabled" | "confirmDeadline">,
+  manageCode?: string,
 ) {
   return {
+    ...(manageCode ? { manageCode } : {}), // 발급 직후 1회만. 이후 조회에는 없다.
+    hasManageCode: !!o.manageCodeHash,
     orderNo: o.orderNo,
     status: o.status,
     affiliation: o.affiliation,
@@ -148,13 +161,14 @@ export const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.
 
 /** 공개 API 본인 확인 — 주문번호 단독 또는 이름+(학번해시|이메일). 셋 다 없으면 null. */
 export type OwnerCred = { orderNo: string } | { name: string; studentIdHash: string | null; email: string | null };
-export function parseOwnerCred(b: Record<string, unknown>, hash: (sid: string) => string): OwnerCred | null {
+/** allowOrderNoOnly=false 면 주문번호 단독은 거부한다 (상태 변경 경로: 수령 확인). */
+export function parseOwnerCred(b: Record<string, unknown>, hash: (sid: string) => string, allowOrderNoOnly = true): OwnerCred | null {
   const orderNo = typeof b.orderNo === "string" ? b.orderNo.trim().toUpperCase() : "";
   const studentId = typeof b.studentId === "string" ? b.studentId.replace(/\D/g, "") : "";
   const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
   const name = typeof b.name === "string" ? b.name.trim() : "";
   if (name && name.length <= 50 && (studentId || isEmail(email))) return { name, studentIdHash: studentId ? hash(studentId) : null, email: isEmail(email) ? email : null };
-  if (/^[A-Z0-9]{4}-[A-Z0-9]{6}$/.test(orderNo)) return { orderNo };
+  if (allowOrderNoOnly && /^[A-Z0-9]{4}-[A-Z0-9]{6}$/.test(orderNo)) return { orderNo };
   return null;
 }
 
@@ -170,6 +184,25 @@ export async function findOwnOrders(campaignId: number, cred: OwnerCred) {
   if (!or.length) return [];
   const rows = await prisma.campaignOrder.findMany({ where: { campaignId, OR: or }, orderBy: { createdAt: "desc" } });
   return rows.filter((o) => normName(o.name) === normName(cred.name));
+}
+
+/**
+ * 같은 신청자의 취소 제외 기존 주문 수량 합 (maxPerPerson 누적용).
+ * 식별: 학번 해시 우선, 없으면 이메일 + 이름 정규화. 둘 다 없으면 0.
+ */
+export async function personQtyUsed(
+  db: Db,
+  campaignId: number,
+  who: { studentIdHash: string | null; email: string; name: string },
+): Promise<number> {
+  const where = who.studentIdHash
+    ? { campaignId, status: { not: "cancelled" }, studentIdHash: who.studentIdHash }
+    : { campaignId, status: { not: "cancelled" }, email: who.email };
+  if (!who.studentIdHash && !who.email) return 0;
+  const rows = await db.campaignOrder.findMany({ where, select: { items: true, name: true } });
+  return rows
+    .filter((r) => who.studentIdHash || normName(r.name) === normName(who.name))
+    .reduce((sum, r) => sum + (JSON.parse(r.items) as OrderItem[]).reduce((a, it) => a + it.qty, 0), 0);
 }
 
 /** 관리자 주문 항목 수정: [{optionId, qty}] → OrderItem[] + total. 옵션은 이 캠페인 소속·enabled 만. 오류면 문자열. */
@@ -203,15 +236,15 @@ export interface ImportOrderRow {
 const keyOf = (group: string | null, name: string) => `${(group ?? "").trim()} ${name.trim()}`;
 
 /** 없는 (group,name) 옵션을 만들고 key→id 맵 반환 (가격 0, 재고 무제한). 만든 목록도 돌려준다. */
-export async function ensureOptions(campaignId: number, pairs: { group: string | null; name: string }[], dryRun = false) {
-  const existing = await prisma.campaignOption.findMany({ where: { campaignId } });
+export async function ensureOptions(campaignId: number, pairs: { group: string | null; name: string }[], dryRun = false, db: Db = prisma) {
+  const existing = await db.campaignOption.findMany({ where: { campaignId } });
   const map = new Map(existing.map((o) => [keyOf(o.group, o.name), o.id]));
   const missing = new Map<string, { group: string | null; name: string }>();
   for (const p of pairs) if (!map.has(keyOf(p.group, p.name))) missing.set(keyOf(p.group, p.name), { group: p.group?.trim() || null, name: p.name.trim() });
   if (!dryRun && missing.size) {
     let order = existing.length;
     for (const m of missing.values()) {
-      const created = await prisma.campaignOption.create({ data: { campaignId, group: m.group, name: m.name, order: order++ } });
+      const created = await db.campaignOption.create({ data: { campaignId, group: m.group, name: m.name, order: order++ } });
       map.set(keyOf(m.group, m.name), created.id);
     }
   }
@@ -219,11 +252,11 @@ export async function ensureOptions(campaignId: number, pairs: { group: string |
 }
 
 /** rows → 주문 생성(source import). 옵션이 없으면 만들고, 금액은 단가×수량. */
-export async function importOrders(campaign: Campaign, rows: ImportOrderRow[]) {
-  const { map, created } = await ensureOptions(campaign.id, rows.flatMap((r) => r.items));
-  const options = await prisma.campaignOption.findMany({ where: { campaignId: campaign.id } });
+export async function importOrders(campaign: Campaign, rows: ImportOrderRow[], db: Db = prisma) {
+  const { map, created } = await ensureOptions(campaign.id, rows.flatMap((r) => r.items), false, db);
+  const options = await db.campaignOption.findMany({ where: { campaignId: campaign.id } });
   const byId = new Map(options.map((o) => [o.id, o]));
-  await prisma.campaignOrder.createMany({
+  await db.campaignOrder.createMany({
     data: rows.map((r) => {
       const items: OrderItem[] = r.items.map((it) => {
         const id = map.get(keyOf(it.group, it.name))!;
