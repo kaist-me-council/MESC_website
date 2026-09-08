@@ -17,6 +17,7 @@ interface CampaignSummary {
   kind?: "goods" | "signup";
   imageUrl?: string | null;
   open: boolean;
+  preview?: boolean;
   opensAt: string | null;
   closesAt: string | null;
   confirmOpen?: boolean;
@@ -36,6 +37,7 @@ export default function ApplyListPage() {
 
   const fmt = (iso: string) => new Date(iso).toLocaleString(lang === "ko" ? "ko-KR" : "en-US", { dateStyle: "medium", timeStyle: "short" });
   const status = (c: CampaignSummary) => {
+    if (c.preview) return { label: t("apply.previewBadge"), variant: "destructive" as const };
     if (c.open) return { label: t("apply.open"), variant: "default" as const };
     if (c.opensAt && new Date(c.opensAt) > new Date()) return { label: t("apply.notOpenYet"), variant: "secondary" as const };
     return { label: t("apply.closed"), variant: "outline" as const };

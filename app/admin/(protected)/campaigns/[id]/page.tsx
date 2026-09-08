@@ -92,7 +92,7 @@ export default function AdminCampaignDetailPage() {
         <Badge variant="outline" className="text-xs">{c.kind === "goods" ? "굿즈" : "신청"}</Badge>
         <Badge variant={c.enabled ? "default" : "outline"} className="text-xs">{openState}</Badge>
         {confirmState && <Badge variant="secondary" className="text-xs">{confirmState}</Badge>}
-        <a className="underline text-muted-foreground" href={`/apply/${c.slug}`} target="_blank" rel="noreferrer">공개 페이지 보기</a>
+        <a className="underline text-muted-foreground" href={`/apply/${c.slug}`} target="_blank" rel="noreferrer">{c.enabled ? "공개 페이지 보기" : "미리보기 (비공개 — 관리자만 보임)"}</a>
         {c.confirmEnabled && <a className="underline text-muted-foreground" href={`/apply/${c.slug}/confirm`} target="_blank" rel="noreferrer">수령 확인 페이지</a>}
       </div>
 

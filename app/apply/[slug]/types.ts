@@ -10,6 +10,8 @@ export interface Campaign {
   open: boolean; opensAt: string | null; closesAt: string | null; afterNote: string | null; afterNoteEn: string | null;
   allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: Record<string, number>; options: Option[];
   confirmEnabled: boolean; confirmDeadline: string | null; confirmNote: string | null; confirmNoteEn: string | null; confirmOpen: boolean;
+  /** 비공개 캠페인을 관리자가 미리 보는 중 (학생에게는 404) */
+  preview?: boolean;
 }
 
 export interface OrderItem { optionId: number; group: string | null; name: string; qty: number; unitPrice: number }

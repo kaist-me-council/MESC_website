@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
-import { CheckCircle2, AlertTriangle, Lock, Minus, Plus, Landmark, Copy, Check, Shirt, ClipboardCheck } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Lock, Minus, Plus, Landmark, Copy, Check, Shirt, ClipboardCheck , Eye } from "lucide-react";
 import { GoodsPicker } from "./goods-picker";
 import { LinkifyText } from "@/components/linkify-text";
 import { MyOrders } from "./my-orders";
@@ -121,6 +121,13 @@ export default function ApplyCampaignPage() {
     <div className={`container mx-auto px-4 py-8 max-w-lg ${showSticky ? "pb-28" : ""}`}>
       <Link href="/apply" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← {t("apply.back")}</Link>
 
+      {campaign.preview && (
+        <Alert className="mt-3 mb-1 rounded-2xl border-amber-500/40 bg-amber-500/10">
+          <Eye className="h-4 w-4" />
+          <AlertDescription>{t("apply.previewNote")}</AlertDescription>
+        </Alert>
+      )}
+
       {goods && <Gallery images={campaign.images?.length ? campaign.images : campaign.imageUrl ? [campaign.imageUrl] : []} title={title} t={t} />}
 
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: "60ms" }}>
@@ -128,6 +135,7 @@ export default function ApplyCampaignPage() {
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Badge variant="outline" className="text-xs">{t(`apply.kind_${campaign.kind}`)}</Badge>
           <Badge variant={campaign.open ? "default" : "outline"}>{campaign.open ? t("apply.open") : t("apply.closed")}</Badge>
+          {campaign.preview && <Badge variant="destructive" className="text-xs">{t("apply.previewBadge")}</Badge>}
           {campaign.confirmOpen && <Badge variant="secondary" className="text-xs">{t("apply.confirmOpenBadge")}</Badge>}
           {campaign.closesAt && <span className="text-xs text-muted-foreground">{t("apply.until")} {fmt(campaign.closesAt)}</span>}
         </div>
@@ -144,7 +152,7 @@ export default function ApplyCampaignPage() {
 
       {order && <DoneCard order={order} won={won} t={t} lang={lang} onReset={() => setOrder(null)} />}
 
-      {!order && !campaign.open && (
+      {!order && !campaign.open && !campaign.preview && (
         <Alert className="mb-6 rounded-2xl"><Lock className="h-4 w-4" /><AlertDescription>{t("apply.closedNote")}</AlertDescription></Alert>
       )}
 
@@ -217,7 +225,7 @@ export default function ApplyCampaignPage() {
             {retryHint && (
               <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.submitNetworkHint")}</AlertDescription></Alert>
             )}
-            <Button onClick={submit} disabled={!campaign.open || submitting} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{submitting ? t("apply.submitting") : t("apply.submit")}</Button>
+            <Button onClick={submit} disabled={!campaign.open || campaign.preview || submitting} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{campaign.preview ? t("apply.previewNoSubmit") : submitting ? t("apply.submitting") : t("apply.submit")}</Button>
             <p className="text-xs text-muted-foreground flex items-start gap-1.5"><Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />{t("apply.privacyNote")}</p>
           </CardContent>
         </Card>
