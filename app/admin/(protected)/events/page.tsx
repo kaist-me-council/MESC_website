@@ -205,6 +205,10 @@ export default function AdminEventsPage() {
         })
       );
       const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed === results.length) {
+        alert("사진을 하나도 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
       const zipBlob = await zip.generateAsync({ type: "blob" });
       const safeName = selectedEvent.title.replace(/[\\/:*?"<>|]/g, "_");
       const url = URL.createObjectURL(zipBlob);
