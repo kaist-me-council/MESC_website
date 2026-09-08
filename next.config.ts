@@ -57,7 +57,8 @@ const nextConfig: NextConfig = {
               "frame-src https://calendar.google.com https://docs.google.com",
               // connect-src: 공지 첨부를 브라우저에서 구글 드라이브로 직접 올리므로 googleapis 가 필요하다.
               //   (서버 함수 본문 4.5MB 한도 때문에 직접 업로드 방식을 쓴다. 여기서 빠지면 "Failed to fetch" 로 조용히 실패)
-              "connect-src 'self' https://*.public.blob.vercel-storage.com https://www.googleapis.com https://*.googleapis.com",
+              //   Blob 클라이언트 업로드는 blob.vercel-storage.com 을 쓴다 — *.public.* 만 열면 막힌다(실제로 막혔었음).
+              "connect-src 'self' https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://www.googleapis.com https://*.googleapis.com",
             ].join("; "),
           },
         ],
