@@ -15,6 +15,12 @@ export default async function MembersPage() {
     prisma.siteLink.findMany({ where: { enabled: true, category: "community" }, orderBy: { order: "asc" } }),
   ]);
 
+  const mascots = await prisma.mascot.findMany({
+    where: { enabled: true },
+    orderBy: [{ order: "asc" }, { id: "asc" }],
+    select: { id: true, name: true, nameEn: true, tagKo: true, tagEn: true, descKo: true, descEn: true, imageUrl: true },
+  });
+
   const clubs = clubRows.map((c) => ({
     name: c.name,
     nameEn: c.nameEn ?? c.name,
@@ -37,6 +43,7 @@ export default async function MembersPage() {
       clubs={clubs}
       importantLinks={importantLinks}
       communityLinks={communityLinks}
+      mascots={mascots}
     />
   );
 }

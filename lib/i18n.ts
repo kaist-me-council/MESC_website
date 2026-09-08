@@ -41,6 +41,21 @@ export const translations = {
       events: "학생회 이벤트",
     },
     // Common
+    push: {
+      on: "알림 받는 중",
+      off: "공지 알림 받기",
+      working: "처리 중...",
+      deniedNote: "알림이 차단되어 있습니다. 브라우저 설정에서 이 사이트의 알림을 허용한 뒤 다시 시도해주세요.",
+      saveFailed: "알림 설정에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      notConfigured: "알림 기능이 아직 설정되지 않았습니다.",
+      iosTitle: "아이폰에서 알림을 받으려면 홈 화면에 추가해주세요",
+      iosStep1: "사파리 아래쪽 공유 버튼을 누릅니다",
+      iosStep2: "\"홈 화면에 추가\"를 선택합니다",
+      iosStep3: "홈 화면의 아이콘으로 다시 열고 \"공지 알림 받기\"를 누릅니다",
+      installHint: "홈 화면에 추가하면 앱처럼 쓸 수 있어요",
+      install: "추가",
+      dismiss: "닫기",
+    },
     common: {
       errNetwork: "연결에 실패했습니다. 인터넷 상태를 확인하고 다시 시도해주세요.",
       errRateLimit: "요청이 많습니다. 잠시 후 다시 시도해주세요.",
@@ -131,6 +146,8 @@ export const translations = {
     },
     // Notices Page
     notices: {
+      attachments: "첨부파일",
+
       title: "공지사항",
       loading: "불러오는 중...",
       empty: "공지사항이 없습니다.",
@@ -413,6 +430,9 @@ export const translations = {
     },
     // Members Page
     members: {
+      tabMascots: "마스코트",
+      mascotsSubtitle: "기계공학과를 대표하는 캐릭터를 소개합니다.",
+
       title: "기계과 학부 소개",
       subtitle: "KAIST 기계공학과 학생회와 과동아리를 소개합니다.",
       noMembers: "학생회 멤버 정보가 아직 등록되지 않았습니다.",
@@ -457,6 +477,21 @@ export const translations = {
       events: "Council Events",
     },
     // Common
+    push: {
+      on: "Notifications on",
+      off: "Get notice alerts",
+      working: "Working...",
+      deniedNote: "Notifications are blocked. Allow them for this site in your browser settings and try again.",
+      saveFailed: "Could not save your notification setting. Please try again.",
+      notConfigured: "Notifications are not set up yet.",
+      iosTitle: "On iPhone, add this site to your Home Screen to get alerts",
+      iosStep1: "Tap the Share button at the bottom of Safari",
+      iosStep2: "Choose \"Add to Home Screen\"",
+      iosStep3: "Open it from the Home Screen icon and tap \"Get notice alerts\"",
+      installHint: "Add to your Home Screen to use it like an app",
+      install: "Add",
+      dismiss: "Dismiss",
+    },
     common: {
       errNetwork: "Connection failed. Check your internet and try again.",
       errRateLimit: "Too many requests. Please wait a moment and try again.",
@@ -547,6 +582,8 @@ export const translations = {
     },
     // Notices Page
     notices: {
+      attachments: "Attachments",
+
       title: "Notices",
       loading: "Loading...",
       empty: "No notices available.",
@@ -829,6 +866,9 @@ export const translations = {
     },
     // Members Page
     members: {
+      tabMascots: "Mascot",
+      mascotsSubtitle: "Meet the characters that represent the Department of Mechanical Engineering.",
+
       title: "About KAIST ME",
       subtitle: "Meet the student council and department clubs of KAIST Mechanical Engineering.",
       noMembers: "Student council member information has not been registered yet.",

@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/lib/language-context";
 import { request, type ReqFail } from "@/lib/fetch-state";
 import { LoadError } from "@/components/load-error";
+import { NotificationToggle, InstallPrompt } from "@/components/notification-toggle";
 
 interface Notice {
   id: number;
@@ -89,7 +90,11 @@ function NoticesContent() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">{t("notices.title")}</h1>
+      <InstallPrompt className="mb-4" />
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h1 className="text-3xl font-bold">{t("notices.title")}</h1>
+        <NotificationToggle />
+      </div>
       <Tabs value={activeCategory} onValueChange={handleCategoryChange} className="mb-6">
         <TabsList>
           {CATEGORIES.map((cat) => (

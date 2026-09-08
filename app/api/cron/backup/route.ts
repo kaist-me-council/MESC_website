@@ -34,6 +34,18 @@ async function purgeExpired() {
   await prisma.contentView.deleteMany({ where: { createdAt: { lt: d90 } } });
   // 관리자 감사 로그: 180일 보관
   await prisma.adminAudit.deleteMany({ where: { createdAt: { lt: d180 } } });
+  // 푸시 구독: 연속 실패 한도 초과, 또는 180일 넘게 한 번도 성공하지 못한 구독 정리
+  await prisma.pushSubscription.deleteMany({
+    where: {
+      OR: [
+        { failCount: { gte: 5 } },
+        {
+          createdAt: { lt: d180 },
+          OR: [{ lastSuccessAt: null }, { lastSuccessAt: { lt: d180 } }],
+        },
+      ],
+    },
+  });
   // 학생회 이벤트 신청: 캠페인 마감(closesAt) 후 180일 지나면 개인정보만 익명화 (주문 항목·금액·상태는 통계용으로 보존)
   await prisma.campaignOrder.updateMany({
     where: { campaign: { closesAt: { lt: d180 } }, email: { not: "" } },

@@ -15,6 +15,7 @@ export default async function AdminSitePage() {
   const s = await prisma.siteSettings.findUnique({ where: { id: 1 } });
   const links = await prisma.siteLink.findMany({ orderBy: { order: "asc" } });
   const clubs = await prisma.club.findMany({ orderBy: { order: "asc" } });
+  const mascots = await prisma.mascot.findMany({ orderBy: [{ order: "asc" }, { id: "asc" }] });
 
   const settings = {
     locationKo: s?.locationKo ?? "N7동 학생회실",
@@ -37,7 +38,7 @@ export default async function AdminSitePage() {
         </div>
       </div>
       <div className="container mx-auto px-4 py-6">
-        <SiteSettingsEditor initialSettings={settings} initialLinks={links} initialClubs={clubs} />
+        <SiteSettingsEditor initialSettings={settings} initialLinks={links} initialClubs={clubs} initialMascots={mascots} />
       </div>
     </div>
   );

@@ -60,16 +60,29 @@ function MemberCard({ member }: { member: Member }) {
   );
 }
 
+interface Mascot {
+  id: number;
+  name: string;
+  nameEn: string | null;
+  tagKo: string | null;
+  tagEn: string | null;
+  descKo: string;
+  descEn: string | null;
+  imageUrl: string | null;
+}
+
 export function MembersClient({
   members,
   clubs,
   importantLinks,
   communityLinks,
+  mascots = [],
 }: {
   members: Member[];
   clubs: Club[];
   importantLinks: LinkRow[];
   communityLinks: LinkRow[];
+  mascots?: Mascot[];
 }) {
   const { t, lang } = useLanguage();
 
@@ -102,6 +115,7 @@ export function MembersClient({
         <TabsList className="mb-6">
           <TabsTrigger value="council">{t("members.tabCouncil")}</TabsTrigger>
           <TabsTrigger value="clubs">{t("members.tabClubs")}</TabsTrigger>
+          {mascots.length > 0 && <TabsTrigger value="mascots">{t("members.tabMascots")}</TabsTrigger>}
         </TabsList>
 
         {/* ── 학생회 구성원 탭 ── */}
@@ -207,6 +221,35 @@ export function MembersClient({
             ))}
           </div>
         </TabsContent>
+
+        {/* ── 마스코트 탭 ── */}
+        {mascots.length > 0 && (
+          <TabsContent value="mascots">
+            <p className="text-muted-foreground mb-6">{t("members.mascotsSubtitle")}</p>
+            <div className="space-y-6">
+              {mascots.map((m) => {
+                const name = lang === "en" && m.nameEn?.trim() ? m.nameEn : m.name;
+                const tag = lang === "en" && m.tagEn?.trim() ? m.tagEn : m.tagKo;
+                const desc = lang === "en" && m.descEn?.trim() ? m.descEn : m.descKo;
+                return (
+                  <div key={m.id} className="rounded-2xl border border-border/60 bg-card p-6 flex flex-col sm:flex-row gap-6 items-center sm:items-start hover-lift-premium">
+                    <div className="w-40 h-40 shrink-0 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/5 grid place-items-center overflow-hidden">
+                      {m.imageUrl
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={m.imageUrl} alt={name} className="h-full w-full object-contain" />
+                        : <span className="text-5xl" aria-hidden="true">🐣</span>}
+                    </div>
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
+                      <h3 className="text-2xl font-bold [text-wrap:balance]">{name}</h3>
+                      {tag && <p className="text-primary font-medium mt-1">{tag}</p>}
+                      <p className="text-muted-foreground mt-3 whitespace-pre-wrap leading-relaxed [text-wrap:pretty]">{desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* 주요 링크 */}

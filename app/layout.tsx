@@ -26,9 +26,8 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "기계과 학생회",
   },
-  icons: {
-    apple: "/icons/icon-192.png",
-  },
+  // 아이콘·OG 이미지는 app/icon.svg · app/apple-icon.png · app/opengraph-image.png
+  // 파일 컨벤션으로 자동 주입된다 (scripts/make-icons.mjs 로 생성).
   openGraph: {
     type: "website",
     locale: "ko_KR",
@@ -36,13 +35,11 @@ export const metadata: Metadata = {
     title: "기계공학과 학생회",
     description: "기계공학과 학생회 공식 웹사이트 - 공지사항, 학습자료, 캘린더 등을 확인하세요.",
     url: SITE_URL,
-    images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "기계공학과 학생회" }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "기계공학과 학생회",
     description: "기계공학과 학생회 공식 웹사이트",
-    images: ["/icons/icon-512.png"],
   },
 };
 
@@ -55,7 +52,7 @@ export default async function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning className={`${geistSans.variable} h-full antialiased`}>
       <head>
-        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" content="#062e6e" />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <LayoutWrapper footerData={footerData}>{children}</LayoutWrapper>
