@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdminGuide } from "@/components/admin-guide";
 import { Paperclip } from "lucide-react";
+import { nextChunkStart } from "@/lib/upload-rules";
 
 interface Attachment { id?: number; name: string; url: string; driveFileId?: string | null; size: number; mime: string }
 
@@ -169,6 +170,8 @@ export default function AdminNoticesPage() {
 
   /** 시간 제한을 건 fetch — 어떤 단계도 무한정 "업로드 중" 으로 멈추지 않게 한다. */
   async function fetchWithTimeout(input: string, init: RequestInit, ms: number, label: string, outer?: AbortSignal) {
+    // 이미 취소된 뒤라면 addEventListener 는 영영 울리지 않는다 → 여기서 먼저 끊는다.
+    if (outer?.aborted) throw new Error("작업이 취소됐습니다.");
     const ctl = new AbortController();
     const onAbort = () => ctl.abort();
     outer?.addEventListener("abort", onAbort);
@@ -204,6 +207,7 @@ export default function AdminNoticesPage() {
 
     let start = 0;
     let guard = 0;
+    let stalled = 0; // 서버 확인 위치가 앞으로 가지 않은 연속 횟수
     while (start < file.size) {
       if (guard++ > 1000) throw new Error("업로드가 끝나지 않았습니다. 다시 시도해주세요.");
       const end = Math.min(start + CHUNK, file.size);
@@ -222,8 +226,18 @@ export default function AdminNoticesPage() {
       if (d.done) {
         return { url: "", driveFileId: d.driveFileId, name: d.name, size: d.size, mime: d.mime };
       }
-      // 구글이 알려 준 위치로 맞춘다 (우리 계산과 어긋나도 여기서 수렴)
-      start = typeof d.received === "number" && d.received > start ? d.received : end;
+      // 서버가 확인한 수신 위치만 신뢰한다. 우리가 보낸 양을 가정해 전진하면
+      // 구글이 실제로 못 받은 구간을 건너뛰어 파일이 조용히 깨진다.
+      const next = nextChunkStart(d.received, end, file.size);
+      if (next <= start) {
+        // 진행이 없다 — 구글이 아는 위치로 되돌려 같은 구간을 다시 보낸다.
+        if (++stalled >= 3) throw new Error("업로드가 진행되지 않습니다. 네트워크를 확인하고 다시 시도해주세요.");
+        start = next;
+        say(`${file.name} ${Math.round((start / file.size) * 100)}% 다시 보내는 중...`);
+        continue;
+      }
+      stalled = 0;
+      start = next;
       say(`${file.name} ${Math.round((start / file.size) * 100)}% 올리는 중...`);
     }
     throw new Error("업로드가 끝나지 않았습니다. 다시 시도해주세요.");
@@ -268,6 +282,8 @@ export default function AdminNoticesPage() {
         return { kind: "warn", text: `알림을 ${d.sent}명에게 보냈고 ${d.failed}건은 실패했습니다. 만료된 구독 ${d.pruned ?? 0}건은 정리했습니다.` };
       case "no_subscribers":
         return { kind: "warn", text: "알림을 받도록 설정한 사람이 아직 없습니다. 공지 페이지에서 '알림 받기'를 켜야 받을 수 있습니다." };
+      case "not_subscribed":
+        return { kind: "warn", text: "이 기기의 알림 구독을 찾지 못했습니다. 공지 페이지에서 '공지 알림 받기'를 다시 켜주세요." };
       case "not_configured":
         return { kind: "warn", text: "알림 발송 설정이 되어 있지 않습니다. 관리자에게 문의하세요." };
       case "lookup_failed":
@@ -292,12 +308,26 @@ export default function AdminNoticesPage() {
     }
   }
 
-  /** 아무 공지도 보내지 않고 내 기기로만 시험 발송. */
+  /** 아무 공지도 보내지 않고 **이 기기로만** 시험 발송. 구독자 전체에게 나가지 않는다. */
   async function sendTest() {
     setNotifyBusy("test");
     setSubmitMsg(null);
     try {
-      const res = await fetch("/api/admin/push/test", { method: "POST" });
+      // 내 기기의 구독 endpoint 를 찾아 그 하나만 대상으로 삼는다.
+      let endpoint = "";
+      try {
+        const reg = await navigator.serviceWorker?.getRegistration();
+        endpoint = (await reg?.pushManager.getSubscription())?.endpoint ?? "";
+      } catch { endpoint = ""; }
+      if (!endpoint) {
+        setSubmitMsg({ kind: "warn", text: "[시험 발송] 이 기기가 알림을 받도록 설정되어 있지 않습니다. 공지 페이지에서 '공지 알림 받기'를 먼저 켜주세요." });
+        return;
+      }
+      const res = await fetch("/api/admin/push/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint }),
+      });
       const data = await res.json().catch(() => ({}));
       const d = describeSend(data);
       setSubmitMsg({ kind: d.kind, text: `[시험 발송] ${d.text}` });
@@ -318,6 +348,8 @@ export default function AdminNoticesPage() {
 
     const added: Attachment[] = [];
     for (const file of Array.from(files).slice(0, 10 - attachments.length)) {
+      // 파일 사이 간격에서 취소·폼 전환이 일어났을 수 있다 — 다음 파일을 시작하지 않는다.
+      if (ctl.signal.aborted || sessionRef.current !== session) break;
       if (file.size === 0) { setUploadError(`${file.name}: 빈 파일은 첨부할 수 없습니다.`); break; }
       if (file.size > MAX_ATTACHMENT_BYTES) { setUploadError(`${file.name}: 파일 크기는 ${MAX_ATTACHMENT_MB}MB 이하여야 합니다.`); break; }
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -339,9 +371,11 @@ export default function AdminNoticesPage() {
       }
     }
 
-    // 늦게 끝난 작업이 새 폼의 상태·첨부를 건드리지 못하게 막는 지점
-    uploadingRef.current = false; // 세션이 바뀌었더라도 가드는 반드시 푼다 (잠기면 이후 선택이 조용히 무시된다)
+    // 늦게 끝난 작업이 새 폼의 상태·첨부를 건드리지 못하게 막는 지점.
+    // 세션이 바뀌었다면 newSession() 이 이미 가드를 풀었으므로 여기서 손대면
+    // 그 사이 시작된 새 업로드의 가드까지 풀어 버린다.
     if (sessionRef.current !== session) return;
+    uploadingRef.current = false;
     abortRef.current = null;
     setUploading(false);
     setStep("");
@@ -549,7 +583,7 @@ export default function AdminNoticesPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h2 className="text-lg font-semibold mb-4">등록된 공지 ({notices.length}건)</h2>
-        <Button variant="outline" size="sm" disabled={notifyBusy !== null} onClick={sendTest}>{notifyBusy === "test" ? "보내는 중..." : "알림 시험 발송"}</Button>
+        <Button variant="outline" size="sm" disabled={notifyBusy !== null} onClick={sendTest}>{notifyBusy === "test" ? "보내는 중..." : "알림 시험 발송 (내 기기)"}</Button>
       </div>
       <div className="space-y-2">
         {notices.map((notice) => (

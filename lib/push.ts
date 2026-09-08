@@ -39,10 +39,11 @@ export interface PushPayload {
  * not_configured : VAPID 환경변수 미설정 → 관리자가 조치해야 함
  * lookup_failed  : 구독 DB 조회 실패 → 일시 장애, 재시도 대상
  * no_subscribers : 정상인데 받을 사람이 없음
+ * not_subscribed : (시험 발송) 이 기기가 알림을 켜지 않아 보낼 곳이 없음
  * partial        : 일부 실패 (failed > 0)
  * sent           : 전부 성공
  */
-export type PushStatus = "not_configured" | "lookup_failed" | "no_subscribers" | "partial" | "sent";
+export type PushStatus = "not_configured" | "lookup_failed" | "no_subscribers" | "not_subscribed" | "partial" | "sent";
 
 export interface PushResult {
   status: PushStatus;
@@ -151,4 +152,55 @@ export async function sendPushToAll(payload: PushPayload): Promise<PushResult> {
     pruned: pruned + gone.length,
     ...(timedOut ? { code: "timeout" as const } : {}),
   };
+}
+
+/**
+ * 지정한 endpoint 하나에만 발송 — 관리자 시험 발송용.
+ *
+ * 시험 발송이 전체 구독자에게 나가면 관리자가 확인할 때마다 학생 전원이 알림을 받는다.
+ * 그래서 "내 기기" 를 endpoint 로 특정해 그 구독에만 보낸다.
+ */
+export async function sendPushToEndpoint(endpoint: string, payload: PushPayload): Promise<PushResult> {
+  const empty = { sent: 0, failed: 0, pruned: 0 };
+  try {
+    configure();
+  } catch (e) {
+    console.error("[push] 설정 실패", e instanceof Error ? e.message : e);
+    return { status: "not_configured", code: "vapid-missing", ...empty };
+  }
+
+  let sub: { id: number; endpoint: string; p256dh: string; auth: string } | null;
+  try {
+    sub = await prisma.pushSubscription.findUnique({
+      where: { endpoint },
+      select: { id: true, endpoint: true, p256dh: true, auth: true },
+    });
+  } catch (e) {
+    console.error("[push] 구독 조회 실패", e instanceof Error ? e.message : e);
+    return { status: "lookup_failed", code: "db-unavailable", ...empty };
+  }
+  if (!sub) return { status: "not_subscribed", ...empty };
+
+  try {
+    await withTimeout(
+      webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(payload)
+      ),
+      SEND_TIMEOUT_MS
+    );
+  } catch (e) {
+    const status = (e as { statusCode?: number })?.statusCode;
+    // 만료된 구독이면 지우고 "구독 없음" 으로 알린다 — 다시 켜면 된다.
+    if (status === 404 || status === 410) {
+      await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+      return { status: "not_subscribed", ...empty, pruned: 1 };
+    }
+    return { status: "partial", sent: 0, failed: 1, pruned: 0 };
+  }
+
+  await prisma.pushSubscription
+    .update({ where: { id: sub.id }, data: { lastSuccessAt: new Date(), failCount: 0 } })
+    .catch(() => {});
+  return { status: "sent", sent: 1, failed: 0, pruned: 0 };
 }

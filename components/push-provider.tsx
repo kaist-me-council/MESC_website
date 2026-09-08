@@ -65,6 +65,21 @@ async function vapidKey(): Promise<string> {
   return ((await r.json()) as { key?: string }).key ?? "";
 }
 
+/**
+ * 시간 제한을 건 대기. 브라우저의 서비스워커·구독 API 는 실패도 성공도 없이
+ * 영영 대기하는 경우가 있어서, 그대로 두면 버튼이 "처리 중..." 에서 멈춘다.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms)),
+  ]);
+}
+
+const SW_TIMEOUT = 15_000;   // 서비스워커 등록·준비
+const SUB_TIMEOUT = 20_000;  // 푸시 구독 발급 (푸시 서비스 왕복)
+const NET_TIMEOUT = 15_000;  // 우리 서버 등록
+
 /** 서버에 endpoint 를 등록(멱등 upsert). 성공 여부만 돌려준다. */
 async function registerOnServer(sub: PushSubscription): Promise<boolean> {
   try {
@@ -72,6 +87,7 @@ async function registerOnServer(sub: PushSubscription): Promise<boolean> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ subscription: sub.toJSON(), userAgent: navigator.userAgent }),
+      signal: AbortSignal.timeout(NET_TIMEOUT),
     });
     return res.ok;
   } catch {
@@ -101,8 +117,8 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
     const seq = opSeq.current;
     let sub: PushSubscription | null | undefined;
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      sub = await reg?.pushManager.getSubscription();
+      const reg = await withTimeout(navigator.serviceWorker.getRegistration(), SW_TIMEOUT);
+      sub = await withTimeout(Promise.resolve(reg?.pushManager.getSubscription()), SUB_TIMEOUT);
     } catch {
       sub = null;
     }
@@ -134,14 +150,18 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
         if (seq === opSeq.current) setPhase(perm === "denied" ? "denied" : "off");
         return;
       }
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
+      // 아래 세 단계는 응답이 영영 오지 않을 수 있다 → 각각 상한을 둔다.
+      const reg = await withTimeout(navigator.serviceWorker.register("/sw.js"), SW_TIMEOUT);
+      await withTimeout(navigator.serviceWorker.ready, SW_TIMEOUT);
       const sub =
-        (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
-        }));
+        (await withTimeout(reg.pushManager.getSubscription(), SUB_TIMEOUT)) ??
+        (await withTimeout(
+          reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
+          }),
+          SUB_TIMEOUT
+        ));
       const ok = await registerOnServer(sub);
       if (seq !== opSeq.current) return; // 도중에 사용자가 껐다면 그 결정을 존중
       if (!ok) {
@@ -152,7 +172,8 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       setPhase("on");
     } catch (e) {
       if (seq !== opSeq.current) return;
-      setError(e instanceof Error && e.message === "not-configured" ? "not-configured" : "save-failed");
+      const msg = e instanceof Error ? e.message : "";
+      setError(msg === "not-configured" ? "not-configured" : msg === "timeout" ? "timeout" : "save-failed");
       setPhase("off"); // 서버 확인 전에는 on 으로 돌아가지 않는다
     } finally {
       setBusy(false);
@@ -164,19 +185,20 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
     setBusy(true);
     setError("");
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      const sub = await reg?.pushManager.getSubscription();
+      const reg = await withTimeout(navigator.serviceWorker.getRegistration(), SW_TIMEOUT);
+      const sub = await withTimeout(Promise.resolve(reg?.pushManager.getSubscription()), SUB_TIMEOUT);
       if (sub) {
         await fetch("/api/push/subscribe", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: sub.endpoint }),
+          signal: AbortSignal.timeout(NET_TIMEOUT),
         }).catch(() => {});
-        await sub.unsubscribe();
+        await withTimeout(sub.unsubscribe(), SUB_TIMEOUT);
       }
       if (seq === opSeq.current) setPhase("off");
-    } catch {
-      if (seq === opSeq.current) setError("save-failed");
+    } catch (e) {
+      if (seq === opSeq.current) setError(e instanceof Error && e.message === "timeout" ? "timeout" : "save-failed");
     } finally {
       setBusy(false);
     }
@@ -188,8 +210,8 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
     setBusy(true);
     setError("");
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      const sub = await reg?.pushManager.getSubscription();
+      const reg = await withTimeout(navigator.serviceWorker.getRegistration(), SW_TIMEOUT);
+      const sub = await withTimeout(Promise.resolve(reg?.pushManager.getSubscription()), SUB_TIMEOUT);
       if (!sub) {
         if (seq === opSeq.current) setPhase("off");
         return;
@@ -198,6 +220,11 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
       if (seq !== opSeq.current) return;
       setPhase(ok ? "on" : "register-failed");
       if (!ok) setError("save-failed");
+    } catch (e) {
+      if (seq === opSeq.current) {
+        setPhase("register-failed");
+        setError(e instanceof Error && e.message === "timeout" ? "timeout" : "save-failed");
+      }
     } finally {
       setBusy(false);
     }

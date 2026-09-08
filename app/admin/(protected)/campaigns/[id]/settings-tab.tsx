@@ -116,7 +116,7 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (update: 
             <label className="flex items-center gap-2"><Checkbox checked={c.requireStudentId} onCheckedChange={(v) => set("requireStudentId", v === true)} /> 학번 필수</label>
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label>이미지 (최대 8장 — 첫 장이 대표. 시안·사이즈표 등. JPG/PNG/WebP 5MB 이하, 원본 크기 유지)</Label>
+            <Label>이미지 (최대 8장 — 첫 장이 대표. 시안·사이즈표 등. JPG/PNG/WebP 4MB 이하, 원본 크기 유지)</Label>
             {images.length > 0 && (
               <div className="flex flex-wrap gap-3">
                 {images.map((u, i) => (

@@ -111,8 +111,8 @@ export interface FooterData { contact: FooterContact; sns: FooterSns[] }
 
 export const FOOTER_FALLBACK: FooterData = {
   contact: {
-    locationKo: "N7동 학생회실",
-    locationEn: "Student Council Room, N7",
+    locationKo: "N7동 2105호 학생회실",
+    locationEn: "Room 2105, N7 (Student Council Room)",
     email: "kaist.mesc@gmail.com",
   },
   sns: [
