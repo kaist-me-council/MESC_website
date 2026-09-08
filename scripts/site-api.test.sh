@@ -214,28 +214,76 @@ CA=(-b "$CJ" -H "X-Forwarded-For: $CIP")
 CJSON=("${CA[@]}" -H 'Content-Type: application/json')
 TMPD=$(mktemp -d)
 
-echo "## 첨부: 허용되지 않는 확장자는 거부"
-printf 'MZ\x90\x00' > "$TMPD/bad.exe"
-RC=$(code "${CA[@]}" -X POST "$B/api/admin/upload-file" -F "file=@$TMPD/bad.exe")
-[ "$RC" = 400 ] || fail "허용 안 된 확장자가 거부되지 않음 ($RC)"
+# 파일은 브라우저에서 Blob 으로 직접 올라간다(Vercel 함수 본문 4.5MB 한도 회피).
+# 서버는 (1) 토큰 발급 시 형식·경로·크기를 제한하고 (2) /verify 에서 앞부분 시그니처를 확인한다.
+
+echo "## 첨부: 업로드 토큰은 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 56)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/token" \
+  -d '{"type":"blob.generate-client-token","payload":{"pathname":"notices/00000000-0000-4000-8000-000000000000.pdf","callbackUrl":"x","clientPayload":null,"multipart":false}}')
+[ "$RC" = 401 ] || fail "비로그인 토큰 발급이 401 이 아님 ($RC)"
+echo "  토큰 비로그인 401 ok"
+
+echo "## 첨부: 허용되지 않는 확장자는 토큰을 주지 않는다"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/token" \
+  -d '{"type":"blob.generate-client-token","payload":{"pathname":"notices/00000000-0000-4000-8000-000000000000.exe","callbackUrl":"x","clientPayload":null,"multipart":false}}')
+[ "$RC" = 400 ] || fail ".exe 확장자가 토큰을 받음 ($RC)"
 echo "  .exe 거부 ok"
 
-echo "## 첨부: 확장자만 바꾼 파일은 내용 검사에서 거부"
-printf 'not a real pdf' > "$TMPD/fake.pdf"
-RC=$(code "${CA[@]}" -X POST "$B/api/admin/upload-file" -F "file=@$TMPD/fake.pdf")
-[ "$RC" = 400 ] || fail "시그니처 불일치 파일이 통과됨 ($RC)"
-echo "  시그니처 검사 ok"
+echo "## 첨부: 원본 파일명을 저장 경로로 쓰려 하면 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/token" \
+  -d '{"type":"blob.generate-client-token","payload":{"pathname":"notices/../secret.pdf","callbackUrl":"x","clientPayload":null,"multipart":false}}')
+[ "$RC" = 400 ] || fail "임의 경로가 허용됨 ($RC)"
+echo "  경로 제한 ok"
 
-echo "## 첨부: 20MB 초과는 거부"
-head -c 21000000 /dev/zero > "$TMPD/big.txt"
-RC=$(code "${CA[@]}" -X POST "$B/api/admin/upload-file" -F "file=@$TMPD/big.txt")
-[ "$RC" = 400 ] || fail "20MB 초과가 거부되지 않음 ($RC)"
+echo "## 첨부: verify 는 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 57)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/verify" \
+  -d '{"url":"https://test.public.blob.vercel-storage.com/notices/a.pdf","name":"a.pdf","size":10}')
+[ "$RC" = 401 ] || fail "비로그인 verify 가 401 이 아님 ($RC)"
+echo "  verify 비로그인 401 ok"
+
+echo "## 첨부: verify 는 우리 저장소 밖 URL 을 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/verify" -d '{"url":"https://evil.example.com/x.pdf","name":"x.pdf","size":10}')
+[ "$RC" = 400 ] || fail "외부 URL 이 verify 를 통과함 ($RC)"
+echo "  외부 URL 거부 ok"
+
+echo "## 첨부: verify 는 30MB 초과를 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/verify" -d '{"url":"https://test.public.blob.vercel-storage.com/notices/a.pdf","name":"a.pdf","size":31457281}')
+[ "$RC" = 400 ] || fail "30MB 초과가 verify 를 통과함 ($RC)"
 echo "  용량 초과 거부 ok"
 
-echo "## 첨부: 비로그인 업로드는 401"
-RC=$(code -H "X-Forwarded-For: $(RIP 56)" -X POST "$B/api/admin/upload-file" -F "file=@$TMPD/fake.pdf")
-[ "$RC" = 401 ] || fail "비로그인 업로드가 401 이 아님 ($RC)"
-echo "  비로그인 401 ok"
+echo "## 첨부: verify 는 허용되지 않는 확장자를 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/verify" -d '{"url":"https://test.public.blob.vercel-storage.com/notices/a.exe","name":"a.exe","size":10}')
+[ "$RC" = 400 ] || fail ".exe 가 verify 를 통과함 ($RC)"
+echo "  확장자 거부 ok"
+
+echo "## 첨부(드라이브): 세션 발급은 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 58)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":100}')
+[ "$RC" = 401 ] || fail "비로그인 드라이브 세션이 401 이 아님 ($RC)"
+echo "  세션 비로그인 401 ok"
+
+echo "## 첨부(드라이브): 허용되지 않는 확장자는 세션을 주지 않는다"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.exe","size":100}')
+[ "$RC" = 400 ] || fail ".exe 가 드라이브 세션을 받음 ($RC)"
+echo "  .exe 거부 ok"
+
+echo "## 첨부(드라이브): 30MB 초과 선언은 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":31457281}')
+[ "$RC" = 400 ] || fail "30MB 초과 선언이 통과함 ($RC)"
+echo "  용량 초과 거부 ok"
+
+echo "## 첨부(드라이브): 연결 안 됐으면 drive_not_connected 로 알린다 (클라이언트가 Blob 으로 전환)"
+curl -s "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":100}' \
+  | py "assert d.get('code')=='drive_not_connected', d; print('  drive_not_connected ok')"
+
+echo "## 첨부(드라이브): 검증도 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 59)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/drive-verify" -d '{"driveFileId":"abcdefghij123","name":"a.pdf","size":100}')
+[ "$RC" = 401 ] || fail "비로그인 드라이브 검증이 401 이 아님 ($RC)"
+echo "  검증 비로그인 401 ok"
+
+echo "## 첨부: 없는 첨부 다운로드는 404"
+RC=$(code "$B/api/notices/attachments/99999999")
+[ "$RC" = 404 ] || fail "없는 첨부가 404 가 아님 ($RC)"
+echo "  다운로드 404 ok"
 
 # 이후는 blob 없이도 검증 가능하도록 API 에 메타데이터를 직접 넣는다 (실제 업로드는 위에서 검증).
 A1='{"name":"안내문.pdf","url":"https://test.public.blob.vercel-storage.com/notices/a.pdf","size":12345,"mime":"application/pdf"}'

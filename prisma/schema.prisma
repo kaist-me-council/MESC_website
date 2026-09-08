@@ -475,8 +475,9 @@ model NoticeAttachment {
   id        Int      @id @default(autoincrement())
   noticeId  Int
   notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
-  name      String   // 사용자에게 보여 줄 원본 파일명
-  url       String
+  name        String   // 사용자에게 보여 줄 원본 파일명
+  url         String   // Blob 저장 시 공개 URL. Drive 저장 시 빈 문자열
+  driveFileId String?  // Drive 저장 시 파일 ID (이때 파일은 비공개, 다운로드는 우리 API 가 중계)
   size      Int      // bytes
   mime      String
   createdAt DateTime @default(now())

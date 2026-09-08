@@ -4,7 +4,9 @@ import { auth } from "@/lib/auth";
 import sharp from "sharp";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+// Vercel 서버리스 본문 한도(4.5MB) 안쪽. 이 경로는 sharp 로 재인코딩해 EXIF 를 지우므로
+// 반드시 서버를 거쳐야 한다. 더 큰 파일이 필요하면 첨부파일처럼 직접 업로드로 바꿔야 한다.
+const MAX_SIZE = 4 * 1024 * 1024; // 4MB
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -18,7 +20,7 @@ export async function POST(req: Request) {
     if (!ALLOWED_TYPES.includes(file.type))
       return NextResponse.json({ error: "JPG, PNG, WebP, GIF 이미지만 업로드 가능합니다." }, { status: 400 });
     if (file.size > MAX_SIZE)
-      return NextResponse.json({ error: "파일 크기는 5MB 이하여야 합니다." }, { status: 400 });
+      return NextResponse.json({ error: "파일 크기는 4MB 이하여야 합니다." }, { status: 400 });
 
     // sharp 로 재인코딩: 실제 이미지인지 검증 + EXIF(GPS·기기정보) 제거. rotate()는 EXIF 방향을 먼저 적용.
     let buffer: Buffer;

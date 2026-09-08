@@ -1,5 +1,7 @@
 "use client";
 
+import { upload } from "@vercel/blob/client";
+
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { AdminGuide } from "@/components/admin-guide";
 import { Paperclip } from "lucide-react";
 
-interface Attachment { name: string; url: string; size: number; mime: string }
+interface Attachment { name: string; url: string; driveFileId?: string | null; size: number; mime: string }
 
 const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
@@ -27,6 +29,9 @@ interface Notice {
   attachments?: Attachment[];
 }
 
+const MAX_ATTACHMENT_MB = 30;
+const MAX_ATTACHMENT_BYTES = MAX_ATTACHMENT_MB * 1024 * 1024;
+
 export default function AdminNoticesPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [title, setTitle] = useState("");
@@ -40,6 +45,8 @@ export default function AdminNoticesPage() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  // null = 확인 중, "drive" = 구글 드라이브, "blob" = 사이트 저장소
+  const [store, setStore] = useState<"drive" | "blob" | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -92,18 +99,75 @@ export default function AdminNoticesPage() {
     loadNotices();
   }
 
+  // 파일은 브라우저에서 저장소로 직접 올린다.
+  // 서버 함수를 거치면 Vercel 의 4.5MB 본문 한도에 걸려 큰 파일이 아예 도달하지 못한다.
+  // 1순위는 학생회 구글 드라이브, 실패하면 사이트 저장소(Blob)로 자동 전환한다.
+
+  /** 재개 가능 세션 URI 로 PUT. 성공하면 Drive 파일 ID. CORS 로 막히면 throw → Blob 으로 넘어간다. */
+  async function putToDrive(sessionUri: string, file: File): Promise<string> {
+    const res = await fetch(sessionUri, { method: "PUT", body: file });
+    if (!res.ok) throw new Error(`드라이브 업로드 실패 (${res.status})`);
+    const meta = (await res.json()) as { id?: string };
+    if (!meta.id) throw new Error("드라이브 파일 ID 를 받지 못했습니다.");
+    return meta.id;
+  }
+
+  async function uploadOne(file: File): Promise<Attachment> {
+    // ① 구글 드라이브
+    const sess = await fetch("/api/admin/upload-file/drive-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: file.name, size: file.size }),
+    });
+    const sessData = await sess.json().catch(() => ({}));
+    if (sess.ok && sessData.sessionUri) {
+      try {
+        const driveFileId = await putToDrive(sessData.sessionUri as string, file);
+        const v = await fetch("/api/admin/upload-file/drive-verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ driveFileId, name: file.name, size: file.size }),
+        });
+        const data = await v.json().catch(() => ({}));
+        if (!v.ok) throw new Error(data.error ?? "드라이브 검증 실패");
+        setStore("drive");
+        return data as Attachment;
+      } catch (e) {
+        // 브라우저가 구글로 직접 PUT 하지 못하는 환경(CORS 등)일 수 있다 → 사이트 저장소로.
+        console.warn("[attach] 드라이브 업로드 실패, 사이트 저장소로 전환", e);
+      }
+    } else if (sessData.code !== "drive_not_connected") {
+      // 형식·용량 문제는 저장소를 바꿔도 똑같이 거부되므로 여기서 끝낸다.
+      throw new Error(sessData.error ?? "업로드 준비에 실패했습니다.");
+    }
+
+    // ② 사이트 저장소
+    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+    const blob = await upload(`notices/${crypto.randomUUID()}.${ext}`, file, {
+      access: "public",
+      handleUploadUrl: "/api/admin/upload-file/token",
+    });
+    const res = await fetch("/api/admin/upload-file/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? "업로드 실패");
+    setStore("blob");
+    return data as Attachment;
+  }
+
   async function uploadFiles(files: FileList) {
     setUploading(true); setUploadError("");
     const added: Attachment[] = [];
     for (const file of Array.from(files).slice(0, 10 - attachments.length)) {
-      const fd = new FormData(); fd.append("file", file);
+      if (file.size === 0) { setUploadError(`${file.name}: 빈 파일은 첨부할 수 없습니다.`); break; }
+      if (file.size > MAX_ATTACHMENT_BYTES) { setUploadError(`${file.name}: 파일 크기는 ${MAX_ATTACHMENT_MB}MB 이하여야 합니다.`); break; }
       try {
-        const res = await fetch("/api/admin/upload-file", { method: "POST", body: fd });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) { setUploadError(`${file.name}: ${data.error ?? "업로드 실패"}`); break; }
-        added.push(data as Attachment);
-      } catch {
-        setUploadError(`${file.name}: 업로드 중 연결에 실패했습니다.`); break;
+        added.push(await uploadOne(file));
+      } catch (e) {
+        setUploadError(`${file.name}: ${e instanceof Error ? e.message : "업로드에 실패했습니다."}`); break;
       }
     }
     setUploading(false);
@@ -154,7 +218,8 @@ export default function AdminNoticesPage() {
           <li><strong>영문(EN) 제목·내용은 선택</strong>: 입력하면 사이트 영어 모드에서 영문으로 표시되고, 비우면 한국어가 그대로 표시됩니다.</li>
           <li><strong>🌐 EN 자동 채우기</strong>: 한국어 제목·내용을 자동 번역해 EN 칸에 초안으로 채웁니다. <strong>결과를 꼭 검토·수정 후 등록</strong>하세요.</li>
           <li><strong>상단 고정</strong>을 체크하면 공개 페이지(/notices)에서 가장 위에 노출됩니다.</li>
-          <li><strong>첨부파일</strong>은 최대 10개, 각 20MB까지 올릴 수 있습니다. 공지를 삭제하면 첨부파일도 함께 삭제됩니다.</li>
+          <li><strong>첨부파일</strong>은 최대 10개, 각 30MB까지 올릴 수 있습니다. 공지를 삭제하면 첨부파일도 함께 삭제됩니다.</li>
+          <li>첨부는 <strong>학생회 구글 드라이브</strong>에 저장됩니다. 드라이브 연결이 없거나 실패하면 사이트 저장소로 자동 전환되며, 어느 쪽이든 학생에게는 똑같이 바로 다운로드됩니다. 연결은 <a href="/admin/site" className="underline">사이트 설정</a>에서 확인하세요.</li>
           <li>등록 후에는 카드의 <strong>수정/삭제</strong> 버튼으로 관리합니다.</li>
         </ol>
         <p className="text-xs">💡 내용은 마크다운 형식이 아닌 일반 텍스트로 저장됩니다 — 줄바꿈은 그대로 반영됩니다.</p>
@@ -240,11 +305,11 @@ export default function AdminNoticesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>첨부파일 (최대 10개, 각 20MB — PDF·한글·오피스·이미지·ZIP)</Label>
+              <Label>첨부파일 (최대 10개, 각 30MB — PDF·한글·오피스·이미지·ZIP)</Label>
               {attachments.length > 0 && (
                 <ul className="space-y-1">
                   {attachments.map((a, i) => (
-                    <li key={`${a.url}-${i}`} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                    <li key={`${a.driveFileId ?? a.url}-${i}`} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
                       <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <span className="flex-1 truncate">{a.name}</span>
                       <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{kb(a.size)}</span>
@@ -264,6 +329,11 @@ export default function AdminNoticesPage() {
                   onChange={(e) => { if (e.target.files?.length) uploadFiles(e.target.files); e.target.value = ""; }}
                 />
                 {uploading && <span className="text-xs text-muted-foreground">업로드 중...</span>}
+                {!uploading && store && (
+                  <span className="text-xs text-muted-foreground">
+                    저장 위치: {store === "drive" ? "구글 드라이브 (학생회 계정)" : "사이트 저장소"}
+                  </span>
+                )}
               </div>
               {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
             </div>
