@@ -239,6 +239,10 @@ export const translations = {
     },
     // Check Fee Page
     apply: {
+      previewBadge: "비공개",
+      previewNote: "비공개 캠페인 미리보기입니다. 관리자에게만 보이며 학생에게는 이 페이지가 열리지 않습니다. 공개하려면 관리자 설정에서 '공개'를 켜세요.",
+      previewNoSubmit: "미리보기에서는 신청할 수 없습니다",
+
       kind_goods: "굿즈",
       kind_signup: "신청",
       confirmOpenBadge: "수령 확인 진행 중",
@@ -651,6 +655,10 @@ export const translations = {
     },
     // Check Fee Page
     apply: {
+      previewBadge: "Unpublished",
+      previewNote: "Preview of an unpublished campaign. Only administrators can see this; students get a not-found page. Turn on 공개 in the admin settings to publish.",
+      previewNoSubmit: "Cannot submit in preview",
+
       kind_goods: "Goods",
       kind_signup: "Sign-up",
       confirmOpenBadge: "Receipt check open",

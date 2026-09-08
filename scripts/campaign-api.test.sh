@@ -261,6 +261,18 @@ curl -s "${A[@]}" "$B/api/admin/campaigns/$C4/orders?format=csv" | head -1 | gre
 curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$C4/orders" -d "{\"orderId\":$OIDB,\"refunded\":false}" >/dev/null
 curl -s "${A[@]}" "$B/api/admin/campaigns/$C4/orders" | py "o=[x for x in d['orders'] if x['id']==$OIDB][0]; assert not o['refundedAt'], '환불 완료 해제 안 됨'; print('  환불 완료 해제 ok')"
 
+echo "## v5: 비공개 캠페인 미리보기 (관리자만)"
+PV="apitest-preview-$RANDOM"
+PVID=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d "{\"title\":\"미리보기 테스트\",\"slug\":\"$PV\",\"kind\":\"goods\",\"enabled\":false,\"options\":[{\"name\":\"L\",\"group\":\"흰색\",\"price\":8000}]}" | py "print(d.get('campaign',d)['id'])")
+RC=$(curl -s -o /dev/null -w '%{http_code}' "$B/api/campaigns/$PV"); [ "$RC" = 404 ] || fail "비공개 캠페인이 비로그인에게 열림 ($RC)"
+echo "  비로그인 404 ok"
+curl -s "${A[@]}" "$B/api/campaigns/$PV" | py "assert d['campaign']['preview'] is True, d; print('  관리자 preview:true ok')"
+curl -s "$B/api/campaigns" | py "assert not any(c['slug']=='$PV' for c in d['campaigns']), '비공개가 공개 목록에 노출됨'; print('  공개 목록 제외 ok')"
+curl -s "${A[@]}" "$B/api/campaigns" | py "assert any(c['slug']=='$PV' and c['preview'] for c in d['campaigns']), '관리자 목록에 미리보기 없음'; print('  관리자 목록 포함 ok')"
+RC=$(code -X POST "$B/api/campaigns/$PV/orders" -d '{"affiliation":"학부생","name":"홍길동","studentId":"20990777","email":"pv@kaist.ac.kr","items":[{"optionId":1,"qty":1}]}'); [ "$RC" = 403 ] || [ "$RC" = 404 ] || fail "비공개 캠페인에 신청이 통과함 ($RC)"
+echo "  비공개 신청 차단 ok ($RC)"
+curl -s "${A[@]}" -X DELETE "$B/api/admin/campaigns/$PVID" >/dev/null
+
 echo "## v2: /shop/check redirects"
 RC=$(curl -s -o /dev/null -w '%{http_code}' "$B/shop/check"); case "$RC" in 200|307|308) echo "redirect ok ($RC)";; *) fail "/shop/check $RC";; esac
 case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug='2026-spring-tshirt'" && echo "preset test campaign removed";; esac
