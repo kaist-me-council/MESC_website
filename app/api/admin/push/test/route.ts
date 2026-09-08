@@ -19,8 +19,10 @@ export async function POST() {
     session.user?.name ?? "unknown",
     "push.test",
     "push:all",
-    `sent=${result.sent} failed=${result.failed} pruned=${result.pruned}`
+    `status=${result.status} sent=${result.sent} failed=${result.failed} pruned=${result.pruned}`
   );
 
-  return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store" } });
+  // 설정 미비·조회 실패는 성공한 0건과 다르다 — 관리자가 조치할 수 있게 503 으로 구분한다.
+  const status = result.status === "not_configured" || result.status === "lookup_failed" ? 503 : 200;
+  return NextResponse.json(result, { status, headers: { "Cache-Control": "private, no-store" } });
 }

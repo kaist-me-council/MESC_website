@@ -41,7 +41,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ moved: false, reason: "drive_not_connected" }, noStore);
 
   try {
-    const folderId = await ensurePrivateSubfolder(tok.accessToken, "공지 첨부", tok.auth.parentFolderId);
+    const folderId = await ensurePrivateSubfolder({
+      accessToken: tok.accessToken,
+      parentId: tok.auth.parentFolderId,
+      name: "공지 첨부",
+    });
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error(`blob fetch ${res.status}`);
     const buf = await res.arrayBuffer();

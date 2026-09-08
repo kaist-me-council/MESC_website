@@ -41,22 +41,40 @@ self.addEventListener("push", (event) => {
   );
 });
 
+/**
+ * 알림 대상 URL 을 같은 origin 으로 확정한다. 다른 origin·잘못된 값이면 홈으로.
+ * (알림 payload 는 서버가 만들지만, 값이 어긋나도 외부로 열지 않도록 여기서 한 번 더 막는다.)
+ */
+function resolveTarget(url) {
+  try {
+    const u = new URL(url || "/", self.location.origin);
+    return u.origin === self.location.origin ? u.href : new URL("/", self.location.origin).href;
+  } catch {
+    return new URL("/", self.location.origin).href;
+  }
+}
+
+/**
+ * 열려 있는 창 중 "정확히 대상 URL 인" 창만 고른다. 없으면 null → 새 창을 연다.
+ * 관련 없는 탭을 navigate 하지 않는다 — 관리자가 공지·캠페인을 작성 중이면
+ * 미저장 입력이 사라지기 때문이다.
+ */
+function pickClient(clientList, target) {
+  for (const client of clientList) {
+    if (client.url === target) return client;
+  }
+  return null;
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/";
+  const url = event.notification.data && event.notification.data.url;
   event.waitUntil(
     (async () => {
-      const target = new URL(url, self.location.origin).href;
+      const target = resolveTarget(url);
       const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      for (const client of clientList) {
-        if (client.url === target && "focus" in client) return client.focus();
-      }
-      for (const client of clientList) {
-        if ("navigate" in client && "focus" in client) {
-          await client.focus();
-          return client.navigate(target);
-        }
-      }
+      const existing = pickClient(clientList, target);
+      if (existing && "focus" in existing) return existing.focus();
       if (self.clients.openWindow) return self.clients.openWindow(target);
     })()
   );

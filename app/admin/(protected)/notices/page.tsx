@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { AdminGuide } from "@/components/admin-guide";
 import { Paperclip } from "lucide-react";
 
-interface Attachment { name: string; url: string; driveFileId?: string | null; size: number; mime: string }
+interface Attachment { id?: number; name: string; url: string; driveFileId?: string | null; size: number; mime: string }
 
 const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
@@ -49,22 +49,44 @@ export default function AdminNoticesPage() {
   // null = 확인 중, "drive" = 구글 드라이브, "blob" = 사이트 저장소
   const [store, setStore] = useState<"drive" | "blob" | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [submitMsg, setSubmitMsg] = useState<{ kind: "error" | "warn" | "ok"; text: string } | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
+
+  // 폼 세션: 작성 폼을 바꿀 때마다 증가한다. 업로드 시작 시 값을 캡처해 두고,
+  // 늦게 끝난 업로드가 다른 공지의 폼을 건드리지 못하게 막는다.
+  const sessionRef = useRef(0);
+  const submittingRef = useRef(false);   // 같은 이벤트 루프의 중복 제출 방지 (state 는 비동기라 늦다)
+  const uploadingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  /** 폼을 바꾸거나 비울 때 호출 — 진행 중인 업로드를 끊고 세션을 넘긴다. */
+  function newSession() {
+    sessionRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    uploadingRef.current = false;
+    setUploading(false);
+    setStep("");
+    return sessionRef.current;
+  }
 
   async function loadNotices() {
     const res = await fetch("/api/notices");
-    const data = await res.json();
-    setNotices(data);
+    if (!res.ok) throw new Error(`목록 조회 실패 (${res.status})`);
+    setNotices(await res.json());
   }
 
-  useEffect(() => { loadNotices(); }, []);
+  useEffect(() => { loadNotices().catch(() => setSubmitMsg({ kind: "warn", text: "공지 목록을 불러오지 못했습니다. 새로고침해주세요." })); }, []);
 
   function resetForm() {
+    newSession();
     setTitle(""); setTitleEn(""); setContent(""); setContentEn("");
     setCategory("공지"); setPinned(false); setAttachments([]); setUploadError(""); setEditingId(null);
   }
 
   function startEdit(notice: Notice) {
+    newSession();
+    setSubmitMsg(null);
     setEditingId(notice.id);
     setTitle(notice.title);
     setTitleEn(notice.titleEn ?? "");
@@ -79,25 +101,53 @@ export default function AdminNoticesPage() {
 
   async function handleSubmit() {
     if (!title.trim() || !content.trim()) return;
+    if (submittingRef.current) return; // state 보다 먼저 막는다 (더블클릭)
+    submittingRef.current = true;
     setSubmitting(true);
+    setSubmitMsg(null);
 
-    if (editingId !== null) {
-      await fetch(`/api/notices/${editingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, titleEn, content, contentEn, category, pinned, attachments }),
-      });
-    } else {
-      await fetch("/api/notices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, titleEn, content, contentEn, category, pinned, attachments }),
-      });
+    // 유지하는 첨부는 id 만 보낸다 — 서버가 저장 위치를 DB 에서 읽어 id 를 그대로 둔다.
+    const payload = {
+      title, titleEn, content, contentEn, category, pinned,
+      attachments: attachments.map((a) => (a.id ? { id: a.id } : a)),
+    };
+    const editing = editingId !== null;
+
+    try {
+      let res: Response;
+      try {
+        res = await fetch(editing ? `/api/notices/${editingId}` : "/api/notices", {
+          method: editing ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // 응답이 유실됐다 — 서버가 저장했을 수도 있다. 자동 재등록은 하지 않는다.
+        setSubmitMsg({ kind: "warn", text: "응답을 받지 못했습니다. 저장됐는지 아래 목록을 확인한 뒤 다시 시도해주세요." });
+        await loadNotices().catch(() => {});
+        return;
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const reason = res.status === 401 ? "로그인이 풀렸습니다. 다시 로그인해주세요."
+          : (data as { error?: string }).error ?? `저장에 실패했습니다. (${res.status})`;
+        setSubmitMsg({ kind: "error", text: reason });
+        return; // 입력·첨부를 그대로 둔다
+      }
+
+      // 저장 성공 — 여기서만 폼을 비운다.
+      resetForm();
+      try {
+        await loadNotices();
+        setSubmitMsg({ kind: "ok", text: editing ? "수정했습니다." : "등록했습니다." });
+      } catch {
+        setSubmitMsg({ kind: "warn", text: "저장은 완료됐지만 목록 갱신에 실패했습니다. 새로고침해주세요." });
+      }
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-
-    resetForm();
-    setSubmitting(false);
-    loadNotices();
   }
 
   // 파일은 브라우저에서 저장소로 직접 올린다.
@@ -106,84 +156,106 @@ export default function AdminNoticesPage() {
 
   /** 재개 가능 세션 URI 로 PUT. 성공하면 Drive 파일 ID. CORS 로 막히면 throw → Blob 으로 넘어간다. */
   /** 시간 제한을 건 fetch — 어떤 단계도 무한정 "업로드 중" 으로 멈추지 않게 한다. */
-  async function fetchWithTimeout(input: string, init: RequestInit, ms: number, label: string) {
+  async function fetchWithTimeout(input: string, init: RequestInit, ms: number, label: string, outer?: AbortSignal) {
     const ctl = new AbortController();
+    const onAbort = () => ctl.abort();
+    outer?.addEventListener("abort", onAbort);
     const timer = setTimeout(() => ctl.abort(), ms);
     try {
       return await fetch(input, { ...init, signal: ctl.signal });
     } catch (e) {
+      if (outer?.aborted) throw new Error("작업이 취소됐습니다.");
       if (e instanceof DOMException && e.name === "AbortError") throw new Error(`${label} 응답이 없습니다. 다시 시도해주세요.`);
       throw new Error(`${label} 중 연결에 실패했습니다.`);
     } finally {
       clearTimeout(timer);
+      outer?.removeEventListener("abort", onAbort);
     }
   }
 
-  async function uploadOne(file: File): Promise<Attachment> {
+  async function uploadOne(file: File, session: number, signal: AbortSignal): Promise<Attachment> {
+    /** 이 업로드를 시작한 폼이 아직 화면에 있을 때만 상태를 바꾼다. */
+    const alive = () => sessionRef.current === session && !signal.aborted;
+    const say = (s: string) => { if (alive()) setStep(s); };
     // 브라우저 → 사이트 저장소 → (서버가) 구글 드라이브 순서.
     // 예전에는 브라우저에서 구글로 바로 PUT 했지만, 사전 요청이 브라우저에서 통과하지 못해
     // 매번 실패하고 대기만 길어졌다. 드라이브 이동은 서버가 하므로 이 단계는 이제 필요 없다.
     const ext = (file.name.split(".").pop() ?? "").toLowerCase();
-    setStep(`${file.name} 올리는 중...`);
+    say(`${file.name} 올리는 중...`);
     let blob: { url: string };
     try {
       blob = await upload(`notices/${crypto.randomUUID()}.${ext}`, file, {
         access: "public",
         handleUploadUrl: "/api/admin/upload-file/token",
         multipart: file.size > 8 * 1024 * 1024,
+        abortSignal: signal,
       });
     } catch (e) {
+      if (signal.aborted) throw new Error("작업이 취소됐습니다.");
       throw new Error(e instanceof Error ? `업로드 실패: ${e.message}` : "업로드에 실패했습니다.");
     }
 
-    setStep(`${file.name} 확인 중...`);
+    say(`${file.name} 확인 중...`);
     const res = await fetchWithTimeout("/api/admin/upload-file/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
-    }, 30_000, "파일 확인");
+    }, 30_000, "파일 확인", signal);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? "업로드 실패");
 
     // ③ 서버가 드라이브로 옮긴다 (브라우저→구글 직접 업로드가 막히는 환경 대비).
     //    실패하면 사이트 저장소 첨부를 그대로 쓴다 — 파일을 잃지 않는 것이 우선.
     try {
-      setStep(`${file.name} 드라이브로 옮기는 중...`);
+      say(`${file.name} 드라이브로 옮기는 중...`);
       const mv = await fetchWithTimeout("/api/admin/upload-file/to-drive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
-      }, 90_000, "드라이브 이동");
+      }, 90_000, "드라이브 이동", signal);
       const mvData = await mv.json().catch(() => ({}));
       if (mv.ok && mvData.moved && mvData.driveFileId) {
-        setStore("drive");
+        if (alive()) setStore("drive");
         return { url: "", driveFileId: mvData.driveFileId, name: mvData.name, size: mvData.size, mime: mvData.mime } as Attachment;
       }
     } catch (e) {
+      if (signal.aborted) throw new Error("작업이 취소됐습니다.");
       console.warn("[attach] 드라이브 이동 실패, 사이트 저장소 유지", e);
     }
 
-    setStore("blob");
+    if (alive()) setStore("blob");
     return data as Attachment;
   }
 
   async function uploadFiles(files: FileList) {
+    if (uploadingRef.current) return; // 같은 이벤트 루프의 중복 시작도 막는다
+    uploadingRef.current = true;
+    const session = sessionRef.current;
+    const ctl = new AbortController();
+    abortRef.current = ctl;
     setUploading(true); setUploadError("");
+
     const added: Attachment[] = [];
     for (const file of Array.from(files).slice(0, 10 - attachments.length)) {
       if (file.size === 0) { setUploadError(`${file.name}: 빈 파일은 첨부할 수 없습니다.`); break; }
       if (file.size > MAX_ATTACHMENT_BYTES) { setUploadError(`${file.name}: 파일 크기는 ${MAX_ATTACHMENT_MB}MB 이하여야 합니다.`); break; }
       try {
         // 어떤 단계가 응답하지 않아도 화면이 멈춘 채로 남지 않도록 전체 상한을 둔다.
-        added.push(await Promise.race([
-          uploadOne(file),
-          new Promise<never>((_, rej) =>
-            setTimeout(() => rej(new Error("시간이 초과됐습니다. 네트워크를 확인하고 다시 시도해주세요.")), 5 * 60_000)),
-        ]));
+        // race 는 원래 작업을 멈추지 못하므로 상한에 걸리면 signal 로 실제로 끊는다.
+        const timeout = new Promise<never>((_, rej) =>
+          setTimeout(() => { ctl.abort(); rej(new Error("시간이 초과됐습니다. 네트워크를 확인하고 다시 시도해주세요.")); }, 5 * 60_000));
+        added.push(await Promise.race([uploadOne(file, session, ctl.signal), timeout]));
       } catch (e) {
-        setUploadError(`${file.name}: ${e instanceof Error ? e.message : "업로드에 실패했습니다."}`); break;
+        // 폼이 이미 바뀌었으면 그 폼에 오류를 띄우지 않는다
+        if (sessionRef.current === session) setUploadError(`${file.name}: ${e instanceof Error ? e.message : "업로드에 실패했습니다."}`);
+        break;
       }
     }
+
+    // 늦게 끝난 작업이 새 폼의 상태·첨부를 건드리지 못하게 막는 지점
+    if (sessionRef.current !== session) return;
+    uploadingRef.current = false;
+    abortRef.current = null;
     setUploading(false);
     setStep("");
     if (added.length) setAttachments((prev) => [...prev, ...added]);
@@ -215,9 +287,15 @@ export default function AdminNoticesPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await fetch(`/api/notices/${id}`, { method: "DELETE" });
+    setSubmitMsg(null);
+    try {
+      const res = await fetch(`/api/notices/${id}`, { method: "DELETE" });
+      if (!res.ok) { setSubmitMsg({ kind: "error", text: `삭제에 실패했습니다. (${res.status})` }); return; }
+    } catch {
+      setSubmitMsg({ kind: "warn", text: "응답을 받지 못했습니다. 목록을 확인해주세요." });
+    }
     if (editingId === id) resetForm();
-    loadNotices();
+    await loadNotices().catch(() => setSubmitMsg({ kind: "warn", text: "목록 갱신에 실패했습니다. 새로고침해주세요." }));
   }
 
   return (
@@ -248,8 +326,8 @@ export default function AdminNoticesPage() {
                 <span className="text-primary">✏️ 공지 수정 중</span>
               ) : "새 공지 작성"}
               {editingId !== null && (
-                <Button variant="ghost" size="sm" onClick={resetForm} className="text-muted-foreground">
-                  취소
+                <Button variant="ghost" size="sm" onClick={resetForm} disabled={submitting} className="text-muted-foreground">
+                  {uploading ? "취소 (업로드 중단)" : "취소"}
                 </Button>
               )}
             </CardTitle>
@@ -352,6 +430,11 @@ export default function AdminNoticesPage() {
               </div>
               {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
             </div>
+            {submitMsg && (
+              <p role="status" className={`text-sm ${submitMsg.kind === "error" ? "text-destructive" : submitMsg.kind === "warn" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                {submitMsg.text}
+              </p>
+            )}
             <Button onClick={handleSubmit} disabled={submitting || uploading} className="w-full">
               {submitting
                 ? (editingId !== null ? "저장 중..." : "등록 중...")
@@ -386,7 +469,8 @@ export default function AdminNoticesPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => startEdit(notice)}
-                  disabled={editingId === notice.id}
+                  // 업로드·저장 중에는 폼을 바꾸지 못하게 한다 (파일이 다른 공지에 붙는 것을 막는다)
+                  disabled={editingId === notice.id || uploading || submitting}
                 >
                   수정
                 </Button>
@@ -394,6 +478,7 @@ export default function AdminNoticesPage() {
                   variant="destructive"
                   size="sm"
                   onClick={() => handleDelete(notice.id)}
+                  disabled={uploading || submitting}
                 >
                   삭제
                 </Button>

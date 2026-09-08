@@ -98,16 +98,47 @@ rm -f "$JA" "$JB" "$JE"
 # [B 구간] 조회수 · 좋아요
 # ─────────────────────────────────────────────────────────────
 sqlite3 dev.db "DELETE FROM Post WHERE title LIKE 'sitetest-%'" 2>/dev/null || true
-sqlite3 dev.db "INSERT INTO Post (category,title,content,authorTag,hidden,reportCount,commentCount,viewCount,likeCount,createdAt) VALUES ('자유','sitetest-open','x','익명#0000',0,0,0,0,0,datetime('now')), ('자유','sitetest-open2','x','익명#0000',0,0,0,0,0,datetime('now')), ('자유','sitetest-hidden','x','익명#0000',1,0,0,0,0,datetime('now'))"
+sqlite3 dev.db "INSERT INTO Post (category,title,content,authorTag,hidden,reportCount,commentCount,viewCount,likeCount,createdAt) VALUES ('자유','sitetest-open','x','익명#0000',0,0,0,0,0,datetime('now')), ('자유','sitetest-open2','x','익명#0000',0,0,0,0,0,datetime('now')), ('자유','sitetest-open3','x','익명#0000',0,0,0,0,0,datetime('now')), ('자유','sitetest-hidden','x','익명#0000',1,0,0,0,0,datetime('now'))"
 P1=$(sqlite3 dev.db "SELECT id FROM Post WHERE title='sitetest-open'")
 P2=$(sqlite3 dev.db "SELECT id FROM Post WHERE title='sitetest-open2'")
+P3=$(sqlite3 dev.db "SELECT id FROM Post WHERE title='sitetest-open3'")
 PH=$(sqlite3 dev.db "SELECT id FROM Post WHERE title='sitetest-hidden'")
 VIP=$(RIP 51)
 JAR=$(mktemp); trap 'rm -f "$JAR"' EXIT
 V=(-c "$JAR" -b "$JAR" -H 'Content-Type: application/json' -H "X-Forwarded-For: $VIP")
+# 방문자 쿠키는 /api/visitor 에서만 발급된다. 조회·좋아요는 그 뒤에 보낸다.
+INIT() { curl -s -c "$1" -b "$1" -H "X-Forwarded-For: $2" -X POST "$B/api/visitor" >/dev/null; }
 VIEW() { curl -s "${V[@]}" -X POST "$B/api/views" -d "{\"kind\":\"post\",\"id\":$1}"; }
 COUNT() { sqlite3 dev.db "SELECT viewCount FROM Post WHERE id=$1"; }
 
+echo "## 방문자: 조회·좋아요는 토큰을 발급하지 않는다 (병렬 최초 요청 경합 제거)"
+NJ=$(mktemp); NIP=$(RIP 59)
+curl -s -c "$NJ" -b "$NJ" -H 'Content-Type: application/json' -H "X-Forwarded-For: $NIP" \
+  -X POST "$B/api/views" -d "{\"kind\":\"post\",\"id\":$P1}" | py "assert d.get('needsInit') is True and d['counted'] is False, d; print('  쿠키 없는 조회 needsInit ok')"
+RC=$(code -c "$NJ" -b "$NJ" -H 'Content-Type: application/json' -H "X-Forwarded-For: $NIP" -X PUT "$B/api/posts/$P1/like" -d '{"liked":true}')
+[ "$RC" = 409 ] || fail "쿠키 없는 좋아요가 409 가 아님 ($RC)"
+grep -q mesc_vid "$NJ" && fail "조회·좋아요가 방문자 쿠키를 발급했다 (단일 발급 지점 위반)"
+echo "  쿠키 없는 좋아요 409 ok · 쿠키 미발급 확인"
+
+echo "## 방문자: 새 브라우저가 조회+좋아요를 동시에 보내도 신원은 하나"
+CJ2=$(mktemp); CIP2=$(RIP 60)
+INIT "$CJ2" "$CIP2"
+grep -q mesc_vid "$CJ2" || fail "init 후에도 방문자 쿠키가 없다"
+VID_BEFORE=$(grep mesc_vid "$CJ2" | awk '{print $NF}')
+curl -s -b "$CJ2" -c "$CJ2" -H 'Content-Type: application/json' -H "X-Forwarded-For: $CIP2" \
+  -X POST "$B/api/views" -d "{\"kind\":\"post\",\"id\":$P3}" >/dev/null &
+curl -s -b "$CJ2" -c "$CJ2" -H 'Content-Type: application/json' -H "X-Forwarded-For: $CIP2" \
+  -X PUT "$B/api/posts/$P3/like" -d '{"liked":true}' >/dev/null &
+wait
+VID_AFTER=$(grep mesc_vid "$CJ2" | awk '{print $NF}')
+[ "$VID_BEFORE" = "$VID_AFTER" ] || fail "동시 요청이 방문자 토큰을 바꿨다"
+curl -s -b "$CJ2" -H "X-Forwarded-For: $CIP2" "$B/api/posts/$P3" | py "assert d['liked'] is True, d; print('  동시 요청 후에도 좋아요가 같은 신원에 남음 ok')"
+[ "$(sqlite3 dev.db "SELECT COUNT(*) FROM PostLike WHERE postId=$P3")" = 1 ] || fail "동시 요청으로 좋아요 행이 갈렸다"
+# 정리
+curl -s -b "$CJ2" -H 'Content-Type: application/json' -H "X-Forwarded-For: $CIP2" -X PUT "$B/api/posts/$P3/like" -d '{"liked":false}' >/dev/null
+rm -f "$NJ" "$CJ2"
+
+INIT "$JAR" "$VIP"
 echo "## 조회수: 같은 방문자가 같은 글을 두 번 열면 1회만"
 VIEW "$P1" | py "assert d['counted'] is True, d; print('  1회차 counted ok')"
 [ "$(COUNT "$P1")" = 1 ] || fail "1회차 후 viewCount != 1 ($(COUNT "$P1"))"
@@ -132,8 +163,10 @@ curl -s "${V[@]}" -X POST "$B/api/views" -d '{"kind":"post","id":99999999}' | py
 
 echo "## 조회수: 봇 user-agent 는 세지 않는다"
 BEFORE_B=$(COUNT "$P2")
-curl -s -H 'Content-Type: application/json' -H "X-Forwarded-For: $(RIP 53)" -A "Mozilla/5.0 (compatible; Googlebot/2.1)" \
+BJ=$(mktemp); BIP=$(RIP 53); INIT "$BJ" "$BIP"
+curl -s -b "$BJ" -H 'Content-Type: application/json' -H "X-Forwarded-For: $BIP" -A "Mozilla/5.0 (compatible; Googlebot/2.1)" \
   -X POST "$B/api/views" -d "{\"kind\":\"post\",\"id\":$P2}" | py "assert d['counted'] is False, d; print('  봇 제외 ok')"
+rm -f "$BJ"
 [ "$(COUNT "$P2")" = "$BEFORE_B" ] || fail "봇 요청이 조회수를 올렸다"
 
 echo "## 조회수: 관리자 세션은 세지 않는다"
@@ -144,6 +177,7 @@ ACSRF=$(curl -s -c "$AJ" -b "$AJ" -H "X-Forwarded-For: $AIP" "$B/api/auth/csrf" 
 curl -s -o /dev/null -c "$AJ" -b "$AJ" -H "X-Forwarded-For: $AIP" -X POST "$B/api/auth/callback/credentials" \
   --data-urlencode "csrfToken=$ACSRF" --data-urlencode "username=$UA" --data-urlencode "password=$PA" --data-urlencode "json=true"
 BEFORE_A=$(COUNT "$P2")
+INIT "$AJ" "$AIP"
 curl -s -b "$AJ" -H 'Content-Type: application/json' -H "X-Forwarded-For: $AIP" \
   -X POST "$B/api/views" -d "{\"kind\":\"post\",\"id\":$P2}" | py "assert d['counted'] is False, d; print('  관리자 제외 ok')"
 [ "$(COUNT "$P2")" = "$BEFORE_A" ] || fail "관리자 조회가 조회수를 올렸다"
@@ -152,18 +186,39 @@ rm -f "$AJ"
 echo "## 조회수: 쿠키 없이도 본문은 열린다"
 RC=$(code "$B/api/posts/$P1"); [ "$RC" = 200 ] || fail "쿠키 없는 본문 조회 실패 ($RC)"
 
-echo "## 좋아요: 토글 두 번이면 원상복구, 고아 행 없음"
+echo "## 좋아요: 목표 상태 지정, 켜고 끄면 원상복구"
 LIP=$(RIP 52)
 LJ=$(mktemp)
-L=(-c "$LJ" -b "$LJ" -H "X-Forwarded-For: $LIP")
-curl -s "${L[@]}" -X POST "$B/api/posts/$P1/like" | py "assert d['liked'] is True and d['likeCount']==1, d; print('  좋아요 ok')"
+L=(-c "$LJ" -b "$LJ" -H 'Content-Type: application/json' -H "X-Forwarded-For: $LIP")
+INIT "$LJ" "$LIP"
+LIKE() { curl -s "${L[@]}" -X PUT "$B/api/posts/$P1/like" -d "{\"liked\":$1}"; }
+LIKE true | py "assert d['liked'] is True and d['likeCount']==1, d; print('  좋아요 ok')"
 curl -s "${L[@]}" "$B/api/posts/$P1" | py "assert d['liked'] is True and d['likeCount']==1, d; print('  GET liked 반영 ok')"
-curl -s "${L[@]}" -X POST "$B/api/posts/$P1/like" | py "assert d['liked'] is False and d['likeCount']==0, d; print('  취소 ok')"
+
+echo "## 좋아요: 같은 목표 상태를 반복해도 집계가 변하지 않는다 (응답 유실 후 재시도)"
+LIKE true | py "assert d['liked'] is True and d['likeCount']==1, d; print('  true 반복 ok')"
+LIKE true | py "assert d['liked'] is True and d['likeCount']==1, d; print('  true 3회째도 동일 ok')"
+[ "$(sqlite3 dev.db "SELECT COUNT(*) FROM PostLike WHERE postId=$P1")" = 1 ] || fail "true 반복으로 행이 늘었다"
+
+echo "## 좋아요: 같은 목표 상태를 병렬로 보내도 결과가 같다"
+LIKE true >/dev/null & LIKE true >/dev/null & wait
+[ "$(sqlite3 dev.db "SELECT likeCount FROM Post WHERE id=$P1")" = 1 ] || fail "병렬 동일 목표로 집계가 흔들렸다 ($(sqlite3 dev.db "SELECT likeCount FROM Post WHERE id=$P1"))"
+[ "$(sqlite3 dev.db "SELECT COUNT(*) FROM PostLike WHERE postId=$P1")" = 1 ] || fail "병렬 동일 목표로 행이 늘었다"
+echo "  병렬 동일 목표 ok"
+
+echo "## 좋아요: 반대 목표 상태로 취소, 반복해도 음수가 되지 않는다"
+LIKE false | py "assert d['liked'] is False and d['likeCount']==0, d; print('  취소 ok')"
+LIKE false | py "assert d['liked'] is False and d['likeCount']==0, d; print('  false 반복 ok')"
 [ "$(sqlite3 dev.db "SELECT COUNT(*) FROM PostLike WHERE postId=$P1")" = 0 ] || fail "취소 후 PostLike 행이 남았다"
 [ "$(sqlite3 dev.db "SELECT likeCount FROM Post WHERE id=$P1")" = 0 ] || fail "취소 후 likeCount != 0"
 
+echo "## 좋아요: 입력 검증과 구 토글 POST"
+RC=$(code "${L[@]}" -X PUT "$B/api/posts/$P1/like" -d '{}'); [ "$RC" = 400 ] || fail "liked 누락이 400 이 아님 ($RC)"
+RC=$(code "${L[@]}" -X POST "$B/api/posts/$P1/like"); [ "$RC" = 409 ] || fail "구 POST 가 409(새로고침 안내) 가 아님 ($RC)"
+echo "  liked 누락 400 · 구 POST 409 ok"
+
 echo "## 좋아요: 숨김 글은 404"
-RC=$(code -X POST -H "X-Forwarded-For: $LIP" "$B/api/posts/$PH/like"); [ "$RC" = 404 ] || fail "숨김 글 좋아요가 404 가 아님 ($RC)"
+RC=$(code "${L[@]}" -X PUT "$B/api/posts/$PH/like" -d '{"liked":true}'); [ "$RC" = 404 ] || fail "숨김 글 좋아요가 404 가 아님 ($RC)"
 
 rm -f "$LJ"
 sqlite3 dev.db "DELETE FROM Post WHERE title LIKE 'sitetest-%'"
@@ -199,6 +254,43 @@ echo "## 푸시: 테스트 발송은 로그인 필요"
 RC=$(code -X POST -H "X-Forwarded-For: $PIP" "$B/api/admin/push/test")
 [ "$RC" = 401 ] || fail "비로그인 테스트 발송이 401 이 아님 ($RC)"
 echo "  401 ok"
+
+echo "## 푸시: 발송 결과가 미설정·구독자없음·부분실패를 구분한다 (P2)"
+# 로그인 세션 (푸시 결과 확인용, 다른 구간과 겹치지 않는 IP 버킷)
+PJ=$(mktemp); PIP2=$(RIP 53)
+PCSRF=$(curl -s -c "$PJ" -b "$PJ" -H "X-Forwarded-For: $PIP2" "$B/api/auth/csrf" | py "print(d['csrfToken'])")
+curl -s -o /dev/null -c "$PJ" -b "$PJ" -H "X-Forwarded-For: $PIP2" -X POST "$B/api/auth/callback/credentials" \
+  --data-urlencode "csrfToken=$PCSRF" --data-urlencode "username=$U" --data-urlencode "password=$P" --data-urlencode "json=true"
+PA=(-b "$PJ" -H "X-Forwarded-For: $PIP2")
+
+# 구독이 하나도 없을 때: 정상 0건 → no_subscribers (예전에는 실패와 구분되지 않았다)
+sqlite3 dev.db "DELETE FROM PushSubscription WHERE endpoint LIKE '%sitetest-%'"
+BEFORE_SUBS=$(sqlite3 dev.db "SELECT COUNT(*) FROM PushSubscription")
+if [ "$BEFORE_SUBS" = 0 ]; then
+  curl -s "${PA[@]}" -X POST "$B/api/admin/push/test" \
+    | py "assert d.get('status') in ('no_subscribers','not_configured'), d; assert d.get('sent')==0, d; print('  구독자 없음/미설정 구분 ok (' + d['status'] + ')')"
+else
+  echo "  건너뜀 (다른 구독 $BEFORE_SUBS 건 존재)"
+fi
+
+# 없는 공지에 알림 → 404 (발송 결과와 섞이지 않는다)
+RC=$(code "${PA[@]}" -X POST "$B/api/notices/99999999/notify")
+[ "$RC" = 404 ] || fail "없는 공지 알림이 404 가 아님 ($RC)"
+echo "  없는 공지 404 ok"
+
+echo "## 푸시: 알림 실패가 공지 저장을 실패로 만들지 않는다 (P2)"
+NID=$(curl -s "${PA[@]}" -H 'Content-Type: application/json' -X POST "$B/api/notices" \
+  -d '{"title":"sitetest-notify","content":"sitetest","category":"공지","notify":true}' \
+  | py "assert d.get('id'), d; assert 'notified' in d, '저장·발송 결과가 분리되지 않음: ' + str(d); print(d['id'])")
+[ "$(sqlite3 dev.db "SELECT COUNT(*) FROM Notice WHERE title='sitetest-notify'")" = 1 ] || fail "알림 발송 후 공지가 1건이 아님"
+echo "  공지 1건 저장 + notified 필드 분리 ok"
+
+# 재시도는 공지를 다시 만들지 않고 알림만 다시 보낸다
+curl -s -o /dev/null "${PA[@]}" -X POST "$B/api/notices/$NID/notify"
+[ "$(sqlite3 dev.db "SELECT COUNT(*) FROM Notice WHERE title='sitetest-notify'")" = 1 ] || fail "알림 재시도가 공지를 새로 만듦"
+echo "  알림 재시도가 공지를 복제하지 않음 ok"
+sqlite3 dev.db "DELETE FROM Notice WHERE title='sitetest-notify'"
+rm -f "$PJ"
 
 sqlite3 dev.db "DELETE FROM PushSubscription WHERE endpoint LIKE '%sitetest-%'"
 
@@ -289,10 +381,31 @@ curl -s "$B/api/notices/$NID" | py "assert len(d['attachments'])==1, d['attachme
 echo "## 첨부: GET 에 첨부가 포함된다"
 curl -s "$B/api/notices" | py "n=[x for x in d if x['id']==$NID][0]; assert len(n['attachments'])==1, n; print('  목록 GET 포함 ok')"
 
-echo "## 첨부: PUT 은 목록을 통째로 교체한다"
-curl -s -o /dev/null "${CJSON[@]}" -X PUT "$B/api/notices/$NID" -d "{\"title\":\"attachtest-1\",\"content\":\"본문\",\"attachments\":[$A2]}"
-curl -s "$B/api/notices/$NID" | py "assert [a['name'] for a in d['attachments']]==['신청서.hwp'], d['attachments']; print('  교체 ok')"
-[ "$(sqlite3 dev.db "SELECT COUNT(*) FROM NoticeAttachment WHERE noticeId=$NID")" = 1 ] || fail "PUT 후 첨부 행 수가 1이 아님"
+echo "## 첨부(U3): 제목만 수정하면 기존 첨부 id 가 그대로 유지된다"
+# id 가 바뀌면 학생이 이미 받은 다운로드 주소(/api/notices/attachments/<id>)가 죽는다.
+AID=$(curl -s "$B/api/notices/$NID" | py "print(d['attachments'][0]['id'])")
+curl -s -o /dev/null "${CJSON[@]}" -X PUT "$B/api/notices/$NID" -d "{\"title\":\"attachtest-1-수정\",\"content\":\"본문\",\"attachments\":[{\"id\":$AID}]}"
+curl -s "$B/api/notices/$NID" | py "assert [a['id'] for a in d['attachments']]==[$AID], d['attachments']; assert d['title']=='attachtest-1-수정', d; print('  id 유지 ok')"
+
+echo "## 첨부(U3): attachments 키가 없으면 첨부는 변경되지 않는다"
+curl -s -o /dev/null "${CJSON[@]}" -X PUT "$B/api/notices/$NID" -d "{\"title\":\"attachtest-1-키없음\",\"content\":\"본문\"}"
+curl -s "$B/api/notices/$NID" | py "assert [a['id'] for a in d['attachments']]==[$AID], d['attachments']; print('  키 생략 시 변경 없음 ok')"
+
+echo "## 첨부(U3): 다른 공지의 첨부 id 는 거절한다"
+OTHER=$(curl -s "${CJSON[@]}" -X POST "$B/api/notices" -d "{\"title\":\"attachtest-other\",\"content\":\"본문\",\"attachments\":[$A2]}" | py "print(d['id'])")
+OAID=$(curl -s "$B/api/notices/$OTHER" | py "print(d['attachments'][0]['id'])")
+RC=$(code "${CJSON[@]}" -X PUT "$B/api/notices/$NID" -d "{\"title\":\"attachtest-1\",\"content\":\"본문\",\"attachments\":[{\"id\":$OAID}]}")
+[ "$RC" = 400 ] || fail "다른 공지의 첨부 id 가 통과함 ($RC)"
+curl -s "$B/api/notices/$OTHER" | py "assert [a['id'] for a in d['attachments']]==[$OAID], d; print('  타 공지 id 거절 ok (원본 무손상)')"
+curl -s -o /dev/null "${CA[@]}" -X DELETE "$B/api/notices/$OTHER"
+
+echo "## 첨부(U3): 새 파일 추가는 기존 id 를 유지한 채 늘어난다"
+curl -s -o /dev/null "${CJSON[@]}" -X PUT "$B/api/notices/$NID" -d "{\"title\":\"attachtest-1\",\"content\":\"본문\",\"attachments\":[{\"id\":$AID},$A2]}"
+curl -s "$B/api/notices/$NID" | py "ids=[a['id'] for a in d['attachments']]; assert $AID in ids and len(ids)==2, d['attachments']; print('  추가 ok')"
+
+echo "## 첨부(U3): 목록에서 빠진 항목만 삭제된다"
+curl -s -o /dev/null "${CJSON[@]}" -X PUT "$B/api/notices/$NID" -d "{\"title\":\"attachtest-1\",\"content\":\"본문\",\"attachments\":[{\"id\":$AID}]}"
+curl -s "$B/api/notices/$NID" | py "assert [a['id'] for a in d['attachments']]==[$AID], d['attachments']; print('  제거 ok')"
 
 echo "## 첨부: 빈 배열이면 모두 제거"
 curl -s -o /dev/null "${CJSON[@]}" -X PUT "$B/api/notices/$NID" -d "{\"title\":\"attachtest-1\",\"content\":\"본문\",\"attachments\":[]}"

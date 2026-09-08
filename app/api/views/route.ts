@@ -3,10 +3,13 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { enforce, getClientIp } from "@/lib/rate-limit";
-import { attachVisitorCookie, getOrCreateVisitorToken, visitorHash } from "@/lib/visitor";
+import { readVisitorToken, visitorHash } from "@/lib/visitor";
 
 // 공개: 조회수 1 증가. 같은 방문자·같은 글은 24시간에 한 번만 센다.
 // 실패해도 본문 열람을 막지 않도록 클라이언트는 결과를 무시한다(응답은 항상 같은 모양).
+//
+// 방문자 토큰은 여기서 만들지 않는다. 쿠키가 없으면 needsInit 로만 답하고,
+// 클라이언트가 /api/visitor 로 쿠키를 확정한 뒤 다시 보낸다(V1: 병렬 발급 경합 제거).
 
 const KINDS = ["notice", "event", "post"] as const;
 type Kind = (typeof KINDS)[number];
@@ -42,8 +45,9 @@ export async function POST(req: Request) {
   if (BOT_RE.test(req.headers.get("user-agent") ?? "")) return notCounted;
   if (await auth()) return notCounted;
 
-  const { token, isNew } = await getOrCreateVisitorToken();
-  if (!(await isPublic(kind, id))) return attachVisitorCookie(notCounted, token, isNew);
+  const token = await readVisitorToken();
+  if (!token) return NextResponse.json({ counted: false, needsInit: true }, noStore);
+  if (!(await isPublic(kind, id))) return notCounted;
 
   const viewerHash = visitorHash(token, "view");
   const cutoff = new Date(Date.now() - DAY);
@@ -65,5 +69,5 @@ export async function POST(req: Request) {
       throw e;
     });
 
-  return attachVisitorCookie(NextResponse.json({ counted }, noStore), token, isNew);
+  return NextResponse.json({ counted }, noStore);
 }

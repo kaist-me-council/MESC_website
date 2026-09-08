@@ -72,3 +72,42 @@ export function withDownloadUrls<
 >(notice: T) {
   return { ...notice, attachments: notice.attachments.map((a) => ({ ...a, downloadUrl: attachmentDownloadUrl(a) })) };
 }
+
+/** 첨부 목록 변경 계산 결과. */
+export interface AttachmentDiff {
+  /** 그대로 두는 기존 행 id */
+  keepIds: number[];
+  /** 새로 만들 행 (id 없는 항목) */
+  toCreate: { name: string; url: string; driveFileId: string | null; size: number; mime: string }[];
+  /** 지울 기존 행 id */
+  toDeleteIds: number[];
+  /** 이 공지 소유가 아닌 id — 있으면 요청을 거절한다 */
+  foreignIds: number[];
+}
+
+/**
+ * 들어온 목록과 기존 행을 비교해 유지·추가·삭제를 가른다.
+ * 유지되는 행은 건드리지 않는다 — id 가 바뀌면 학생이 이미 받은 다운로드 주소가 죽는다.
+ */
+export function diffAttachments(
+  existing: { id: number }[],
+  incoming: { id: number | null; name: string; url: string; driveFileId: string | null; size: number; mime: string }[],
+): AttachmentDiff {
+  const existingIds = new Set(existing.map((e) => e.id));
+  const keepIds: number[] = [];
+  const foreignIds: number[] = [];
+  const toCreate: AttachmentDiff["toCreate"] = [];
+
+  for (const a of incoming) {
+    if (a.id === null) {
+      toCreate.push({ name: a.name, url: a.url, driveFileId: a.driveFileId, size: a.size, mime: a.mime });
+    } else if (existingIds.has(a.id)) {
+      if (!keepIds.includes(a.id)) keepIds.push(a.id);
+    } else {
+      foreignIds.push(a.id);
+    }
+  }
+
+  const kept = new Set(keepIds);
+  return { keepIds, toCreate, toDeleteIds: existing.map((e) => e.id).filter((id) => !kept.has(id)), foreignIds };
+}
