@@ -74,7 +74,7 @@ export default function MascotsTab({ initial }: { initial: MascotRow[] }) {
       <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
         <p className="font-medium">학부 소개 페이지의 <strong>마스코트</strong> 탭에 표시됩니다.</p>
         <ul className="list-disc pl-5 text-muted-foreground space-y-0.5">
-          <li>사진은 <strong>투명 배경 PNG</strong>가 가장 예쁘게 나옵니다. 5MB 이하.</li>
+          <li>사진은 <strong>투명 배경 PNG</strong>가 가장 예쁘게 나옵니다. 4MB 이하.</li>
           <li><strong>공개</strong>를 끄면 학생에게는 보이지 않고 관리자에게만 보입니다. 준비되면 켜세요.</li>
           <li>영문 칸을 비우면 영어 모드에서도 한국어가 그대로 나옵니다.</li>
         </ul>

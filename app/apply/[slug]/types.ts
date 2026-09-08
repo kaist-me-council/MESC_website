@@ -29,7 +29,9 @@ export interface Order {
 
 export type { T } from "@/lib/fetch-state";
 /** "{n}" 또는 "{date}" 자리를 채운다 */
-export const fill = (s: string, v: string | number) => s.replace("{n}", String(v)).replace("{date}", String(v));
+// 자리표시자는 문구마다 이름이 다르다. 하나라도 빠지면 학생 화면에 "{name}" 이 그대로 보인다.
+export const fill = (s: string, v: string | number) =>
+  s.replace("{n}", String(v)).replace("{date}", String(v)).replace("{name}", String(v));
 export const localeOf = (lang: string) => (lang === "ko" ? "ko-KR" : "en-US");
 
 /** 본인 확인용 자격 증명 (이름 + 학번 또는 이메일) */

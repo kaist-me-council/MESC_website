@@ -303,7 +303,7 @@ export default function AdminEventsPage() {
           <li>피드백/사진/수정/삭제 버튼으로 각 행사를 개별 관리할 수 있습니다.</li>
         </ol>
         <p className="text-xs">
-          💡 <strong>재동기화</strong> 버튼은 누군가 Drive 에서 직접 사진을 추가/삭제했을 때만 사용. 평소에는 누를 일이 없습니다.<br />
+          💡 <strong>재동기화</strong> 버튼은 누군가 Drive 에서 직접 사진을 추가했을 때 사용합니다. 추가만 반영되며, Drive 에서 지운 사진은 사진 관리에서 X 로 직접 지워야 합니다.<br />
           💡 Drive 자동 연동 카드는 평소 접어두고, 부모 폴더 변경이 필요할 때만 펼치세요.
         </p>
       </AdminGuide>
