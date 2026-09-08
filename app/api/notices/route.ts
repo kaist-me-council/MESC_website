@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { isValidString, isAllowedCategory, parseAttachments } from "@/lib/validation";
 import { sendPushToAll } from "@/lib/push";
+import { withDownloadUrls } from "@/lib/upload-rules";
 
 const ALLOWED_CATEGORIES = ["공지", "행사", "학사"];
 
@@ -12,7 +13,7 @@ export async function GET() {
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     include: { attachments: { orderBy: { id: "asc" } } },
   });
-  return NextResponse.json(notices);
+  return NextResponse.json(notices.map(withDownloadUrls));
 }
 
 export async function POST(req: NextRequest) {
@@ -59,5 +60,5 @@ export async function POST(req: NextRequest) {
     }
   }
   revalidatePath("/");
-  return NextResponse.json(notice);
+  return NextResponse.json(withDownloadUrls(notice));
 }

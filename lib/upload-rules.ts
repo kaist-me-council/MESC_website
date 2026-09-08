@@ -60,3 +60,15 @@ export function signatureOk(group: string, head: Buffer): boolean {
   }
 }
 
+/** 화면이 그대로 쓸 수 있는 다운로드 주소. Drive 는 우리 API 가 중계한다. */
+export function attachmentDownloadUrl(a: { id: number; url: string; driveFileId: string | null }): string {
+  return a.driveFileId ? `/api/notices/attachments/${a.id}` : a.url;
+}
+
+/** 공지 응답에 첨부 다운로드 주소를 붙인다. 화면은 저장소 종류를 몰라도 된다. */
+export function withDownloadUrls<
+  A extends { id: number; url: string; driveFileId: string | null },
+  T extends { attachments: A[] },
+>(notice: T) {
+  return { ...notice, attachments: notice.attachments.map((a) => ({ ...a, downloadUrl: attachmentDownloadUrl(a) })) };
+}

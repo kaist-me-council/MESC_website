@@ -5,6 +5,8 @@ import { audit } from "@/lib/audit";
 import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { isValidString, isAllowedCategory, parseId, parseAttachments } from "@/lib/validation";
+import { withDownloadUrls } from "@/lib/upload-rules";
+import { deleteFile, getAccessTokenOrNull } from "@/lib/drive-oauth";
 
 const ALLOWED_CATEGORIES = ["공지", "행사", "학사"];
 
@@ -18,7 +20,7 @@ export async function GET(
 
   const notice = await prisma.notice.findUnique({ where: { id: numId }, include: { attachments: { orderBy: { id: "asc" } } } });
   if (!notice) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(notice);
+  return NextResponse.json(withDownloadUrls(notice));
 }
 
 export async function PUT(
@@ -66,7 +68,7 @@ export async function PUT(
     include: { attachments: { orderBy: { id: "asc" } } },
   });
   revalidatePath("/");
-  return NextResponse.json(notice);
+  return NextResponse.json(withDownloadUrls(notice));
 }
 
 export async function DELETE(
@@ -80,10 +82,16 @@ export async function DELETE(
   const numId = parseId(id);
   if (!numId) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
-  // 먼저 blob 을 정리한다. 실패해도 공지 삭제는 진행 (고아 blob 은 무해).
-  const files = await prisma.noticeAttachment.findMany({ where: { noticeId: numId }, select: { url: true } });
-  if (files.length) {
-    try { await del(files.map((f) => f.url)); } catch { /* blob 정리 실패는 무시 */ }
+  // 먼저 저장된 파일을 정리한다. 실패해도 공지 삭제는 진행 (고아 파일은 무해).
+  const files = await prisma.noticeAttachment.findMany({ where: { noticeId: numId }, select: { url: true, driveFileId: true } });
+  const blobUrls = files.filter((f) => !f.driveFileId && f.url).map((f) => f.url);
+  if (blobUrls.length) {
+    try { await del(blobUrls); } catch { /* blob 정리 실패는 무시 */ }
+  }
+  const driveIds = files.map((f) => f.driveFileId).filter((v): v is string => !!v);
+  if (driveIds.length) {
+    const tok = await getAccessTokenOrNull().catch(() => null);
+    if (tok) await Promise.all(driveIds.map((fid) => deleteFile(tok.accessToken, fid)));
   }
 
   const { count } = await prisma.notice.deleteMany({ where: { id: numId } });

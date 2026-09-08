@@ -256,6 +256,35 @@ RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/verify" -d '{"url":"ht
 [ "$RC" = 400 ] || fail ".exe 가 verify 를 통과함 ($RC)"
 echo "  확장자 거부 ok"
 
+echo "## 첨부(드라이브): 세션 발급은 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 58)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":100}')
+[ "$RC" = 401 ] || fail "비로그인 드라이브 세션이 401 이 아님 ($RC)"
+echo "  세션 비로그인 401 ok"
+
+echo "## 첨부(드라이브): 허용되지 않는 확장자는 세션을 주지 않는다"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.exe","size":100}')
+[ "$RC" = 400 ] || fail ".exe 가 드라이브 세션을 받음 ($RC)"
+echo "  .exe 거부 ok"
+
+echo "## 첨부(드라이브): 30MB 초과 선언은 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":31457281}')
+[ "$RC" = 400 ] || fail "30MB 초과 선언이 통과함 ($RC)"
+echo "  용량 초과 거부 ok"
+
+echo "## 첨부(드라이브): 연결 안 됐으면 drive_not_connected 로 알린다 (클라이언트가 Blob 으로 전환)"
+curl -s "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":100}' \
+  | py "assert d.get('code')=='drive_not_connected', d; print('  drive_not_connected ok')"
+
+echo "## 첨부(드라이브): 검증도 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 59)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/drive-verify" -d '{"driveFileId":"abcdefghij123","name":"a.pdf","size":100}')
+[ "$RC" = 401 ] || fail "비로그인 드라이브 검증이 401 이 아님 ($RC)"
+echo "  검증 비로그인 401 ok"
+
+echo "## 첨부: 없는 첨부 다운로드는 404"
+RC=$(code "$B/api/notices/attachments/99999999")
+[ "$RC" = 404 ] || fail "없는 첨부가 404 가 아님 ($RC)"
+echo "  다운로드 404 ok"
+
 # 이후는 blob 없이도 검증 가능하도록 API 에 메타데이터를 직접 넣는다 (실제 업로드는 위에서 검증).
 A1='{"name":"안내문.pdf","url":"https://test.public.blob.vercel-storage.com/notices/a.pdf","size":12345,"mime":"application/pdf"}'
 A2='{"name":"신청서.hwp","url":"https://test.public.blob.vercel-storage.com/notices/b.hwp","size":2048,"mime":"application/x-hwp"}'

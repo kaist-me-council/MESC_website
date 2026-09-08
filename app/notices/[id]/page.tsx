@@ -9,7 +9,7 @@ import { useLanguage } from "@/lib/language-context";
 import { ViewTracker } from "@/components/view-tracker";
 import { Eye, Paperclip, Download } from "lucide-react";
 
-interface Attachment { name: string; url: string; size: number; mime: string }
+interface Attachment { id: number; name: string; url: string; downloadUrl?: string; size: number; mime: string }
 
 const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
@@ -117,9 +117,9 @@ export default function NoticeDetailPage() {
             </h2>
             <ul className="space-y-2">
               {notice.attachments.map((a) => (
-                <li key={a.url}>
+                <li key={a.id}>
                   <a
-                    href={a.url}
+                    href={a.downloadUrl || a.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors hover:bg-muted/50"
