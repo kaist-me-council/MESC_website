@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 import { isValidUrl, parseId } from "@/lib/validation";
 
 function parseImages(v: unknown): string | null {
@@ -37,6 +38,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (typeof data.descKo === "string" && !data.descKo) return NextResponse.json({ error: "소개(한국어)는 비울 수 없습니다." }, { status: 400 });
 
   const mascot = await prisma.mascot.update({ where: { id }, data });
+  revalidatePath("/members");
   return NextResponse.json(mascot);
 }
 
@@ -46,5 +48,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   const { count } = await prisma.mascot.deleteMany({ where: { id } });
   if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  revalidatePath("/members");
   return NextResponse.json({ ok: true });
 }

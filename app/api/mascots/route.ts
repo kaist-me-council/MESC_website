@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 import { isValidUrl } from "@/lib/validation";
 
 // 공개: enabled 마스코트 (정렬). 관리자는 비공개 항목도 함께 본다(작성 중 미리보기).
@@ -45,5 +46,6 @@ export async function POST(req: Request) {
       enabled: body.enabled !== false,
     },
   });
+  revalidatePath("/members"); // 학부 소개는 5분 ISR — 등록 즉시 보이도록 갱신
   return NextResponse.json(mascot, { status: 201 });
 }
