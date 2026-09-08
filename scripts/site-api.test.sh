@@ -256,29 +256,21 @@ RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/verify" -d '{"url":"ht
 [ "$RC" = 400 ] || fail ".exe 가 verify 를 통과함 ($RC)"
 echo "  확장자 거부 ok"
 
-echo "## 첨부(드라이브): 세션 발급은 비로그인 거부"
-RC=$(code -H "X-Forwarded-For: $(RIP 58)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":100}')
-[ "$RC" = 401 ] || fail "비로그인 드라이브 세션이 401 이 아님 ($RC)"
-echo "  세션 비로그인 401 ok"
+# 드라이브 직접 업로드(브라우저→구글) 케이스는 제거됐다.
+# 브라우저의 사전 요청이 통과하지 못해 실사용에서 항상 실패했고, 지금은 서버가 Blob→드라이브로 옮긴다.
+echo "## 첨부(드라이브): 이동은 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 58)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/to-drive" -d '{"url":"https://test.public.blob.vercel-storage.com/notices/a.pdf","name":"a.pdf","size":10}')
+[ "$RC" = 401 ] || fail "비로그인 드라이브 이동이 401 이 아님 ($RC)"
+echo "  이동 비로그인 401 ok"
 
-echo "## 첨부(드라이브): 허용되지 않는 확장자는 세션을 주지 않는다"
-RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.exe","size":100}')
-[ "$RC" = 400 ] || fail ".exe 가 드라이브 세션을 받음 ($RC)"
-echo "  .exe 거부 ok"
+echo "## 첨부(드라이브): 우리 저장소 밖 URL 은 이동 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/to-drive" -d '{"url":"https://evil.example.com/x.pdf","name":"x.pdf","size":10}')
+[ "$RC" = 400 ] || fail "외부 URL 이 이동을 통과함 ($RC)"
+echo "  외부 URL 거부 ok"
 
-echo "## 첨부(드라이브): 30MB 초과 선언은 거부"
-RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":31457281}')
-[ "$RC" = 400 ] || fail "30MB 초과 선언이 통과함 ($RC)"
-echo "  용량 초과 거부 ok"
-
-echo "## 첨부(드라이브): 연결 안 됐으면 drive_not_connected 로 알린다 (클라이언트가 Blob 으로 전환)"
-curl -s "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-session" -d '{"name":"a.pdf","size":100}' \
-  | py "assert d.get('code')=='drive_not_connected', d; print('  drive_not_connected ok')"
-
-echo "## 첨부(드라이브): 검증도 비로그인 거부"
-RC=$(code -H "X-Forwarded-For: $(RIP 59)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/drive-verify" -d '{"driveFileId":"abcdefghij123","name":"a.pdf","size":100}')
-[ "$RC" = 401 ] || fail "비로그인 드라이브 검증이 401 이 아님 ($RC)"
-echo "  검증 비로그인 401 ok"
+echo "## 첨부(드라이브): 연결 안 됐으면 moved:false 로 알린다 (Blob 첨부 유지)"
+curl -s "${CJSON[@]}" -X POST "$B/api/admin/upload-file/to-drive" -d '{"url":"https://test.public.blob.vercel-storage.com/notices/a.pdf","name":"a.pdf","size":10}' \
+  | py "assert d.get('moved') is False, d; print('  moved:false ok (' + str(d.get('reason')) + ')')"
 
 echo "## 첨부: 없는 첨부 다운로드는 404"
 RC=$(code "$B/api/notices/attachments/99999999")
