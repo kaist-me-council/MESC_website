@@ -14,8 +14,14 @@ interface Parsed {
   auth: string;
 }
 
-/** 표준 PushSubscription JSON 형태만 받는다. */
-function parse(b: Record<string, unknown>): Parsed | null {
+/**
+ * 표준 PushSubscription JSON 을 받는다.
+ * 브라우저는 { subscription: sub.toJSON(), userAgent } 로 감싸 보내므로 두 형태를 모두 허용한다.
+ */
+function parse(raw: Record<string, unknown>): Parsed | null {
+  const b = (raw.subscription && typeof raw.subscription === "object"
+    ? raw.subscription
+    : raw) as Record<string, unknown>;
   const endpoint = typeof b.endpoint === "string" ? b.endpoint.trim() : "";
   if (!endpoint || endpoint.length > 1000 || !/^https:\/\//.test(endpoint)) return null;
   const keys = (b.keys ?? {}) as Record<string, unknown>;
@@ -62,7 +68,8 @@ export async function DELETE(req: Request) {
     return bad("Invalid JSON");
   }
 
-  const endpoint = typeof b.endpoint === "string" ? b.endpoint.trim() : "";
+  const sub = (b.subscription && typeof b.subscription === "object" ? b.subscription : b) as Record<string, unknown>;
+  const endpoint = typeof sub.endpoint === "string" ? sub.endpoint.trim() : "";
   if (!endpoint) return bad("endpoint 가 필요합니다.");
 
   const { count } = await prisma.pushSubscription.deleteMany({ where: { endpoint } });
