@@ -1,0 +1,34 @@
+name: CI
+
+# 병합 전 자동 검증. 이게 없던 동안 scripts/*.test.mjs 12개가 아무도 실행하지
+# 않은 채 방치됐고, 유일한 게이트인 Vercel 빌드는 "병합 후"에야 돌았다.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # postinstall 의 prisma generate 가 여기서 함께 돈다.
+      - run: npm ci
+
+      - name: 타입 체크
+        run: npm run typecheck
+
+      - name: 단위 테스트
+        run: npm test
+
+      # 기존 오류 16건(React hooks 규칙 등)이 남아 있어 아직 차단 조건이 아니다.
+      # 정리되면 continue-on-error 를 지울 것.
+      - name: Lint (경고만)
+        run: npm run lint
+        continue-on-error: true

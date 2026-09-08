@@ -7,6 +7,9 @@
     "build": "node prisma/libsql-migrate.mjs && next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "for f in scripts/*.test.mjs; do echo \"— $f\" && node \"$f\" || exit 1; done",
+    "verify:deploy": "node scripts/verify-deploy.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
