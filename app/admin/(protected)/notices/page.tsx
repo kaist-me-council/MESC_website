@@ -45,6 +45,7 @@ export default function AdminNoticesPage() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [step, setStep] = useState("");
   // null = 확인 중, "drive" = 구글 드라이브, "blob" = 사이트 저장소
   const [store, setStore] = useState<"drive" | "blob" | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -104,65 +105,55 @@ export default function AdminNoticesPage() {
   // 1순위는 학생회 구글 드라이브, 실패하면 사이트 저장소(Blob)로 자동 전환한다.
 
   /** 재개 가능 세션 URI 로 PUT. 성공하면 Drive 파일 ID. CORS 로 막히면 throw → Blob 으로 넘어간다. */
-  async function putToDrive(sessionUri: string, file: File): Promise<string> {
-    const res = await fetch(sessionUri, { method: "PUT", body: file });
-    if (!res.ok) throw new Error(`드라이브 업로드 실패 (${res.status})`);
-    const meta = (await res.json()) as { id?: string };
-    if (!meta.id) throw new Error("드라이브 파일 ID 를 받지 못했습니다.");
-    return meta.id;
+  /** 시간 제한을 건 fetch — 어떤 단계도 무한정 "업로드 중" 으로 멈추지 않게 한다. */
+  async function fetchWithTimeout(input: string, init: RequestInit, ms: number, label: string) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), ms);
+    try {
+      return await fetch(input, { ...init, signal: ctl.signal });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") throw new Error(`${label} 응답이 없습니다. 다시 시도해주세요.`);
+      throw new Error(`${label} 중 연결에 실패했습니다.`);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function uploadOne(file: File): Promise<Attachment> {
-    // ① 구글 드라이브
-    const sess = await fetch("/api/admin/upload-file/drive-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: file.name, size: file.size }),
-    });
-    const sessData = await sess.json().catch(() => ({}));
-    if (sess.ok && sessData.sessionUri) {
-      try {
-        const driveFileId = await putToDrive(sessData.sessionUri as string, file);
-        const v = await fetch("/api/admin/upload-file/drive-verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ driveFileId, name: file.name, size: file.size }),
-        });
-        const data = await v.json().catch(() => ({}));
-        if (!v.ok) throw new Error(data.error ?? "드라이브 검증 실패");
-        setStore("drive");
-        return data as Attachment;
-      } catch (e) {
-        // 브라우저가 구글로 직접 PUT 하지 못하는 환경(CORS 등)일 수 있다 → 사이트 저장소로.
-        console.warn("[attach] 드라이브 업로드 실패, 사이트 저장소로 전환", e);
-      }
-    } else if (sessData.code !== "drive_not_connected") {
-      // 형식·용량 문제는 저장소를 바꿔도 똑같이 거부되므로 여기서 끝낸다.
-      throw new Error(sessData.error ?? "업로드 준비에 실패했습니다.");
+    // 브라우저 → 사이트 저장소 → (서버가) 구글 드라이브 순서.
+    // 예전에는 브라우저에서 구글로 바로 PUT 했지만, 사전 요청이 브라우저에서 통과하지 못해
+    // 매번 실패하고 대기만 길어졌다. 드라이브 이동은 서버가 하므로 이 단계는 이제 필요 없다.
+    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+    setStep(`${file.name} 올리는 중...`);
+    let blob: { url: string };
+    try {
+      blob = await upload(`notices/${crypto.randomUUID()}.${ext}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-file/token",
+        multipart: file.size > 8 * 1024 * 1024,
+      });
+    } catch (e) {
+      throw new Error(e instanceof Error ? `업로드 실패: ${e.message}` : "업로드에 실패했습니다.");
     }
 
-    // ② 사이트 저장소
-    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
-    const blob = await upload(`notices/${crypto.randomUUID()}.${ext}`, file, {
-      access: "public",
-      handleUploadUrl: "/api/admin/upload-file/token",
-    });
-    const res = await fetch("/api/admin/upload-file/verify", {
+    setStep(`${file.name} 확인 중...`);
+    const res = await fetchWithTimeout("/api/admin/upload-file/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
-    });
+    }, 30_000, "파일 확인");
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? "업로드 실패");
 
     // ③ 서버가 드라이브로 옮긴다 (브라우저→구글 직접 업로드가 막히는 환경 대비).
     //    실패하면 사이트 저장소 첨부를 그대로 쓴다 — 파일을 잃지 않는 것이 우선.
     try {
-      const mv = await fetch("/api/admin/upload-file/to-drive", {
+      setStep(`${file.name} 드라이브로 옮기는 중...`);
+      const mv = await fetchWithTimeout("/api/admin/upload-file/to-drive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
-      });
+      }, 90_000, "드라이브 이동");
       const mvData = await mv.json().catch(() => ({}));
       if (mv.ok && mvData.moved && mvData.driveFileId) {
         setStore("drive");
@@ -183,12 +174,18 @@ export default function AdminNoticesPage() {
       if (file.size === 0) { setUploadError(`${file.name}: 빈 파일은 첨부할 수 없습니다.`); break; }
       if (file.size > MAX_ATTACHMENT_BYTES) { setUploadError(`${file.name}: 파일 크기는 ${MAX_ATTACHMENT_MB}MB 이하여야 합니다.`); break; }
       try {
-        added.push(await uploadOne(file));
+        // 어떤 단계가 응답하지 않아도 화면이 멈춘 채로 남지 않도록 전체 상한을 둔다.
+        added.push(await Promise.race([
+          uploadOne(file),
+          new Promise<never>((_, rej) =>
+            setTimeout(() => rej(new Error("시간이 초과됐습니다. 네트워크를 확인하고 다시 시도해주세요.")), 5 * 60_000)),
+        ]));
       } catch (e) {
         setUploadError(`${file.name}: ${e instanceof Error ? e.message : "업로드에 실패했습니다."}`); break;
       }
     }
     setUploading(false);
+    setStep("");
     if (added.length) setAttachments((prev) => [...prev, ...added]);
   }
 
@@ -346,7 +343,7 @@ export default function AdminNoticesPage() {
                   disabled={uploading || attachments.length >= 10}
                   onChange={(e) => { if (e.target.files?.length) uploadFiles(e.target.files); e.target.value = ""; }}
                 />
-                {uploading && <span className="text-xs text-muted-foreground">업로드 중...</span>}
+                {uploading && <span className="text-xs text-muted-foreground">{step || "업로드 중..."}</span>}
                 {!uploading && store && (
                   <span className="text-xs text-muted-foreground">
                     저장 위치: {store === "drive" ? "구글 드라이브 (학생회 계정)" : "사이트 저장소"}
