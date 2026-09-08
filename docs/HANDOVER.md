@@ -48,16 +48,57 @@ npm run dev                              # http://localhost:3000
 
 ### 자주 쓰는 명령
 ```bash
-npm run dev          # 개발 서버
-npm run build        # production 빌드 (libsql-migrate + next build)
-npm run lint         # ESLint
-npx prisma studio    # DB GUI
+npm run dev            # 개발 서버
+npm run build          # production 빌드 (libsql-migrate + next build)
+npm run typecheck      # tsc --noEmit
+npm test               # scripts/*.test.mjs 전부 실행
+npm run lint           # ESLint (※ 기존 오류 16건 남아 있음 — 아래 참고)
+npm run verify:deploy  # 배포된 커밋이 로컬 HEAD 와 같은지 확인
+npx prisma studio      # DB GUI
 npx prisma migrate dev --name 변경_이름   # 로컬 마이그레이션 생성 (대화형)
+```
+
+### 시드 데이터 (빈 DB 로 시작할 때)
+`prisma migrate` 만 하면 화면이 텅 비어 보인다. 필요한 것만 골라 실행:
+```bash
+node scripts/seed-site-settings.mjs   # 운영시간·연락처 (싱글톤)
+node scripts/seed-rooms.mjs           # 호실
+node scripts/seed-professors.mjs      # 교수진
+node scripts/seed-courses.mjs         # 과목
+node scripts/seed-floorplans.mjs      # N7 평면도
 ```
 
 ---
 
 ## 3. 배포 흐름
+
+### 브랜치 전략 — ⚠️ 프리뷰 배포가 없다
+**`main` 브랜치만 빌드된다.** `vercel.json` 의 `ignoreCommand` 가 다른 브랜치의 빌드를 스킵하기 때문에, 브랜치를 푸시해도 **프리뷰 URL 은 생기지 않는다.** 기다리지 말 것.
+
+```bash
+git checkout -b fix/설명            # main 직접 커밋 금지
+# ... 작업 ...
+npm run typecheck && npm test       # 푸시 전 로컬 검증
+git push -u origin fix/설명
+gh pr create                        # PR 에서 GitHub Actions CI 가 돈다
+gh pr merge <번호> --squash --delete-branch
+npm run verify:deploy               # ★ 병합 후 반드시 — 실제 반영됐는지 확인
+```
+
+검토는 프리뷰 대신 **로컬 `npm run dev`** 로 한다.
+
+### 병합했는데 라이브에 반영이 안 될 때
+2026-09-08 에 `ignoreCommand` 가 프로덕션 빌드까지 스킵해 **11시간 동안 어떤 병합도 반영되지 않았는데 아무도 몰랐다.** 배포가 "실패"가 아니라 "Canceled" 라 알림도 뜨지 않았다.
+
+그래서 **코드를 다시 파기 전에 배포부터 확인한다**:
+```bash
+npm run verify:deploy    # 서빙 중인 커밋 vs 로컬 HEAD
+npx vercel ls            # Production 이 Ready 인지. Duration 이 "?" 이고
+                         # Canceled 면 ignoreCommand 가 범인이다.
+```
+`ignoreCommand` 는 **exit 0 = 빌드 무시 / exit 1 = 빌드 진행** 이다(직관과 반대). 참조하는 변수가 비면 조용히 전 배포가 멈추므로, 지금은 빈 값일 때 **빌드하는 쪽**이 기본값이 되도록 짜여 있다. 손대지 말 것.
+
+### 배포 흐름 자체
 
 ```
 git push origin main
