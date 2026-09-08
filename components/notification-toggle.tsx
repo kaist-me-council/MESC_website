@@ -73,7 +73,12 @@ export function NotificationToggle({ className = "" }: { className?: string }) {
     setBusy(true);
     setError("");
     try {
-      const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      // 빌드 시점에 주입된 값이 없으면 서버에서 받아온다(환경변수를 나중에 넣은 경우).
+      let key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!key) {
+        const r = await fetch("/api/push/key");
+        key = r.ok ? ((await r.json()) as { key?: string }).key : "";
+      }
       if (!key) throw new Error(t("push.notConfigured"));
       // 권한 요청은 이 클릭 핸들러 안에서 (iOS 요구사항)
       const perm = await Notification.requestPermission();
