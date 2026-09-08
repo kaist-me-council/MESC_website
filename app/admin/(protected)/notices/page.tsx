@@ -1,7 +1,5 @@
 "use client";
 
-import { upload } from "@vercel/blob/client";
-
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -150,11 +148,12 @@ export default function AdminNoticesPage() {
     }
   }
 
-  // 파일은 브라우저에서 저장소로 직접 올린다.
-  // 서버 함수를 거치면 Vercel 의 4.5MB 본문 한도에 걸려 큰 파일이 아예 도달하지 못한다.
-  // 1순위는 학생회 구글 드라이브, 실패하면 사이트 저장소(Blob)로 자동 전환한다.
+  // 파일은 브라우저 → 우리 서버 → 구글 드라이브 순서로 올라간다.
+  // 브라우저에서 구글로 바로 보내는 경로는 사전 요청이 막히고, 서버 함수는 본문이 4.5MB 로
+  // 제한되므로, 3MB 씩 잘라 서버가 드라이브 세션에 이어 붙인다.
+  const CHUNK = 3 * 1024 * 1024; // 256KB 배수 — 구글 resumable 요구사항
+  const FALLBACK_MAX = 4 * 1024 * 1024;
 
-  /** 재개 가능 세션 URI 로 PUT. 성공하면 Drive 파일 ID. CORS 로 막히면 throw → Blob 으로 넘어간다. */
   /** 시간 제한을 건 fetch — 어떤 단계도 무한정 "업로드 중" 으로 멈추지 않게 한다. */
   async function fetchWithTimeout(input: string, init: RequestInit, ms: number, label: string, outer?: AbortSignal) {
     const ctl = new AbortController();
@@ -173,58 +172,78 @@ export default function AdminNoticesPage() {
     }
   }
 
+  /** 드라이브로 청크 업로드. 드라이브가 연결돼 있지 않으면 null 을 돌려 폴백으로 넘긴다. */
+  async function uploadToDrive(
+    file: File,
+    say: (s: string) => void,
+    signal: AbortSignal,
+  ): Promise<Attachment | null> {
+    const begin = await fetchWithTimeout("/api/admin/upload-file/drive-begin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: file.name, size: file.size }),
+    }, 30_000, "업로드 준비", signal);
+    const bd = await begin.json().catch(() => ({}));
+    if (!begin.ok) {
+      if (bd.code === "drive_not_connected") return null;
+      throw new Error(bd.error ?? "업로드를 시작하지 못했습니다.");
+    }
+
+    let start = 0;
+    let guard = 0;
+    while (start < file.size) {
+      if (guard++ > 1000) throw new Error("업로드가 끝나지 않았습니다. 다시 시도해주세요.");
+      const end = Math.min(start + CHUNK, file.size);
+      const res = await fetchWithTimeout("/api/admin/upload-file/drive-chunk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "x-upload-id": bd.uploadId as string,
+          "x-chunk-start": String(start),
+          "x-total-size": String(file.size),
+        },
+        body: file.slice(start, end),
+      }, 120_000, "업로드", signal);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? "업로드에 실패했습니다.");
+      if (d.done) {
+        return { url: "", driveFileId: d.driveFileId, name: d.name, size: d.size, mime: d.mime };
+      }
+      // 구글이 알려 준 위치로 맞춘다 (우리 계산과 어긋나도 여기서 수렴)
+      start = typeof d.received === "number" && d.received > start ? d.received : end;
+      say(`${file.name} ${Math.round((start / file.size) * 100)}% 올리는 중...`);
+    }
+    throw new Error("업로드가 끝나지 않았습니다. 다시 시도해주세요.");
+  }
+
+  /** 드라이브 미연결 시의 대비책. 서버 함수를 통과하므로 4MB 까지만. */
+  async function uploadToBlob(file: File, signal: AbortSignal): Promise<Attachment> {
+    if (file.size > FALLBACK_MAX)
+      throw new Error("구글 드라이브가 연결되어 있지 않아 4MB 이하만 올릴 수 있습니다. 사이트 설정에서 드라이브를 연결해주세요.");
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetchWithTimeout("/api/admin/upload-file/blob", { method: "POST", body: fd }, 120_000, "업로드", signal);
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.error ?? "업로드에 실패했습니다.");
+    return d as Attachment;
+  }
+
   async function uploadOne(file: File, session: number, signal: AbortSignal): Promise<Attachment> {
     /** 이 업로드를 시작한 폼이 아직 화면에 있을 때만 상태를 바꾼다. */
     const alive = () => sessionRef.current === session && !signal.aborted;
     const say = (s: string) => { if (alive()) setStep(s); };
-    // 브라우저 → 사이트 저장소 → (서버가) 구글 드라이브 순서.
-    // 예전에는 브라우저에서 구글로 바로 PUT 했지만, 사전 요청이 브라우저에서 통과하지 못해
-    // 매번 실패하고 대기만 길어졌다. 드라이브 이동은 서버가 하므로 이 단계는 이제 필요 없다.
-    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+
+    say(`${file.name} 0% 올리는 중...`);
+    const viaDrive = await uploadToDrive(file, say, signal);
+    if (viaDrive) {
+      if (alive()) setStore("drive");
+      return viaDrive;
+    }
+
     say(`${file.name} 올리는 중...`);
-    let blob: { url: string };
-    try {
-      blob = await upload(`notices/${crypto.randomUUID()}.${ext}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload-file/token",
-        multipart: file.size > 8 * 1024 * 1024,
-        abortSignal: signal,
-      });
-    } catch (e) {
-      if (signal.aborted) throw new Error("작업이 취소됐습니다.");
-      throw new Error(e instanceof Error ? `업로드 실패: ${e.message}` : "업로드에 실패했습니다.");
-    }
-
-    say(`${file.name} 확인 중...`);
-    const res = await fetchWithTimeout("/api/admin/upload-file/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
-    }, 30_000, "파일 확인", signal);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error ?? "업로드 실패");
-
-    // ③ 서버가 드라이브로 옮긴다 (브라우저→구글 직접 업로드가 막히는 환경 대비).
-    //    실패하면 사이트 저장소 첨부를 그대로 쓴다 — 파일을 잃지 않는 것이 우선.
-    try {
-      say(`${file.name} 드라이브로 옮기는 중...`);
-      const mv = await fetchWithTimeout("/api/admin/upload-file/to-drive", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
-      }, 90_000, "드라이브 이동", signal);
-      const mvData = await mv.json().catch(() => ({}));
-      if (mv.ok && mvData.moved && mvData.driveFileId) {
-        if (alive()) setStore("drive");
-        return { url: "", driveFileId: mvData.driveFileId, name: mvData.name, size: mvData.size, mime: mvData.mime } as Attachment;
-      }
-    } catch (e) {
-      if (signal.aborted) throw new Error("작업이 취소됐습니다.");
-      console.warn("[attach] 드라이브 이동 실패, 사이트 저장소 유지", e);
-    }
-
+    const viaBlob = await uploadToBlob(file, signal);
     if (alive()) setStore("blob");
-    return data as Attachment;
+    return viaBlob;
   }
 
   async function uploadFiles(files: FileList) {
@@ -239,22 +258,28 @@ export default function AdminNoticesPage() {
     for (const file of Array.from(files).slice(0, 10 - attachments.length)) {
       if (file.size === 0) { setUploadError(`${file.name}: 빈 파일은 첨부할 수 없습니다.`); break; }
       if (file.size > MAX_ATTACHMENT_BYTES) { setUploadError(`${file.name}: 파일 크기는 ${MAX_ATTACHMENT_MB}MB 이하여야 합니다.`); break; }
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         // 어떤 단계가 응답하지 않아도 화면이 멈춘 채로 남지 않도록 전체 상한을 둔다.
         // race 는 원래 작업을 멈추지 못하므로 상한에 걸리면 signal 로 실제로 끊는다.
-        const timeout = new Promise<never>((_, rej) =>
-          setTimeout(() => { ctl.abort(); rej(new Error("시간이 초과됐습니다. 네트워크를 확인하고 다시 시도해주세요.")); }, 5 * 60_000));
+        const timeout = new Promise<never>((_, rej) => {
+          timer = setTimeout(() => { ctl.abort(); rej(new Error("시간이 초과됐습니다. 네트워크를 확인하고 다시 시도해주세요.")); }, 5 * 60_000);
+        });
         added.push(await Promise.race([uploadOne(file, session, ctl.signal), timeout]));
       } catch (e) {
+        console.error("[attach] 업로드 실패", file.name, e);
         // 폼이 이미 바뀌었으면 그 폼에 오류를 띄우지 않는다
         if (sessionRef.current === session) setUploadError(`${file.name}: ${e instanceof Error ? e.message : "업로드에 실패했습니다."}`);
         break;
+      } finally {
+        // 성공해도 타이머가 남아 5분 뒤 컨트롤러를 끊는 것을 막는다
+        if (timer) clearTimeout(timer);
       }
     }
 
     // 늦게 끝난 작업이 새 폼의 상태·첨부를 건드리지 못하게 막는 지점
+    uploadingRef.current = false; // 세션이 바뀌었더라도 가드는 반드시 푼다 (잠기면 이후 선택이 조용히 무시된다)
     if (sessionRef.current !== session) return;
-    uploadingRef.current = false;
     abortRef.current = null;
     setUploading(false);
     setStep("");

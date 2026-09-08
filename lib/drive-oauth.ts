@@ -304,6 +304,46 @@ export async function ensurePrivateSubfolder({
 }
 
 
+/**
+ * 재개 가능(resumable) 업로드 세션 생성. 실제 바이트는 이 URI 로 나눠 보낸다.
+ * 브라우저가 구글로 직접 PUT 하는 경로는 사전 요청이 막혀 쓸 수 없어서,
+ * 서버가 세션만 만들고 청크도 서버가 중계한다.
+ */
+export async function createResumableSession({
+  accessToken,
+  name,
+  mimeType,
+  parentId,
+  size,
+}: {
+  accessToken: string;
+  name: string;
+  mimeType: string;
+  parentId: string;
+  size: number;
+}): Promise<string> {
+  const res = await driveFetch(
+    accessToken,
+    "/files?uploadType=resumable&fields=id",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": mimeType,
+        "X-Upload-Content-Length": String(size),
+      },
+      body: JSON.stringify({ name, parents: [parentId], mimeType }),
+    },
+    DRIVE_UPLOAD_BASE,
+  );
+  const location = res.headers.get("location");
+  if (!res.ok || !location) {
+    const text = await res.text().catch(() => "");
+    throw new DriveOAuthError(`업로드 세션 생성 실패: ${text.slice(0, 200)}`, res.status);
+  }
+  return location;
+}
+
 /** 파일 내용 조회. range 를 주면 앞부분만 받는다(시그니처 검사용). */
 export async function fetchFileContent(
   accessToken: string,

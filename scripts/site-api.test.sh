@@ -306,26 +306,56 @@ CA=(-b "$CJ" -H "X-Forwarded-For: $CIP")
 CJSON=("${CA[@]}" -H 'Content-Type: application/json')
 TMPD=$(mktemp -d)
 
-# 파일은 브라우저에서 Blob 으로 직접 올라간다(Vercel 함수 본문 4.5MB 한도 회피).
-# 서버는 (1) 토큰 발급 시 형식·경로·크기를 제한하고 (2) /verify 에서 앞부분 시그니처를 확인한다.
+# 파일은 브라우저 → 우리 서버 → 구글 드라이브 순서로 3MB 씩 올라간다.
+# (브라우저→구글 직접 PUT 은 사전 요청이 막히고, 서버 함수 본문은 4.5MB 로 제한된다)
 
-echo "## 첨부: 업로드 토큰은 비로그인 거부"
-RC=$(code -H "X-Forwarded-For: $(RIP 56)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/token" \
-  -d '{"type":"blob.generate-client-token","payload":{"pathname":"notices/00000000-0000-4000-8000-000000000000.pdf","callbackUrl":"x","clientPayload":null,"multipart":false}}')
-[ "$RC" = 401 ] || fail "비로그인 토큰 발급이 401 이 아님 ($RC)"
-echo "  토큰 비로그인 401 ok"
+echo "## 첨부: drive-begin 은 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 56)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/drive-begin" -d '{"name":"a.pdf","size":100}')
+[ "$RC" = 401 ] || fail "비로그인 drive-begin 이 401 이 아님 ($RC)"
+echo "  begin 비로그인 401 ok"
 
-echo "## 첨부: 허용되지 않는 확장자는 토큰을 주지 않는다"
-RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/token" \
-  -d '{"type":"blob.generate-client-token","payload":{"pathname":"notices/00000000-0000-4000-8000-000000000000.exe","callbackUrl":"x","clientPayload":null,"multipart":false}}')
-[ "$RC" = 400 ] || fail ".exe 확장자가 토큰을 받음 ($RC)"
+echo "## 첨부: drive-begin 은 허용되지 않는 확장자를 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-begin" -d '{"name":"a.exe","size":100}')
+[ "$RC" = 400 ] || fail ".exe 가 begin 을 통과함 ($RC)"
 echo "  .exe 거부 ok"
 
-echo "## 첨부: 원본 파일명을 저장 경로로 쓰려 하면 거부"
-RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/token" \
-  -d '{"type":"blob.generate-client-token","payload":{"pathname":"notices/../secret.pdf","callbackUrl":"x","clientPayload":null,"multipart":false}}')
-[ "$RC" = 400 ] || fail "임의 경로가 허용됨 ($RC)"
-echo "  경로 제한 ok"
+echo "## 첨부: drive-begin 은 30MB 초과를 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-begin" -d '{"name":"a.pdf","size":31457281}')
+[ "$RC" = 400 ] || fail "30MB 초과가 begin 을 통과함 ($RC)"
+echo "  용량 초과 거부 ok"
+
+echo "## 첨부: drive-begin 은 빈 파일을 거부"
+RC=$(code "${CJSON[@]}" -X POST "$B/api/admin/upload-file/drive-begin" -d '{"name":"a.pdf","size":0}')
+[ "$RC" = 400 ] || fail "빈 파일이 begin 을 통과함 ($RC)"
+echo "  빈 파일 거부 ok"
+
+echo "## 첨부: drive-chunk 는 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 59)" -H 'Content-Type: application/octet-stream' \
+  -H 'x-upload-id: x.y' -H 'x-chunk-start: 0' -H 'x-total-size: 10' \
+  -X POST "$B/api/admin/upload-file/drive-chunk" --data-binary 'hello')
+[ "$RC" = 401 ] || fail "비로그인 drive-chunk 가 401 이 아님 ($RC)"
+echo "  chunk 비로그인 401 ok"
+
+echo "## 첨부: drive-chunk 는 위조된 uploadId 를 거부"
+RC=$(code "${CA[@]}" -H 'Content-Type: application/octet-stream' \
+  -H 'x-upload-id: eyJ1IjoiaHR0cHM6Ly9ldmlsLmV4YW1wbGUuY29tLyJ9.forged' -H 'x-chunk-start: 0' -H 'x-total-size: 5' \
+  -X POST "$B/api/admin/upload-file/drive-chunk" --data-binary 'hello')
+[ "$RC" = 400 ] || fail "위조된 uploadId 가 통과함 ($RC)"
+echo "  위조 uploadId 거부 ok"
+
+echo "## 첨부: drive-chunk 는 3MB 초과 청크를 거부"
+head -c 3200000 /dev/zero > "$TMPD/big.chunk"
+RC=$(code "${CA[@]}" -H 'Content-Type: application/octet-stream' \
+  -H 'x-upload-id: eyJ1IjoiaHR0cHM6Ly9ldmlsLmV4YW1wbGUuY29tLyJ9.forged' -H 'x-chunk-start: 0' -H 'x-total-size: 3200000' \
+  -X POST "$B/api/admin/upload-file/drive-chunk" --data-binary "@$TMPD/big.chunk")
+# 위조 검증이 먼저 걸리므로 400. 크기 상한은 단위 테스트가 함께 지킨다.
+[ "$RC" = 400 ] || [ "$RC" = 413 ] || fail "3MB 초과 청크가 통과함 ($RC)"
+echo "  대형 청크 거부 ok ($RC)"
+
+echo "## 첨부: 폴백(blob) 은 비로그인 거부"
+RC=$(code -H "X-Forwarded-For: $(RIP 60)" -X POST "$B/api/admin/upload-file/blob" -F "file=@$TMPD/big.chunk")
+[ "$RC" = 401 ] || fail "비로그인 폴백 업로드가 401 이 아님 ($RC)"
+echo "  폴백 비로그인 401 ok"
 
 echo "## 첨부: verify 는 비로그인 거부"
 RC=$(code -H "X-Forwarded-For: $(RIP 57)" -H 'Content-Type: application/json' -X POST "$B/api/admin/upload-file/verify" \
