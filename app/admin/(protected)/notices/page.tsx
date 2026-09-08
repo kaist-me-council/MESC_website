@@ -1,5 +1,7 @@
 "use client";
 
+import { upload } from "@vercel/blob/client";
+
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,9 @@ interface Notice {
   createdAt: string;
   attachments?: Attachment[];
 }
+
+const MAX_ATTACHMENT_MB = 30;
+const MAX_ATTACHMENT_BYTES = MAX_ATTACHMENT_MB * 1024 * 1024;
 
 export default function AdminNoticesPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -92,18 +97,31 @@ export default function AdminNoticesPage() {
     loadNotices();
   }
 
+  // 파일은 브라우저에서 Blob 저장소로 직접 올린다.
+  // 서버 함수를 거치면 Vercel 의 4.5MB 본문 한도에 걸려 큰 파일이 아예 도달하지 못한다.
   async function uploadFiles(files: FileList) {
     setUploading(true); setUploadError("");
     const added: Attachment[] = [];
     for (const file of Array.from(files).slice(0, 10 - attachments.length)) {
-      const fd = new FormData(); fd.append("file", file);
+      const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+      if (file.size === 0) { setUploadError(`${file.name}: 빈 파일은 첨부할 수 없습니다.`); break; }
+      if (file.size > MAX_ATTACHMENT_BYTES) { setUploadError(`${file.name}: 파일 크기는 ${MAX_ATTACHMENT_MB}MB 이하여야 합니다.`); break; }
       try {
-        const res = await fetch("/api/admin/upload-file", { method: "POST", body: fd });
+        const blob = await upload(`notices/${crypto.randomUUID()}.${ext}`, file, {
+          access: "public",
+          handleUploadUrl: "/api/admin/upload-file/token",
+        });
+        // 업로드된 파일의 앞부분을 서버가 확인한다(확장자만 바꾼 파일 차단).
+        const res = await fetch("/api/admin/upload-file/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
+        });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) { setUploadError(`${file.name}: ${data.error ?? "업로드 실패"}`); break; }
         added.push(data as Attachment);
-      } catch {
-        setUploadError(`${file.name}: 업로드 중 연결에 실패했습니다.`); break;
+      } catch (e) {
+        setUploadError(`${file.name}: ${e instanceof Error ? e.message : "업로드에 실패했습니다."}`); break;
       }
     }
     setUploading(false);
@@ -154,7 +172,7 @@ export default function AdminNoticesPage() {
           <li><strong>영문(EN) 제목·내용은 선택</strong>: 입력하면 사이트 영어 모드에서 영문으로 표시되고, 비우면 한국어가 그대로 표시됩니다.</li>
           <li><strong>🌐 EN 자동 채우기</strong>: 한국어 제목·내용을 자동 번역해 EN 칸에 초안으로 채웁니다. <strong>결과를 꼭 검토·수정 후 등록</strong>하세요.</li>
           <li><strong>상단 고정</strong>을 체크하면 공개 페이지(/notices)에서 가장 위에 노출됩니다.</li>
-          <li><strong>첨부파일</strong>은 최대 10개, 각 20MB까지 올릴 수 있습니다. 공지를 삭제하면 첨부파일도 함께 삭제됩니다.</li>
+          <li><strong>첨부파일</strong>은 최대 10개, 각 30MB까지 올릴 수 있습니다. 공지를 삭제하면 첨부파일도 함께 삭제됩니다.</li>
           <li>등록 후에는 카드의 <strong>수정/삭제</strong> 버튼으로 관리합니다.</li>
         </ol>
         <p className="text-xs">💡 내용은 마크다운 형식이 아닌 일반 텍스트로 저장됩니다 — 줄바꿈은 그대로 반영됩니다.</p>
@@ -240,7 +258,7 @@ export default function AdminNoticesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>첨부파일 (최대 10개, 각 20MB — PDF·한글·오피스·이미지·ZIP)</Label>
+              <Label>첨부파일 (최대 10개, 각 30MB — PDF·한글·오피스·이미지·ZIP)</Label>
               {attachments.length > 0 && (
                 <ul className="space-y-1">
                   {attachments.map((a, i) => (

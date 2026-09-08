@@ -1,0 +1,62 @@
+/**
+ * 공지 첨부파일 형식 규칙 — 확장자 allow-list + 실제 시그니처 검사.
+ *
+ * Vercel 서버리스 함수는 요청 본문이 4.5MB 로 제한된다(초과 시 함수 실행 전에 413).
+ * 그래서 파일은 브라우저에서 Blob 저장소로 직접 올리고(@vercel/blob/client),
+ * 서버는 (1) 업로드 토큰을 낼 때 형식·크기를 제한하고
+ *        (2) 업로드 후 앞부분 몇 바이트만 Range 로 받아 시그니처를 확인한다.
+ */
+
+export const ATTACHMENT_MAX_SIZE = 30 * 1024 * 1024; // 30MB
+export const ATTACHMENT_MAX_MB = 30;
+
+// 확장자 → 허용 시그니처 그룹. text 는 시그니처가 없어 내용으로 검사한다.
+export const EXT_RULES: Record<string, { group: "pdf" | "zip" | "ole" | "png" | "jpg" | "gif" | "webp" | "text"; mime: string }> = {
+  pdf: { group: "pdf", mime: "application/pdf" },
+  // 한글: hwpx·docx 계열은 zip 컨테이너, 구형 hwp·doc·xls·ppt 는 OLE2 복합문서
+  hwpx: { group: "zip", mime: "application/haansofthwpx" },
+  docx: { group: "zip", mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+  xlsx: { group: "zip", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+  pptx: { group: "zip", mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+  zip: { group: "zip", mime: "application/zip" },
+  hwp: { group: "ole", mime: "application/x-hwp" },
+  doc: { group: "ole", mime: "application/msword" },
+  xls: { group: "ole", mime: "application/vnd.ms-excel" },
+  ppt: { group: "ole", mime: "application/vnd.ms-powerpoint" },
+  txt: { group: "text", mime: "text/plain" },
+  csv: { group: "text", mime: "text/csv" },
+  png: { group: "png", mime: "image/png" },
+  jpg: { group: "jpg", mime: "image/jpeg" },
+  jpeg: { group: "jpg", mime: "image/jpeg" },
+  gif: { group: "gif", mime: "image/gif" },
+  webp: { group: "webp", mime: "image/webp" },
+};
+
+const starts = (b: Buffer, bytes: number[]) => bytes.every((v, i) => b[i] === v);
+
+/** 파일 앞부분이 확장자에 맞는 실제 형식인지 확인. 확장자만 바꾼 파일을 걸러낸다. */
+export function signatureOk(group: string, head: Buffer): boolean {
+  switch (group) {
+    case "pdf":
+      return starts(head, [0x25, 0x50, 0x44, 0x46]); // %PDF
+    case "zip":
+      // PK\x03\x04 (일반) · PK\x05\x06 (빈 zip) · PK\x07\x08 (분할)
+      return head[0] === 0x50 && head[1] === 0x4b && [0x03, 0x05, 0x07].includes(head[2] ?? -1);
+    case "ole":
+      return starts(head, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+    case "png":
+      return starts(head, [0x89, 0x50, 0x4e, 0x47]);
+    case "jpg":
+      return starts(head, [0xff, 0xd8, 0xff]);
+    case "gif":
+      return starts(head, [0x47, 0x49, 0x46, 0x38]); // GIF8
+    case "webp":
+      return starts(head, [0x52, 0x49, 0x46, 0x46]) && head.subarray(8, 12).toString("latin1") === "WEBP";
+    case "text":
+      // 시그니처가 없으므로 제어문자(NUL 등)가 섞였는지로 판단
+      return !head.subarray(0, 512).some((c) => c === 0);
+    default:
+      return false;
+  }
+}
+
