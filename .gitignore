@@ -63,3 +63,4 @@ backups/
 .vercel*
 __pycache__/
 tmp-*
+docs/manual/pdf/.build/
