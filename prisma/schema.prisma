@@ -18,6 +18,7 @@ model Notice {
   pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  attachments  NoticeAttachment[]
 }
 
 model Resource {
@@ -467,4 +468,46 @@ model PostLike {
   voterHash String
   createdAt DateTime @default(now())
   @@unique([postId, voterHash])
+}
+
+// 공지 첨부파일 (Vercel Blob 에 랜덤 키로 저장, 메타데이터만 DB)
+model NoticeAttachment {
+  id        Int      @id @default(autoincrement())
+  noticeId  Int
+  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  name      String   // 사용자에게 보여 줄 원본 파일명
+  url       String
+  size      Int      // bytes
+  mime      String
+  createdAt DateTime @default(now())
+  @@index([noticeId])
+}
+
+// 웹 푸시 구독 (아이폰은 홈 화면에 추가한 상태에서만 동작)
+model PushSubscription {
+  id            Int       @id @default(autoincrement())
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
+  failCount     Int       @default(0)
+}
+
+// 학과 마스코트 (학부 소개 > 마스코트 탭). 사진·소개는 관리자 화면에서 채운다.
+model Mascot {
+  id        Int      @id @default(autoincrement())
+  name      String
+  nameEn    String?
+  tagKo     String?  // 한 줄 소개
+  tagEn     String?
+  descKo    String   // 본문 (줄바꿈 유지, URL 자동 링크)
+  descEn    String?
+  imageUrl  String?  // 대표 이미지 (투명 배경 PNG 권장)
+  images    String?  // JSON string[] — 추가 컷
+  order     Int      @default(0)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

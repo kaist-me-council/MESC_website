@@ -57,3 +57,29 @@ export function isValidDate(value: unknown): boolean {
 export function isAllowedCategory(value: unknown, allowed: string[]): value is string {
   return typeof value === "string" && allowed.includes(value);
 }
+
+/**
+ * 공지 첨부파일 목록 검사.
+ * url 은 우리 Blob 스토리지 호스트만 허용한다 — 관리자가 실수/악의로 외부 링크를 첨부로 심는 것을 막는다.
+ */
+export interface AttachmentInput { name: string; url: string; size: number; mime: string }
+
+const BLOB_HOST = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i;
+
+export function parseAttachments(value: unknown): AttachmentInput[] {
+  if (!Array.isArray(value)) return [];
+  const out: AttachmentInput[] = [];
+  for (const raw of value.slice(0, 10)) {
+    const a = raw as Record<string, unknown>;
+    if (typeof a?.url !== "string" || !BLOB_HOST.test(a.url)) continue;
+    if (!isValidString(a.name, 255)) continue;
+    const size = Number(a.size);
+    out.push({
+      name: a.name.trim().slice(0, 255),
+      url: a.url,
+      size: Number.isFinite(size) && size >= 0 ? Math.floor(size) : 0,
+      mime: typeof a.mime === "string" ? a.mime.slice(0, 100) : "application/octet-stream",
+    });
+  }
+  return out;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { NotificationToggle } from "@/components/notification-toggle";
 import { Settings, MapPin, Mail, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import { FOOTER_FALLBACK, type FooterData } from "@/lib/site-settings";
@@ -70,6 +71,7 @@ export default function Footer({ data = FOOTER_FALLBACK }: { data?: FooterData }
                 <p className="text-xs text-muted-foreground font-medium">{subtitle}</p>
               </div>
             </div>
+            <NotificationToggle />
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
               {t("footer.description")}
             </p>

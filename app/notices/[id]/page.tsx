@@ -7,7 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/language-context";
 import { ViewTracker } from "@/components/view-tracker";
-import { Eye } from "lucide-react";
+import { Eye, Paperclip, Download } from "lucide-react";
+
+interface Attachment { name: string; url: string; size: number; mime: string }
+
+const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
 interface Notice {
   id: number;
@@ -20,6 +24,7 @@ interface Notice {
   createdAt: string;
   updatedAt: string;
   viewCount?: number;
+  attachments?: Attachment[];
 }
 
 export default function NoticeDetailPage() {
@@ -103,6 +108,31 @@ export default function NoticeDetailPage() {
             {lang === "en" && notice.contentEn ? notice.contentEn : notice.content}
           </div>
         </div>
+
+        {!!notice.attachments?.length && (
+          <section className="mt-8 border-t pt-6">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Paperclip className="h-4 w-4" aria-hidden="true" />
+              {t("notices.attachments")} ({notice.attachments.length})
+            </h2>
+            <ul className="space-y-2">
+              {notice.attachments.map((a) => (
+                <li key={a.url}>
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors hover:bg-muted/50"
+                  >
+                    <Download className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 truncate text-sm">{a.name}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{kb(a.size)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </article>
     </div>
   );

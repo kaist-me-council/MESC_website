@@ -9,6 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdminGuide } from "@/components/admin-guide";
+import { Paperclip } from "lucide-react";
+
+interface Attachment { name: string; url: string; size: number; mime: string }
+
+const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
 interface Notice {
   id: number;
@@ -19,6 +24,7 @@ interface Notice {
   category: string;
   pinned: boolean;
   createdAt: string;
+  attachments?: Attachment[];
 }
 
 export default function AdminNoticesPage() {
@@ -31,6 +37,9 @@ export default function AdminNoticesPage() {
   const [pinned, setPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +53,7 @@ export default function AdminNoticesPage() {
 
   function resetForm() {
     setTitle(""); setTitleEn(""); setContent(""); setContentEn("");
-    setCategory("공지"); setPinned(false); setEditingId(null);
+    setCategory("공지"); setPinned(false); setAttachments([]); setUploadError(""); setEditingId(null);
   }
 
   function startEdit(notice: Notice) {
@@ -55,6 +64,8 @@ export default function AdminNoticesPage() {
     setContentEn(notice.contentEn ?? "");
     setCategory(notice.category);
     setPinned(notice.pinned);
+    setAttachments(notice.attachments ?? []);
+    setUploadError("");
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -66,19 +77,37 @@ export default function AdminNoticesPage() {
       await fetch(`/api/notices/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, titleEn, content, contentEn, category, pinned }),
+        body: JSON.stringify({ title, titleEn, content, contentEn, category, pinned, attachments }),
       });
     } else {
       await fetch("/api/notices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, titleEn, content, contentEn, category, pinned }),
+        body: JSON.stringify({ title, titleEn, content, contentEn, category, pinned, attachments }),
       });
     }
 
     resetForm();
     setSubmitting(false);
     loadNotices();
+  }
+
+  async function uploadFiles(files: FileList) {
+    setUploading(true); setUploadError("");
+    const added: Attachment[] = [];
+    for (const file of Array.from(files).slice(0, 10 - attachments.length)) {
+      const fd = new FormData(); fd.append("file", file);
+      try {
+        const res = await fetch("/api/admin/upload-file", { method: "POST", body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { setUploadError(`${file.name}: ${data.error ?? "업로드 실패"}`); break; }
+        added.push(data as Attachment);
+      } catch {
+        setUploadError(`${file.name}: 업로드 중 연결에 실패했습니다.`); break;
+      }
+    }
+    setUploading(false);
+    if (added.length) setAttachments((prev) => [...prev, ...added]);
   }
 
   async function autoFillEn() {
@@ -125,6 +154,7 @@ export default function AdminNoticesPage() {
           <li><strong>영문(EN) 제목·내용은 선택</strong>: 입력하면 사이트 영어 모드에서 영문으로 표시되고, 비우면 한국어가 그대로 표시됩니다.</li>
           <li><strong>🌐 EN 자동 채우기</strong>: 한국어 제목·내용을 자동 번역해 EN 칸에 초안으로 채웁니다. <strong>결과를 꼭 검토·수정 후 등록</strong>하세요.</li>
           <li><strong>상단 고정</strong>을 체크하면 공개 페이지(/notices)에서 가장 위에 노출됩니다.</li>
+          <li><strong>첨부파일</strong>은 최대 10개, 각 20MB까지 올릴 수 있습니다. 공지를 삭제하면 첨부파일도 함께 삭제됩니다.</li>
           <li>등록 후에는 카드의 <strong>수정/삭제</strong> 버튼으로 관리합니다.</li>
         </ol>
         <p className="text-xs">💡 내용은 마크다운 형식이 아닌 일반 텍스트로 저장됩니다 — 줄바꿈은 그대로 반영됩니다.</p>
@@ -209,7 +239,35 @@ export default function AdminNoticesPage() {
                 rows={6}
               />
             </div>
-            <Button onClick={handleSubmit} disabled={submitting} className="w-full">
+            <div className="space-y-2">
+              <Label>첨부파일 (최대 10개, 각 20MB — PDF·한글·오피스·이미지·ZIP)</Label>
+              {attachments.length > 0 && (
+                <ul className="space-y-1">
+                  {attachments.map((a, i) => (
+                    <li key={`${a.url}-${i}`} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                      <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="flex-1 truncate">{a.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{kb(a.size)}</span>
+                      <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-destructive"
+                        onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}>제거</Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="file"
+                  multiple
+                  aria-label="첨부파일 선택"
+                  className="text-sm"
+                  disabled={uploading || attachments.length >= 10}
+                  onChange={(e) => { if (e.target.files?.length) uploadFiles(e.target.files); e.target.value = ""; }}
+                />
+                {uploading && <span className="text-xs text-muted-foreground">업로드 중...</span>}
+              </div>
+              {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
+            </div>
+            <Button onClick={handleSubmit} disabled={submitting || uploading} className="w-full">
               {submitting
                 ? (editingId !== null ? "저장 중..." : "등록 중...")
                 : (editingId !== null ? "수정 저장" : "공지 등록")}
@@ -232,6 +290,11 @@ export default function AdminNoticesPage() {
                   </span>
                 </div>
                 <p className="font-medium truncate">{notice.title}</p>
+                {!!notice.attachments?.length && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Paperclip className="h-3 w-3" aria-hidden="true" />첨부 {notice.attachments.length}개
+                  </p>
+                )}
               </div>
               <div className="flex gap-2 shrink-0">
                 <Button

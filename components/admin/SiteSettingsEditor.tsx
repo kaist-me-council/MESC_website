@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HoursContactTab from "@/components/admin/site/HoursContactTab";
 import LinksTab from "@/components/admin/site/LinksTab";
 import ClubsTab from "@/components/admin/site/ClubsTab";
+import MascotsTab from "@/components/admin/site/MascotsTab";
 import type { OperatingHours } from "@/lib/site-settings";
 
 export interface SiteSettingsData {
@@ -45,14 +46,29 @@ export interface ClubRow {
   enabled: boolean;
 }
 
+export interface MascotRow {
+  id: number;
+  name: string;
+  nameEn: string | null;
+  tagKo: string | null;
+  tagEn: string | null;
+  descKo: string;
+  descEn: string | null;
+  imageUrl: string | null;
+  order: number;
+  enabled: boolean;
+}
+
 export default function SiteSettingsEditor({
   initialSettings,
   initialLinks,
   initialClubs,
+  initialMascots,
 }: {
   initialSettings: SiteSettingsData;
   initialLinks: SiteLinkRow[];
   initialClubs: ClubRow[];
+  initialMascots: MascotRow[];
 }) {
   const [tab, setTab] = useState("hours");
   return (
@@ -61,6 +77,7 @@ export default function SiteSettingsEditor({
         <TabsTrigger value="hours">운영시간·연락처</TabsTrigger>
         <TabsTrigger value="links">링크</TabsTrigger>
         <TabsTrigger value="clubs">동아리</TabsTrigger>
+        <TabsTrigger value="mascots">마스코트</TabsTrigger>
       </TabsList>
       <TabsContent value="hours">
         <HoursContactTab initial={initialSettings} />
@@ -70,6 +87,9 @@ export default function SiteSettingsEditor({
       </TabsContent>
       <TabsContent value="clubs">
         <ClubsTab initial={initialClubs} />
+      </TabsContent>
+      <TabsContent value="mascots">
+        <MascotsTab initial={initialMascots} />
       </TabsContent>
     </Tabs>
   );
