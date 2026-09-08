@@ -63,7 +63,7 @@ export function isAllowedCategory(value: unknown, allowed: string[]): value is s
  * 두 저장소를 허용한다: 우리 Blob(호스트 고정) 또는 구글 드라이브(파일 ID).
  * 그 외 URL 은 버린다 — 관리자가 실수/악의로 외부 링크를 첨부로 심는 것을 막는다.
  */
-export interface AttachmentInput { name: string; url: string; driveFileId: string | null; size: number; mime: string }
+export interface AttachmentInput { id: number | null; name: string; url: string; driveFileId: string | null; size: number; mime: string }
 
 const BLOB_HOST = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i;
 
@@ -72,6 +72,11 @@ export function parseAttachments(value: unknown): AttachmentInput[] {
   const out: AttachmentInput[] = [];
   for (const raw of value.slice(0, 10)) {
     const a = raw as Record<string, unknown>;
+    // 기존 행은 id 로 식별한다. id 가 있으면 저장 위치·이름은 DB 값을 쓰므로
+    // 여기서 통과한 url/driveFileId 는 신규 행에만 쓰인다.
+    const idNum = Number(a.id);
+    const id = Number.isInteger(idNum) && idNum > 0 ? idNum : null;
+    if (id !== null) { out.push({ id, name: "", url: "", driveFileId: null, size: 0, mime: "" }); continue; }
     if (!isValidString(a.name, 255)) continue;
     const driveFileId =
       typeof a.driveFileId === "string" && /^[A-Za-z0-9_-]{10,}$/.test(a.driveFileId.trim())
@@ -81,6 +86,7 @@ export function parseAttachments(value: unknown): AttachmentInput[] {
     if (!driveFileId && !url) continue; // 저장 위치가 없으면 버린다
     const size = Number(a.size);
     out.push({
+      id: null,
       name: a.name.trim().slice(0, 255),
       url,
       driveFileId,

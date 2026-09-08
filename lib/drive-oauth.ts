@@ -286,48 +286,23 @@ export async function ensureSubfolder(
  * 부모 폴더 아래 하위 폴더 확보. ensureSubfolder 와 달리 공개 권한을 주지 않는다.
  * 첨부파일은 비공개로 두고 다운로드는 우리 API 가 중계한다.
  */
-export async function ensurePrivateSubfolder(
-  accessToken: string,
-  parentId: string,
-  name: string,
-): Promise<string> {
+// 인자를 객체로 받는다 — accessToken·parentId·name 이 모두 string 이라
+// 위치 인자로 두면 순서가 뒤바뀌어도 타입 검사가 잡지 못한다(실제로 뒤바뀐 적 있음).
+export async function ensurePrivateSubfolder({
+  accessToken,
+  parentId,
+  name,
+}: {
+  accessToken: string;
+  parentId: string;
+  name: string;
+}): Promise<string> {
   const existing = await findSubfolder(accessToken, parentId, name);
   if (existing) return existing;
   const created = await createFolder(accessToken, name, parentId);
   return created.id;
 }
 
-/**
- * 재개 가능(resumable) 업로드 세션 생성. 반환한 URI 로 브라우저가 직접 PUT 한다.
- * 세션 URI 자체가 단기 인증 토큰 역할을 하므로 access token 은 브라우저에 노출되지 않는다.
- */
-export async function createResumableSession(
-  accessToken: string,
-  file: { name: string; mimeType: string; size: number },
-  parentId: string,
-): Promise<string> {
-  const res = await driveFetch(
-    accessToken,
-    "/files?uploadType=resumable&fields=id",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=UTF-8",
-        "X-Upload-Content-Type": file.mimeType,
-        "X-Upload-Content-Length": String(file.size),
-      },
-      body: JSON.stringify({ name: file.name, parents: [parentId], mimeType: file.mimeType }),
-    },
-    DRIVE_UPLOAD_BASE,
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    throw new DriveOAuthError(`업로드 세션 생성 실패: ${text.slice(0, 200)}`, res.status);
-  }
-  const uri = res.headers.get("location");
-  if (!uri) throw new DriveOAuthError("업로드 세션 URI 를 받지 못했습니다.", 502);
-  return uri;
-}
 
 /** 파일 내용 조회. range 를 주면 앞부분만 받는다(시그니처 검사용). */
 export async function fetchFileContent(

@@ -46,19 +46,29 @@ export async function POST(req: NextRequest) {
       contentEn: typeof b.contentEn === "string" ? b.contentEn.trim().slice(0, 10000) || null : null,
       category,
       pinned: Boolean(b.pinned),
-      attachments: { create: parseAttachments(b.attachments) },
+      // 새 공지에는 기존 첨부 id 가 있을 수 없다 — id 가 붙은 항목은 버리고 id 는 떼고 만든다.
+      attachments: {
+        create: parseAttachments(b.attachments)
+          .filter((a) => a.id === null)
+          .map((a) => ({ name: a.name, url: a.url, driveFileId: a.driveFileId, size: a.size, mime: a.mime })),
+      },
     },
     include: { attachments: { orderBy: { id: "asc" } } },
   });
   // notify:true 면 구독한 브라우저에 푸시. 서버리스에서는 응답 후 작업이 종료될 수 있어
   // await 로 끝까지 보낸다. sendPushToAll 은 스스로 throw 하지 않지만 방어적으로 감싼다.
+  //
+  // 공지 저장 결과와 알림 결과는 별도 필드로 돌려준다. 알림이 실패해도 공지는 저장된 것이고,
+  // 재시도는 공지를 다시 만드는 것이 아니라 POST /api/notices/<id>/notify 로 알림만 다시 보낸다.
+  let notified: Awaited<ReturnType<typeof sendPushToAll>> | null = null;
   if (b.notify === true) {
     try {
-      await sendPushToAll({ title: "새 공지", body: notice.title, url: `/notices/${notice.id}` });
+      notified = await sendPushToAll({ title: "새 공지", body: notice.title, url: `/notices/${notice.id}` });
     } catch (e) {
       console.error("[notice] 알림 발송 실패", e instanceof Error ? e.message : e);
+      notified = { status: "partial", sent: 0, failed: 0, pruned: 0 };
     }
   }
   revalidatePath("/");
-  return NextResponse.json(withDownloadUrls(notice));
+  return NextResponse.json({ ...withDownloadUrls(notice), notified });
 }

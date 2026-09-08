@@ -1,139 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
-import { Bell, BellOff, BellRing, Share, Plus, X } from "lucide-react";
+import { usePush } from "@/components/push-provider";
+import { Bell, BellOff, BellRing, Share, Plus, X, RotateCw } from "lucide-react";
 
 /**
- * 공지 알림 구독 토글.
+ * 공지 알림 구독 토글. 상태는 PushProvider 가 소유한다 —
+ * 공지 페이지와 푸터에 각각 놓여도 같은 상태·busy·오류를 공유한다.
  *
  * 아이폰 주의: iOS Safari 는 "홈 화면에 추가"로 설치한 상태(standalone)에서만
  * Notification·PushManager 가 존재한다. 설치 전에는 버튼을 눌러도 아무 일이 없으므로
  * 버튼 대신 설치 방법을 안내한다. (권한 요청은 반드시 클릭 안에서 호출해야 한다.)
  */
-
-type State =
-  | "loading"
-  | "unsupported" // 브라우저가 푸시를 지원하지 않음
-  | "insecure" // https 가 아님
-  | "ios-install" // iOS 인데 홈 화면 앱이 아님
-  | "denied" // 사용자가 차단함
-  | "off"
-  | "on";
-
-const isIos = () =>
-  typeof navigator !== "undefined" &&
-  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    // iPadOS 13+ 는 데스크톱 UA 를 쓴다
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
-
-const isStandalone = () =>
-  typeof window !== "undefined" &&
-  (window.matchMedia?.("(display-mode: standalone)").matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true);
-
-/** base64url VAPID 공개키 → Uint8Array */
-function urlBase64ToUint8Array(base64: string): Uint8Array {
-  const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(padded);
-  const arr = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-  return arr;
-}
-
 export function NotificationToggle({ className = "" }: { className?: string }) {
   const { t } = useLanguage();
-  const [state, setState] = useState<State>("loading");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const { phase, busy, error, enable, disable, retry } = usePush();
 
-  const detect = useCallback(async () => {
-    if (typeof window === "undefined") return;
-    if (!window.isSecureContext) return setState("insecure");
-    const pushable = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-    // iOS 는 홈 화면 앱이 아니면 위 API 자체가 없다 → 설치 안내로 분기
-    if (!pushable) return setState(isIos() && !isStandalone() ? "ios-install" : "unsupported");
-    if (Notification.permission === "denied") return setState("denied");
-    try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      const sub = await reg?.pushManager.getSubscription();
-      setState(sub ? "on" : "off");
-    } catch {
-      setState("off");
-    }
-  }, []);
+  if (phase === "loading" || phase === "unsupported" || phase === "insecure") return null;
 
-  useEffect(() => {
-    Promise.resolve().then(detect);
-  }, [detect]);
-
-  async function enable() {
-    setBusy(true);
-    setError("");
-    try {
-      // 빌드 시점에 주입된 값이 없으면 서버에서 받아온다(환경변수를 나중에 넣은 경우).
-      let key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!key) {
-        const r = await fetch("/api/push/key");
-        key = r.ok ? ((await r.json()) as { key?: string }).key : "";
-      }
-      if (!key) throw new Error(t("push.notConfigured"));
-      // 권한 요청은 이 클릭 핸들러 안에서 (iOS 요구사항)
-      const perm = await Notification.requestPermission();
-      if (perm !== "granted") {
-        setState(perm === "denied" ? "denied" : "off");
-        return;
-      }
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-      const sub =
-        (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
-        }));
-      const res = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscription: sub.toJSON(), userAgent: navigator.userAgent }),
-      });
-      if (!res.ok) throw new Error(t("push.saveFailed"));
-      setState("on");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("push.saveFailed"));
-      await detect();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function disable() {
-    setBusy(true);
-    setError("");
-    try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      const sub = await reg?.pushManager.getSubscription();
-      if (sub) {
-        await fetch("/api/push/subscribe", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint: sub.endpoint }),
-        }).catch(() => {});
-        await sub.unsubscribe();
-      }
-      setState("off");
-    } catch {
-      setError(t("push.saveFailed"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (state === "loading" || state === "unsupported" || state === "insecure") return null;
-
-  if (state === "ios-install") {
+  if (phase === "ios-install") {
     return (
       <Alert className={`rounded-2xl ${className}`}>
         <Bell className="h-4 w-4" />
@@ -155,7 +43,7 @@ export function NotificationToggle({ className = "" }: { className?: string }) {
     );
   }
 
-  if (state === "denied") {
+  if (phase === "denied") {
     return (
       <Alert className={`rounded-2xl ${className}`}>
         <BellOff className="h-4 w-4" />
@@ -164,7 +52,27 @@ export function NotificationToggle({ className = "" }: { className?: string }) {
     );
   }
 
-  const on = state === "on";
+  // 브라우저 구독은 있으나 서버 등록이 안 된 상태. "켜짐" 으로 보여 주지 않는다.
+  if (phase === "register-failed") {
+    return (
+      <div className={className}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={retry}
+          className="h-11 rounded-xl gap-2"
+        >
+          <RotateCw className="h-4 w-4" />
+          {busy ? t("push.working") : t("push.retry")}
+        </Button>
+        <p className="mt-1 text-xs text-destructive">{t("push.registerFailed")}</p>
+      </div>
+    );
+  }
+
+  const on = phase === "on";
   return (
     <div className={className}>
       <Button
@@ -178,7 +86,11 @@ export function NotificationToggle({ className = "" }: { className?: string }) {
         {on ? <BellRing className="h-4 w-4 text-primary" /> : <Bell className="h-4 w-4" />}
         {busy ? t("push.working") : on ? t("push.on") : t("push.off")}
       </Button>
-      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+      {error && (
+        <p className="mt-1 text-xs text-destructive">
+          {error === "not-configured" ? t("push.notConfigured") : t("push.saveFailed")}
+        </p>
+      )}
     </div>
   );
 }

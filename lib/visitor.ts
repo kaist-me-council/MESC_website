@@ -4,6 +4,10 @@
  * 조회수 중복 제거·좋아요 1인 1표에 쓴다. 콘텐츠마다 쿠키를 굽지 않고
  * 브라우저당 랜덤 토큰 쿠키 1개만 두고, 중복 판정은 서버(ContentView·PostLike)가 한다.
  * 토큰 원문은 DB 에 저장하지 않고 scope 별 해시만 저장한다.
+ *
+ * 토큰을 새로 만드는 곳은 /api/visitor 하나뿐이다. 조회·좋아요가 각자 만들면
+ * 쿠키 없는 병렬 요청이 서로 다른 토큰을 굽고 Set-Cookie 가 덮어써서
+ * 진 쪽 기록이 고아가 된다. 다른 라우트는 readVisitorToken 으로 읽기만 한다.
  */
 
 import { cookies } from "next/headers";
@@ -21,11 +25,9 @@ export async function readVisitorToken(): Promise<string | null> {
   return raw && TOKEN_RE.test(raw) ? raw : null;
 }
 
-/** 라우트 핸들러용. 없으면 새로 만들고 isNew=true → attachVisitorCookie 로 응답에 붙일 것. */
-export async function getOrCreateVisitorToken(): Promise<{ token: string; isNew: boolean }> {
-  const existing = await readVisitorToken();
-  if (existing) return { token: existing, isNew: false };
-  return { token: randomBytes(16).toString("hex"), isNew: true };
+/** 새 토큰 발급. /api/visitor 전용 — 다른 곳에서 부르면 V1 경합이 되살아난다. */
+export function mintVisitorToken(): string {
+  return randomBytes(16).toString("hex");
 }
 
 export function attachVisitorCookie<T extends NextResponse>(res: T, token: string, isNew: boolean): T {
