@@ -38,6 +38,8 @@ export default function AdminNoticesPage() {
   const [contentEn, setContentEn] = useState("");
   const [category, setCategory] = useState("공지");
   const [pinned, setPinned] = useState(false);
+  const [notify, setNotify] = useState(false);   // 새 공지 등록 시 알림 발송 여부
+  const [notifyBusy, setNotifyBusy] = useState<number | "test" | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -79,7 +81,7 @@ export default function AdminNoticesPage() {
   function resetForm() {
     newSession();
     setTitle(""); setTitleEn(""); setContent(""); setContentEn("");
-    setCategory("공지"); setPinned(false); setAttachments([]); setUploadError(""); setEditingId(null);
+    setCategory("공지"); setPinned(false); setNotify(false); setAttachments([]); setUploadError(""); setEditingId(null);
   }
 
   function startEdit(notice: Notice) {
@@ -108,6 +110,7 @@ export default function AdminNoticesPage() {
     const payload = {
       title, titleEn, content, contentEn, category, pinned,
       attachments: attachments.map((a) => (a.id ? { id: a.id } : a)),
+      ...(editingId === null && notify ? { notify: true } : {}),
     };
     const editing = editingId !== null;
 
@@ -135,10 +138,20 @@ export default function AdminNoticesPage() {
       }
 
       // 저장 성공 — 여기서만 폼을 비운다.
+      // 알림 발송 결과는 저장과 별개다. 발송이 실패해도 공지는 저장된 상태로 둔다.
+      const saved = await res.json().catch(() => ({} as Record<string, unknown>));
+      const notifiedInfo = (saved as { notified?: { status?: string; sent?: number; failed?: number; pruned?: number } }).notified;
+      const wantedNotify = !editing && notify;
       resetForm();
       try {
         await loadNotices();
-        setSubmitMsg({ kind: "ok", text: editing ? "수정했습니다." : "등록했습니다." });
+        const base = editing ? "수정했습니다." : "등록했습니다.";
+        if (wantedNotify && notifiedInfo) {
+          const d = describeSend(notifiedInfo);
+          setSubmitMsg({ kind: d.kind, text: `${base} ${d.text}` });
+        } else {
+          setSubmitMsg({ kind: "ok", text: base });
+        }
       } catch {
         setSubmitMsg({ kind: "warn", text: "저장은 완료됐지만 목록 갱신에 실패했습니다. 새로고침해주세요." });
       }
@@ -244,6 +257,55 @@ export default function AdminNoticesPage() {
     const viaBlob = await uploadToBlob(file, signal);
     if (alive()) setStore("blob");
     return viaBlob;
+  }
+
+  /** 발송 결과를 사람이 읽을 수 있는 문장으로. 내부 오류 원문은 노출하지 않는다. */
+  function describeSend(d: { status?: string; sent?: number; failed?: number; pruned?: number }): { kind: "ok" | "warn"; text: string } {
+    switch (d.status) {
+      case "sent":
+        return { kind: "ok", text: `알림을 ${d.sent}명에게 보냈습니다.` };
+      case "partial":
+        return { kind: "warn", text: `알림을 ${d.sent}명에게 보냈고 ${d.failed}건은 실패했습니다. 만료된 구독 ${d.pruned ?? 0}건은 정리했습니다.` };
+      case "no_subscribers":
+        return { kind: "warn", text: "알림을 받도록 설정한 사람이 아직 없습니다. 공지 페이지에서 '알림 받기'를 켜야 받을 수 있습니다." };
+      case "not_configured":
+        return { kind: "warn", text: "알림 발송 설정이 되어 있지 않습니다. 관리자에게 문의하세요." };
+      case "lookup_failed":
+        return { kind: "warn", text: "구독자 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요." };
+      default:
+        return { kind: "warn", text: "알림 발송 결과를 확인하지 못했습니다." };
+    }
+  }
+
+  /** 이미 등록된 공지를 구독자에게 알림으로 보낸다. */
+  async function sendNotify(id: number) {
+    setNotifyBusy(id);
+    setSubmitMsg(null);
+    try {
+      const res = await fetch(`/api/notices/${id}/notify`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      setSubmitMsg(describeSend(data));
+    } catch {
+      setSubmitMsg({ kind: "warn", text: "알림 발송 중 연결에 실패했습니다." });
+    } finally {
+      setNotifyBusy(null);
+    }
+  }
+
+  /** 아무 공지도 보내지 않고 내 기기로만 시험 발송. */
+  async function sendTest() {
+    setNotifyBusy("test");
+    setSubmitMsg(null);
+    try {
+      const res = await fetch("/api/admin/push/test", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      const d = describeSend(data);
+      setSubmitMsg({ kind: d.kind, text: `[시험 발송] ${d.text}` });
+    } catch {
+      setSubmitMsg({ kind: "warn", text: "시험 발송 중 연결에 실패했습니다." });
+    } finally {
+      setNotifyBusy(null);
+    }
   }
 
   async function uploadFiles(files: FileList) {
@@ -402,6 +464,22 @@ export default function AdminNoticesPage() {
                   />
                   <label htmlFor="pinned" className="text-sm">고정 공지로 설정</label>
                 </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    type="checkbox"
+                    id="notify"
+                    checked={notify}
+                    disabled={editingId !== null}
+                    onChange={(e) => setNotify(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="notify" className="text-sm">
+                    알림 보내기
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      {editingId !== null ? "(수정 시에는 목록의 버튼으로)" : "(구독한 학생에게 푸시)"}
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
             <div className="space-y-2">
@@ -469,7 +547,10 @@ export default function AdminNoticesPage() {
         </Card>
       </div>
 
-      <h2 className="text-lg font-semibold mb-4">등록된 공지 ({notices.length}건)</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className="text-lg font-semibold mb-4">등록된 공지 ({notices.length}건)</h2>
+        <Button variant="outline" size="sm" disabled={notifyBusy !== null} onClick={sendTest}>{notifyBusy === "test" ? "보내는 중..." : "알림 시험 발송"}</Button>
+      </div>
       <div className="space-y-2">
         {notices.map((notice) => (
           <Card key={notice.id} className={editingId === notice.id ? "ring-2 ring-primary" : ""}>
@@ -490,6 +571,15 @@ export default function AdminNoticesPage() {
                 )}
               </div>
               <div className="flex gap-2 shrink-0">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={notifyBusy !== null}
+                  onClick={() => sendNotify(notice.id)}
+                  title="이 공지를 구독자에게 알림으로 보냅니다"
+                >
+                  {notifyBusy === notice.id ? "보내는 중..." : "알림"}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
