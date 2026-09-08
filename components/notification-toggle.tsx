@@ -88,7 +88,7 @@ export function NotificationToggle({ className = "" }: { className?: string }) {
       </Button>
       {error && (
         <p className="mt-1 text-xs text-destructive">
-          {error === "not-configured" ? t("push.notConfigured") : t("push.saveFailed")}
+          {error === "not-configured" ? t("push.notConfigured") : error === "timeout" ? t("push.timeout") : t("push.saveFailed")}
         </p>
       )}
     </div>

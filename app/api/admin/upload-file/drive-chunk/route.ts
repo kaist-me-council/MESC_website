@@ -17,10 +17,14 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 const CHUNK_MAX = 3 * 1024 * 1024; // 정확히 12 × 256KB
 const CHUNK_UNIT = 256 * 1024;
 
-/** 308 응답의 Range: bytes=0-N → 지금까지 받은 바이트 수 */
-function receivedFrom(range: string | null, fallback: number): number {
+/**
+ * 308 응답의 Range: bytes=0-N → 지금까지 구글이 저장한 바이트 수.
+ * 헤더가 없으면 구글 규약상 **0바이트 수신**이다. 여기서 "보낸 만큼 받았겠지" 로
+ * 낙관하면 클라이언트가 그 구간을 건너뛰어 파일이 조용히 깨진다.
+ */
+function receivedFrom(range: string | null): number {
   const m = range?.match(/bytes=0-(\d+)/);
-  return m ? Number(m[1]) + 1 : fallback;
+  return m ? Number(m[1]) + 1 : 0;
 }
 
 export async function POST(req: Request) {
@@ -63,7 +67,7 @@ export async function POST(req: Request) {
   // 아직 남았다 — 구글이 알려 준 위치를 그대로 돌려줘 클라이언트가 맞춰 이어 보내게 한다.
   if (res.status === 308 || res.status === 0) {
     return NextResponse.json(
-      { done: false, received: receivedFrom(res.headers.get("range"), start + body.length) },
+      { done: false, received: receivedFrom(res.headers.get("range")) },
       noStore,
     );
   }

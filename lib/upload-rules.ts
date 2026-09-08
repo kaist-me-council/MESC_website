@@ -111,3 +111,15 @@ export function diffAttachments(
   const kept = new Set(keepIds);
   return { keepIds, toCreate, toDeleteIds: existing.map((e) => e.id).filter((id) => !kept.has(id)), foreignIds };
 }
+
+/**
+ * 청크 업로드에서 다음에 보낼 위치.
+ *
+ * 서버(=구글)가 확인해 준 수신 위치만 신뢰한다. 우리가 보낸 양을 가정해 전진하면
+ * 실제로 저장되지 않은 구간을 건너뛰어 파일이 조용히 깨진다.
+ * received 가 아예 없을 때만(구형 응답) 보낸 끝을 쓴다.
+ */
+export function nextChunkStart(received: unknown, sentEnd: number, size: number): number {
+  if (typeof received !== "number" || !Number.isFinite(received)) return sentEnd;
+  return Math.min(Math.max(Math.trunc(received), 0), size);
+}
