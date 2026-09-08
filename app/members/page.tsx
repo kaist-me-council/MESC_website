@@ -1,25 +1,26 @@
 import { prisma } from "@/lib/prisma";
+import { safeQuery } from "@/lib/safe-query";
 import { MembersClient } from "./members-client";
 
 export const revalidate = 300; // 5분 ISR
 
 async function getMembers() {
-  return prisma.member.findMany({ orderBy: [{ order: "asc" }] });
+  return safeQuery("members", () => prisma.member.findMany({ orderBy: [{ order: "asc" }] }), []);
 }
 
 export default async function MembersPage() {
   const [members, clubRows, importantLinks, communityLinks] = await Promise.all([
     getMembers(),
-    prisma.club.findMany({ where: { enabled: true }, orderBy: { order: "asc" } }),
-    prisma.siteLink.findMany({ where: { enabled: true, category: "important" }, orderBy: { order: "asc" } }),
-    prisma.siteLink.findMany({ where: { enabled: true, category: "community" }, orderBy: { order: "asc" } }),
+    safeQuery("members/clubs", () => prisma.club.findMany({ where: { enabled: true }, orderBy: { order: "asc" } }), []),
+    safeQuery("members/links", () => prisma.siteLink.findMany({ where: { enabled: true, category: "important" }, orderBy: { order: "asc" } }), []),
+    safeQuery("members/links", () => prisma.siteLink.findMany({ where: { enabled: true, category: "community" }, orderBy: { order: "asc" } }), []),
   ]);
 
-  const mascots = await prisma.mascot.findMany({
+  const mascots = await safeQuery("members/mascots", () => prisma.mascot.findMany({
     where: { enabled: true },
     orderBy: [{ order: "asc" }, { id: "asc" }],
     select: { id: true, name: true, nameEn: true, tagKo: true, tagEn: true, descKo: true, descEn: true, imageUrl: true },
-  });
+  }), []);
 
   const clubs = clubRows.map((c) => ({
     name: c.name,

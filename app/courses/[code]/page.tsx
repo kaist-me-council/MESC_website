@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { safeQuery } from "@/lib/safe-query";
 import { notFound } from "next/navigation";
 import CourseDetailClient from "./course-detail-client";
 
@@ -7,7 +8,7 @@ export const revalidate = 60;
 export default async function CourseDetailPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
 
-  const course = await prisma.course.findUnique({
+  const course = await safeQuery("courses/detail", () => prisma.course.findUnique({
     where: { code },
     select: {
       id: true,
@@ -21,10 +22,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
       textbookAvailable: true,
       youtubeUrl: true,
     },
-  });
+  }), null);
   if (!course) notFound();
 
-  const resources = await prisma.resource.findMany({
+  const resources = await safeQuery("courses/resources", () => prisma.resource.findMany({
     where: { courseCode: code },
     orderBy: { createdAt: "desc" },
     select: {
@@ -33,7 +34,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ c
       description: true,
       fileUrl: true,
     },
-  });
+  }), []);
 
   return <CourseDetailClient course={course} resources={resources} />;
 }
