@@ -154,6 +154,24 @@ export default function AdminNoticesPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? "업로드 실패");
+
+    // ③ 서버가 드라이브로 옮긴다 (브라우저→구글 직접 업로드가 막히는 환경 대비).
+    //    실패하면 사이트 저장소 첨부를 그대로 쓴다 — 파일을 잃지 않는 것이 우선.
+    try {
+      const mv = await fetch("/api/admin/upload-file/to-drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: blob.url, name: file.name, size: file.size }),
+      });
+      const mvData = await mv.json().catch(() => ({}));
+      if (mv.ok && mvData.moved && mvData.driveFileId) {
+        setStore("drive");
+        return { url: "", driveFileId: mvData.driveFileId, name: mvData.name, size: mvData.size, mime: mvData.mime } as Attachment;
+      }
+    } catch (e) {
+      console.warn("[attach] 드라이브 이동 실패, 사이트 저장소 유지", e);
+    }
+
     setStore("blob");
     return data as Attachment;
   }
