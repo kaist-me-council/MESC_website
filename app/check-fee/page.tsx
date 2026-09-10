@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
-import { CheckCircle2, XCircle, AlertTriangle, Lock } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Lock, SearchX } from "lucide-react";
 
 // 통신 실패 유형별 안내. i18n 파일을 다른 작업과 동시에 건드리지 않으려고 이 화면에 둔다.
 const FAIL_TEXT = {
@@ -100,20 +100,24 @@ export default function CheckFeePage() {
           {result && (
             <div
               className={`rounded-lg p-6 text-center border-2 ${
+                // 명단에 없음 = 미납이 아니라 "조회 불가". 미납(빨강)과 색을 나눠
+                // 문구를 읽지 않아도 다른 상황임이 보이게 한다.
                 !result.found
-                  ? "border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950"
+                  ? "border-border bg-muted/50"
                   : result.count >= 2
                   ? "border-green-500 dark:border-green-600 bg-green-50 dark:bg-green-950"
-                  : result.count === 1
+                  // 본문과 같은 조건이어야 한다. 시트에 0.5·1.5 같은 값이 실제로
+                  // 있어서 === 1 로 두면 "일부 납부" 문구에 빨간 테두리가 붙는다.
+                  : result.count > 0
                   ? "border-yellow-500 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-950"
                   : "border-red-400 dark:border-red-700 bg-red-50 dark:bg-red-950"
               }`}
             >
               {!result.found ? (
                 <>
-                  <XCircle className="h-10 w-10 mx-auto mb-2 text-red-600 dark:text-red-400" />
+                  <SearchX className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-lg font-semibold">{t("checkFee.notFound")}</p>
-                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {t("checkFee.notFoundDesc")}
                   </p>
                 </>
