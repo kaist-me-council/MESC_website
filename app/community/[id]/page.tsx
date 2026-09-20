@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/language-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Star, Camera, Send, Eye } from "lucide-react";
+import { ArrowLeft, Star, Camera, Send } from "lucide-react";
 import { ViewTracker } from "@/components/view-tracker";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,7 +35,7 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { lang: language, t } = useLanguage();
+  const { lang: language } = useLanguage();
   const locale = language === "ko" ? "ko-KR" : "en-US";
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [feedbackContent, setFeedbackContent] = useState("");
@@ -82,7 +82,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <ViewTracker kind="event" id={event.id} />
       <Link href="/community" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors">
         <ArrowLeft className="h-4 w-4" />
         {language === "ko" ? "커뮤니티로" : "Back to Community"}
@@ -92,11 +91,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <h1 className="text-3xl font-black tracking-tight mb-1">{event.title}</h1>
         <p className="text-sm text-muted-foreground mb-2 flex items-center gap-3">
           <span>{new Date(event.date).toLocaleDateString(locale)}</span>
-          <span className="inline-flex items-center gap-1">
-            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="tabular-nums">{event.viewCount ?? 0}</span>
-            <span className="sr-only">{t("common.views")}</span>
-          </span>
+          <ViewTracker kind="event" id={event.id} initial={event.viewCount ?? 0} />
         </p>
         {event.description && <p className="text-muted-foreground leading-relaxed">{event.description}</p>}
       </div>
