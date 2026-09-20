@@ -6,7 +6,8 @@ import { enforce, getClientIp } from "@/lib/rate-limit";
 import { readVisitorToken, visitorHash } from "@/lib/visitor";
 
 // 공개: 조회수 1 증가. 같은 방문자·같은 글은 24시간에 한 번만 센다.
-// 실패해도 본문 열람을 막지 않도록 클라이언트는 결과를 무시한다(응답은 항상 같은 모양).
+// 센 경우에만 증가 후 값(viewCount)을 돌려준다 — 클라이언트가 화면 숫자를 바로 맞추기 위함.
+// 실패해도 본문 열람을 막지 않도록 클라이언트는 오류를 삼킨다(응답은 항상 같은 모양).
 //
 // 방문자 토큰은 여기서 만들지 않는다. 쿠키가 없으면 needsInit 로만 답하고,
 // 클라이언트가 /api/visitor 로 쿠키를 확정한 뒤 다시 보낸다(V1: 병렬 발급 경합 제거).
@@ -52,22 +53,21 @@ export async function POST(req: Request) {
   const viewerHash = visitorHash(token, "view");
   const cutoff = new Date(Date.now() - DAY);
 
-  const counted = await prisma
+  const viewCount = await prisma
     .$transaction(async (tx) => {
       const seen = await tx.contentView.findUnique({
         where: { kind_contentId_viewerHash: { kind, contentId: id, viewerHash } },
       });
-      if (seen && seen.createdAt > cutoff) return false;
+      if (seen && seen.createdAt > cutoff) return null;
       if (seen) await tx.contentView.update({ where: { id: seen.id }, data: { createdAt: new Date() } });
       else await tx.contentView.create({ data: { kind, contentId: id, viewerHash } });
-      await bump(tx, kind, id);
-      return true;
+      return (await bump(tx, kind, id)).viewCount;
     })
     // 동시 요청이 같은 방문자로 겹치면 유니크 위반 → 이미 센 것으로 처리
     .catch((e) => {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return false;
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return null;
       throw e;
     });
 
-  return NextResponse.json({ counted }, noStore);
+  return NextResponse.json({ counted: viewCount !== null, viewCount }, noStore);
 }

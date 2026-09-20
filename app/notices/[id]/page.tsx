@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/language-context";
 import { ViewTracker } from "@/components/view-tracker";
-import { Eye, Paperclip, Download } from "lucide-react";
+import { Paperclip, Download } from "lucide-react";
 
 interface Attachment { id: number; name: string; url: string; downloadUrl?: string; size: number; mime: string }
 
@@ -66,7 +66,6 @@ export default function NoticeDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <ViewTracker kind="notice" id={notice.id} />
       <div className="mb-6">
         <Link
           href="/notices"
@@ -97,11 +96,7 @@ export default function NoticeDetailPage() {
               { year: "numeric", month: "long", day: "numeric" }
             )}
           </span>
-          <span className="inline-flex items-center gap-1">
-            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="tabular-nums">{notice.viewCount ?? 0}</span>
-            <span className="sr-only">{t("common.views")}</span>
-          </span>
+          <ViewTracker kind="notice" id={notice.id} initial={notice.viewCount ?? 0} />
         </p>
         <div className="border-t pt-6">
           <div className="whitespace-pre-wrap break-words leading-relaxed">

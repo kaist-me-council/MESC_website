@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PostCommentForm } from "./comments-form";
 import { ReportButton } from "./report-button";
-import { ChevronLeft, MessageCircle, Eye } from "lucide-react";
+import { ChevronLeft, MessageCircle } from "lucide-react";
 import { ViewTracker } from "@/components/view-tracker";
 import { LikeButton } from "./like-button";
 import { readVisitorToken, visitorHash } from "@/lib/visitor";
@@ -53,7 +53,6 @@ export default async function PostDetailPage({ params }: Props) {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <ViewTracker kind="post" id={post.id} />
       <Link href="/community" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-4">
         <ChevronLeft className="h-4 w-4" />
         커뮤니티
@@ -67,11 +66,7 @@ export default async function PostDetailPage({ params }: Props) {
             <span className="text-xs text-muted-foreground">
               · {new Date(post.createdAt).toLocaleString("ko-KR")}
             </span>
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-              <span className="tabular-nums">{post.viewCount}</span>
-              <span className="sr-only">조회수</span>
-            </span>
+            <ViewTracker kind="post" id={post.id} initial={post.viewCount} className="text-xs text-muted-foreground" />
             <div className="ml-auto">
               <ReportButton targetType="post" targetId={post.id} />
             </div>
