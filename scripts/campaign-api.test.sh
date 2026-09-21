@@ -306,6 +306,16 @@ curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "o=[o for o in d['or
 curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders?format=csv" | head -1 | grep -q "참석" || fail "CSV 에 참석 칸이 없음"
 echo "  CSV 참석 칸 ok"
 
+echo "## v8: 행사 일시 + 캘린더(.ics)"
+RC=$(code "$B/api/campaigns/$QSLUG/event.ics"); [ "$RC" = 404 ] || fail "행사 일시가 없는데 .ics 가 나옴 ($RC)"
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID" -d "{\"slug\":\"$QSLUG\",\"title\":\"문항 테스트\",\"enabled\":true,\"eventAt\":\"2026-10-29T07:30:00.000Z\",\"eventPlace\":\"서측 체육관\"}" | py "c=d['campaign']; assert c['eventAt'] and c['eventPlace']=='서측 체육관', c; print('  행사 일시 저장 ok')"
+curl -s "$B/api/campaigns/$QSLUG" | py "c=d['campaign']; assert c['eventAt'] and c['eventPlace']=='서측 체육관'; print('  공개 응답 ok')"
+ICS=$(curl -s "$B/api/campaigns/$QSLUG/event.ics")
+echo "$ICS" | grep -q "BEGIN:VCALENDAR" || fail ".ics 형식 아님"
+echo "$ICS" | grep -q "DTSTART:20261029T073000Z" || fail ".ics 시작 시각 틀림"
+echo "$ICS" | grep -q "LOCATION:서측 체육관" || fail ".ics 장소 없음"
+echo "  .ics 생성 ok"
+
 echo "## v2: /shop/check redirects"
 RC=$(curl -s -o /dev/null -w '%{http_code}' "$B/shop/check"); case "$RC" in 200|307|308) echo "redirect ok ($RC)";; *) fail "/shop/check $RC";; esac
 case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug='2026-spring-tshirt'" && echo "preset test campaign removed";; esac

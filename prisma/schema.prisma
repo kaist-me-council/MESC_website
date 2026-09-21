@@ -381,6 +381,8 @@ model Campaign {
   imageUrl         String?
   images           String?   // JSON string[] — 시안·사이즈표 등 여러 장. imageUrl 은 대표(=images[0])
   questions        String?   // JSON Question[] — 신청 폼에 덧붙이는 추가 문항 (없으면 null)
+  eventAt          DateTime? // 행사 일시 (신청 마감과 별개). 있으면 캘린더 추가(.ics) 를 제공한다
+  eventPlace       String?   // 행사 장소
   confirmEnabled   Boolean   @default(false)
   confirmDeadline  DateTime?
   confirmNote      String?

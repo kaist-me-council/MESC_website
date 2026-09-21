@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/lib/language-context";
-import { CheckCircle2, AlertTriangle, Lock, Minus, Plus, Landmark, Copy, Check, Shirt, ClipboardCheck , Eye } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Lock, Minus, Plus, Landmark, Copy, Check, Shirt, ClipboardCheck, CalendarPlus, MapPin, Eye } from "lucide-react";
 import { GoodsPicker } from "./goods-picker";
 import { LinkifyText } from "@/components/linkify-text";
 import { MyOrders } from "./my-orders";
@@ -38,9 +38,21 @@ export default function ApplyCampaignPage() {
   // 한 번 작성한 폼에 대해 재전송해도 주문이 중복 생성되지 않도록 고정. 성공하면 새로 발급.
   const [idemKey, setIdemKey] = useState(newIdemKey);
 
+  /** 고를 게 하나뿐이면 미리 담아 둔다 — "참가" 를 한 번 더 누르게 할 이유가 없다. */
+  const defaultQty = (c: Campaign): Record<number, number> => {
+    const only = c.options.length === 1 ? c.options[0] : null;
+    return only && c.open && only.remaining !== 0 ? { [only.id]: 1 } : {};
+  };
+
   const load = useCallback(async () => {
     const r = await request<{ campaign: Campaign }>(`/api/campaigns/${slug}`);
-    if (r.ok) { setCampaign(r.data.campaign ?? null); setLoadFail(null); }
+    if (r.ok) {
+      const c = r.data.campaign ?? null;
+      setCampaign(c);
+      setLoadFail(null);
+      // 아직 아무것도 고르지 않았을 때만 채운다 — 재고 충돌로 다시 불러올 때 고른 걸 날리지 않게
+      if (c) setQty((prev) => (Object.keys(prev).length ? prev : defaultQty(c)));
+    }
     else if (r.kind === "client") { setCampaign(null); setLoadFail(null); } // 404 = 없는 이벤트
     else { setCampaign(undefined); setLoadFail(r); }
   }, [slug]);
@@ -142,6 +154,18 @@ export default function ApplyCampaignPage() {
           {campaign.confirmOpen && <Badge variant="secondary" className="text-xs">{t("apply.confirmOpenBadge")}</Badge>}
           {campaign.closesAt && <span className="text-xs text-muted-foreground">{t("apply.until")} {fmt(campaign.closesAt)}</span>}
         </div>
+        {campaign.eventAt && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5 text-sm">
+            <CalendarPlus className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <span className="font-medium">{fmt(campaign.eventAt)}</span>
+            {campaign.eventPlace && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />{campaign.eventPlace}</span>
+            )}
+            <a href={`/api/campaigns/${slug}/event.ics`} className="ml-auto text-xs font-medium text-primary underline underline-offset-2">
+              {t("apply.addToCalendar")}
+            </a>
+          </div>
+        )}
         {description && <LinkifyText text={description} className="text-muted-foreground mb-6 [text-wrap:pretty]" />}
       </div>
 
@@ -153,7 +177,7 @@ export default function ApplyCampaignPage() {
         </Link>
       )}
 
-      {order && <DoneCard order={order} won={won} t={t} lang={lang} onReset={() => setOrder(null)} />}
+      {order && <DoneCard order={order} won={won} t={t} lang={lang} onReset={() => { setOrder(null); setQty(defaultQty(campaign)); }} />}
 
       {!order && !campaign.open && !campaign.preview && (
         <Alert className="mb-6 rounded-2xl"><Lock className="h-4 w-4" /><AlertDescription>{t("apply.closedNote")}</AlertDescription></Alert>

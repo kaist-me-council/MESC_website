@@ -49,7 +49,8 @@ async function purgeExpired() {
   // 학생회 이벤트 신청: 캠페인 마감(closesAt) 후 180일 지나면 개인정보만 익명화 (주문 항목·금액·상태는 통계용으로 보존)
   await prisma.campaignOrder.updateMany({
     where: { campaign: { closesAt: { lt: d180 } }, email: { not: "" } },
-    data: { name: "(익명화)", email: "", phone: null, studentIdHash: null, depositorName: null, note: null, confirmNote: null, adminMemo: null },
+    // answers 에는 환불 계좌 같은 개인정보가 들어갈 수 있다 — 같이 지운다
+    data: { name: "(익명화)", email: "", phone: null, studentIdHash: null, depositorName: null, note: null, confirmNote: null, adminMemo: null, answers: null },
   });
 }
 
