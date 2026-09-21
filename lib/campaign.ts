@@ -12,6 +12,22 @@ export const AFFILIATIONS = ["학부생", "대학원생", "교수님", "졸업�
 export const ORDER_STATUSES = ["pending", "paid", "delivered", "cancelled"] as const;
 export const CAMPAIGN_KINDS = ["goods", "signup"] as const;
 export const CHOICES = ["pickup", "refund", "exchange"] as const;
+export const QUESTION_TYPES = ["text", "radio", "checkbox", "consent"] as const;
+
+/**
+ * 캠페인 추가 문항. 정의는 Campaign.questions(JSON), 답변은 CampaignOrder.answers(JSON {id: 답}).
+ * id 는 답변·CSV 컬럼이 묶이는 키다 — 문항을 지웠다 다시 만들면 옛 답변과 이어지지 않는다.
+ */
+export interface Question {
+  id: string;
+  type: (typeof QUESTION_TYPES)[number];
+  label: string;
+  labelEn?: string | null;
+  required: boolean;
+  options?: string[]; // radio | checkbox 전용
+}
+export type Answer = string | string[] | boolean;
+export type Answers = Record<string, Answer>;
 
 export interface OrderItem {
   optionId: number;
@@ -94,6 +110,61 @@ export function parseImages(c: { images: string | null; imageUrl: string | null 
   return c.imageUrl ? [c.imageUrl] : [];
 }
 
+/** 저장된 문항 정의. 깨져 있으면 문항 없음으로 본다 (신청 자체는 막지 않는다). */
+export function parseQuestions(c: { questions: string | null }): Question[] {
+  try {
+    const a = c.questions ? JSON.parse(c.questions) : null;
+    return Array.isArray(a) ? (a as Question[]) : [];
+  } catch { return []; }
+}
+
+/**
+ * 제출된 답변을 문항 정의에 맞춰 검증·정규화한다. 정의에 없는 키는 버린다.
+ * 반환: { answers } 또는 { error } — error 는 학생에게 그대로 보여 준다.
+ */
+export function parseAnswers(questions: Question[], raw: unknown): { answers: Answers } | { error: string } {
+  if (!questions.length) return { answers: {} };
+  const src = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const out: Answers = {};
+  for (const q of questions) {
+    const v = src[q.id];
+    const opts = q.options ?? [];
+    if (q.type === "consent") {
+      const on = v === true;
+      if (q.required && !on) return { error: `'${q.label}' 에 동의해 주세요.` };
+      out[q.id] = on;
+    } else if (q.type === "checkbox") {
+      const picked = Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && opts.includes(x)))] : [];
+      if (q.required && !picked.length) return { error: `'${q.label}' 을(를) 선택해 주세요.` };
+      out[q.id] = picked;
+    } else if (q.type === "radio") {
+      const picked = typeof v === "string" && opts.includes(v) ? v : "";
+      if (q.required && !picked) return { error: `'${q.label}' 을(를) 선택해 주세요.` };
+      out[q.id] = picked;
+    } else {
+      const text = typeof v === "string" ? v.trim().slice(0, 500) : "";
+      if (q.required && !text) return { error: `'${q.label}' 을(를) 입력해 주세요.` };
+      out[q.id] = text;
+    }
+  }
+  return { answers: out };
+}
+
+/** 저장된 답변 (깨져 있으면 빈 객체) */
+export function parseAnswerMap(o: { answers: string | null }): Answers {
+  try {
+    const a = o.answers ? JSON.parse(o.answers) : null;
+    return a && typeof a === "object" && !Array.isArray(a) ? (a as Answers) : {};
+  } catch { return {}; }
+}
+
+/** CSV·관리자 화면용 한 줄 표기 */
+export function answerText(q: Question, v: Answer | undefined): string {
+  if (q.type === "consent") return v === true ? "O" : "";
+  if (Array.isArray(v)) return v.join(", ");
+  return typeof v === "string" ? v : "";
+}
+
 export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avail: Map<number, number | null>) {
   return {
     slug: c.slug,
@@ -104,6 +175,7 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
     kind: c.kind,
     imageUrl: c.imageUrl,
     images: parseImages(c),
+    questions: parseQuestions(c),
     open: isOpen(c),
     opensAt: c.opensAt,
     closesAt: c.closesAt,
@@ -414,6 +486,35 @@ export function parseCampaignBody(b: Record<string, unknown>) {
   const images = Array.isArray(imgRaw)
     ? imgRaw.filter((u): u is string => typeof u === "string" && /^https?:\/\//.test(u) && u.length <= 500).slice(0, 8)
     : null;
+  // questions: 배열 또는 JSON 문자열. id 는 답변·CSV 가 묶이는 키라 형식·중복을 엄격히 본다.
+  let qRaw: unknown = b.questions;
+  if (typeof qRaw === "string") { try { qRaw = JSON.parse(qRaw); } catch { return { error: "문항 형식이 올바르지 않습니다." }; } }
+  let questions: Question[] | null = null;
+  if (Array.isArray(qRaw)) {
+    if (qRaw.length > 20) return { error: "문항은 최대 20개까지 만들 수 있습니다." };
+    const seen = new Set<string>();
+    const list: Question[] = [];
+    for (const item of qRaw as Record<string, unknown>[]) {
+      const id = typeof item?.id === "string" ? item.id.trim() : "";
+      if (!/^[A-Za-z0-9_-]{1,20}$/.test(id)) return { error: "문항 ID 는 영문·숫자·-·_ 1~20자여야 합니다." };
+      if (seen.has(id)) return { error: `문항 ID 가 겹칩니다: ${id}` };
+      seen.add(id);
+      const type = (QUESTION_TYPES as readonly string[]).includes(String(item?.type)) ? (String(item.type) as Question["type"]) : null;
+      if (!type) return { error: "문항 종류가 올바르지 않습니다." };
+      if (!isValidString(item?.label, 200)) return { error: "문항 내용은 1~200자 이내여야 합니다." };
+      const q: Question = { id, type, label: (item.label as string).trim(), labelEn: str(item?.labelEn, 200), required: Boolean(item?.required) };
+      if (type === "radio" || type === "checkbox") {
+        const opts = Array.isArray(item?.options)
+          ? (item.options as unknown[]).filter((o): o is string => typeof o === "string" && !!o.trim()).map((o) => o.trim().slice(0, 60)).slice(0, 20)
+          : [];
+        if (!opts.length) return { error: `'${q.label}' 의 선택지를 한 개 이상 적어 주세요.` };
+        if (new Set(opts).size !== opts.length) return { error: `'${q.label}' 에 같은 선택지가 두 번 있습니다.` };
+        q.options = opts;
+      }
+      list.push(q);
+    }
+    questions = list;
+  }
   const legacy = str(b.imageUrl, 500);
   if (legacy && !/^https?:\/\//.test(legacy)) return { error: "이미지 URL 형식이 올바르지 않습니다." };
   const imageUrl = images ? images[0] ?? null : legacy;
@@ -426,6 +527,7 @@ export function parseCampaignBody(b: Record<string, unknown>) {
     kind: (CAMPAIGN_KINDS as readonly string[]).includes(String(b.kind)) ? String(b.kind) : "signup",
     imageUrl,
     images: images ? JSON.stringify(images) : null,
+    questions: questions && questions.length ? JSON.stringify(questions) : null,
     enabled: Boolean(b.enabled),
     opensAt,
     closesAt,

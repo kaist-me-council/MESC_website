@@ -5,7 +5,7 @@ import { isValidString } from "@/lib/validation";
 import { studentIdHash } from "@/lib/tshirt";
 import { manageCodeHash } from "@/lib/anon";
 import {
-  AFFILIATIONS, availability, isEmail, isOpen, makeManageCode, makeOrderNo, personQtyUsed, publicOrder, unitPrice,
+  AFFILIATIONS, availability, isEmail, isOpen, makeManageCode, makeOrderNo, parseAnswers, parseQuestions, personQtyUsed, publicOrder, unitPrice,
   type Db, type OrderItem,
 } from "@/lib/campaign";
 
@@ -41,6 +41,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const depositorName = typeof b.depositorName === "string" ? b.depositorName.trim().slice(0, 50) || null : null;
   const name = (b.name as string).trim();
   const sidHash = studentId ? studentIdHash(studentId) : null;
+
+  // 추가 문항 — 필수 미응답은 여기서 막는다 (화면 검증만으로는 못 막는다)
+  const questions = parseQuestions(c);
+  const parsedAnswers = parseAnswers(questions, b.answers);
+  if ("error" in parsedAnswers) return bad(parsedAnswers.error);
+  const answers = questions.length ? JSON.stringify(parsedAnswers.answers) : null;
 
   // 재전송 방지 키 (클라이언트 생성). 형식만 검증하고 유일성은 DB 제약에 맡긴다.
   const idempotencyKey = typeof b.idempotencyKey === "string" && /^[A-Za-z0-9._~-]{8,64}$/.test(b.idempotencyKey.trim())
@@ -104,6 +110,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
         items: JSON.stringify(items),
         total,
         note,
+        answers,
         depositorName,
         manageCodeHash: manageCodeHash(manageCode),
         idempotencyKey,

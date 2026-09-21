@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { parseId } from "@/lib/validation";
-import { ORDER_STATUSES, rebuildItems, type OrderItem, type Resolution } from "@/lib/campaign";
+import { ORDER_STATUSES, answerText, parseAnswerMap, parseQuestions, rebuildItems, type OrderItem, type Resolution } from "@/lib/campaign";
 
 // 관리자: 신청 목록(JSON / CSV) · 상태·메모 변경. 학번 해시는 내보내지 않는다.
 
@@ -13,11 +13,12 @@ const STATUS_KO: Record<string, string> = { pending: "대기", paid: "입금", d
 const itemStr = (items: OrderItem[]) => items.map((i) => `${i.group ? i.group + " " : ""}${i.name}×${i.qty}`).join(", ");
 const CONFIRM_KO: Record<string, string> = { received: "받음", not_received: "못 받음" };
 const CHOICE_KO: Record<string, string> = { pickup: "수령", refund: "환불", exchange: "교환" };
-const adminRow = ({ studentIdHash, items, resolution, ...o }: Awaited<ReturnType<typeof prisma.campaignOrder.findMany>>[number]) => ({
+const adminRow = ({ studentIdHash, items, resolution, answers, ...o }: Awaited<ReturnType<typeof prisma.campaignOrder.findMany>>[number]) => ({
   ...o,
   hasStudentId: !!studentIdHash,
   items: JSON.parse(items) as OrderItem[],
   resolution: resolution ? (JSON.parse(resolution) as Resolution[]) : null,
+  answers: parseAnswerMap({ answers }),
 });
 const resStr = (res: Resolution[] | null) =>
   res ? res.map((r) => `${r.group ? r.group + " " : ""}${r.name}×${r.qty}: ${CHOICE_KO[r.choice]}${r.choice === "exchange" && r.exchangeName ? "→" + r.exchangeName : ""}`).join(", ") : "";
@@ -28,6 +29,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   const rows = await prisma.campaignOrder.findMany({ where: { campaignId: id }, orderBy: { createdAt: "desc" } });
   const orders = rows.map(adminRow);
+  const campaign = await prisma.campaign.findUnique({ where: { id }, select: { questions: true } });
+  const questions = campaign ? parseQuestions(campaign) : [];
 
   if (new URL(req.url).searchParams.get("format") === "csv") {
     // 스프레드시트 수식 주입 중화: = + - @ 탭 CR 로 시작하는 텍스트는 앞에 ' 를 붙인다.
@@ -35,10 +38,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const s = String(v ?? "");
       return `"${(/^[=+\-@\t\r]/.test(s) ? "'" + s : s).replace(/"/g, '""')}"`;
     };
-    const head = ["주문번호", "상태", "구분", "이름", "입금자명", "이메일", "전화", "항목", "합계", "메모", "관리자메모", "신청시각", "출처", "수령확인", "처리선택", "확인메모", "확인시각", "처리완료", "배부자", "환불완료"];
+    // 문항은 뒤에 붙인다 — 기존 컬럼 위치가 밀리면 쓰던 스프레드시트 수식이 깨진다.
+    const head = ["주문번호", "상태", "구분", "이름", "입금자명", "이메일", "전화", "항목", "합계", "메모", "관리자메모", "신청시각", "출처", "수령확인", "처리선택", "확인메모", "확인시각", "처리완료", "배부자", "환불완료", ...questions.map((q) => q.label)];
     const lines = orders.map((o) =>
       [o.orderNo, STATUS_KO[o.status] ?? o.status, o.affiliation, o.name, o.depositorName, o.email, o.phone, itemStr(o.items), o.total, o.note, o.adminMemo, new Date(o.createdAt).toLocaleString("ko-KR"),
-        o.source, o.confirmation ? CONFIRM_KO[o.confirmation] : "", resStr(o.resolution), o.confirmNote, o.confirmedAt ? new Date(o.confirmedAt).toLocaleString("ko-KR") : "", o.resolvedAt ? "O" : "", o.handedBy, o.refundedAt ? new Date(o.refundedAt).toLocaleString("ko-KR") : ""].map(esc).join(","),
+        o.source, o.confirmation ? CONFIRM_KO[o.confirmation] : "", resStr(o.resolution), o.confirmNote, o.confirmedAt ? new Date(o.confirmedAt).toLocaleString("ko-KR") : "", o.resolvedAt ? "O" : "", o.handedBy, o.refundedAt ? new Date(o.refundedAt).toLocaleString("ko-KR") : "",
+        ...questions.map((q) => answerText(q, o.answers[q.id]))].map(esc).join(","),
     );
     return new NextResponse("﻿" + [head.map(esc).join(","), ...lines].join("\n"), {
       headers: {
@@ -48,7 +53,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
   }
-  return NextResponse.json({ orders }, noStore);
+  return NextResponse.json({ orders, questions }, noStore);
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {

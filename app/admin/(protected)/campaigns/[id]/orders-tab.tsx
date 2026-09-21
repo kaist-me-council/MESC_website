@@ -9,13 +9,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   type Campaign, type Order, type Status, STATUS_LABEL, STATUS_VARIANT, CHOICE_LABEL,
   copyEmails, itemLabel, parseItems, parseResolution, putOrder,
-  needsRefund,
+  needsRefund, readQuestions, answerText,
 } from "./types";
 
 type Filter = "all" | Status;
 type Sort = "newest" | "oldest" | "name" | "status" | "total";
 
 export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[]; reload: () => Promise<void> }) {
+  const questions = readQuestions(c);
   const [filter, setFilterState] = useState<Filter>("all");
   const [q, setQState] = useState("");
   const [sort, setSortState] = useState<Sort>("newest");
@@ -250,6 +251,10 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     <div>{parseItems(o).map((it) => `${itemLabel(it)}×${it.qty}`).join(", ")} · <strong>{o.total.toLocaleString("ko-KR")}원</strong></div>
                   )}
                   {res && <div className="text-xs">희망 처리: {res.map((r) => `${itemLabel(r)}×${r.qty} ${CHOICE_LABEL[r.choice]}${r.choice === "exchange" && r.exchangeName ? `→${r.exchangeName}` : ""}`).join(", ")}</div>}
+                  {questions.map((q) => {
+                    const v = answerText(q, o.answers?.[q.id]);
+                    return v ? <div key={q.id} className="text-xs"><span className="text-muted-foreground">{q.label}:</span> {v}</div> : null;
+                  })}
                   {o.note && <div className="text-xs">메모: {o.note}</div>}
                   {o.adminMemo && <div className="text-xs text-muted-foreground">관리자: {o.adminMemo}</div>}
                   <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString("ko-KR")}</div>

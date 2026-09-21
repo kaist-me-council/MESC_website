@@ -15,7 +15,7 @@ import { CheckCircle2, AlertTriangle, Lock, Minus, Plus, Landmark, Copy, Check, 
 import { GoodsPicker } from "./goods-picker";
 import { LinkifyText } from "@/components/linkify-text";
 import { MyOrders } from "./my-orders";
-import { AFFILIATIONS, copyText, errText, fill, localeOf, newIdemKey, request, type Affiliation, type Campaign, type Option, type Order, type ReqFail, type T } from "./types";
+import { AFFILIATIONS, copyText, errText, fill, localeOf, newIdemKey, request, type Affiliation, type Answer, type Campaign, type Option, type Order, type Question, type ReqFail, type T } from "./types";
 
 export default function ApplyCampaignPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -29,6 +29,7 @@ export default function ApplyCampaignPage() {
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
   const [depositorName, setDepositorName] = useState("");
+  const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [retryHint, setRetryHint] = useState(false); // 네트워크 실패 — 이미 접수됐을 수 있음
@@ -69,7 +70,7 @@ export default function ApplyCampaignPage() {
     setSubmitting(true); setError(""); setRetryHint(false);
     const r = await request<{ order: Order }>(`/api/campaigns/${slug}/orders`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, items, idempotencyKey: idemKey }),
+      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, answers, items, idempotencyKey: idemKey }),
     });
     setSubmitting(false); // 실패해도 버튼을 다시 열어 재시도 가능하게. 입력값은 그대로 유지.
     if (!r.ok) {
@@ -85,6 +86,7 @@ export default function ApplyCampaignPage() {
     }
     setOrder(r.data.order);
     setQty({});
+    setAnswers({});
     setIdemKey(newIdemKey());
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -218,6 +220,14 @@ export default function ApplyCampaignPage() {
             <Field label={t("apply.depositorName")} htmlFor="depositor"><Input id="depositor" className="h-11 rounded-xl" value={depositorName} disabled={!campaign.open} onChange={(e) => setDepositorName(e.target.value)} placeholder={t("apply.depositorPlaceholder")} /></Field>
             <Field label={t("apply.note")} htmlFor="note"><Textarea id="note" className="rounded-xl" rows={2} value={note} disabled={!campaign.open} onChange={(e) => setNote(e.target.value)} /></Field>
 
+            {campaign.questions?.map((q) => (
+              <QuestionField
+                key={q.id} q={q} lang={lang} t={t} disabled={!campaign.open}
+                value={answers[q.id]}
+                onChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
+              />
+            ))}
+
             <div className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-3">
               <span className="text-sm font-medium">{t("apply.total")}</span>
               <span className="text-lg font-bold tabular-nums">{won(total)}</span>
@@ -251,7 +261,57 @@ export default function ApplyCampaignPage() {
   );
 }
 
-function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
+
+/**
+ * 추가 문항 한 칸. 필수 여부·형식 검증은 서버가 다시 한다 (화면만 믿지 않는다).
+ * 값 모양: text/radio = string, checkbox = string[], consent = boolean.
+ */
+function QuestionField({ q, value, onChange, disabled, lang, t }: {
+  q: Question; value: Answer | undefined; onChange: (v: Answer) => void; disabled: boolean; lang: string; t: T;
+}) {
+  const label = lang === "en" && q.labelEn ? q.labelEn : q.label;
+  const req = q.required ? <span className="text-destructive"> *</span> : null;
+
+  if (q.type === "consent") {
+    return (
+      <label className="flex items-start gap-2.5 rounded-xl border border-border/60 p-3 text-sm cursor-pointer has-[:disabled]:cursor-default">
+        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={value === true} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+        <span className="[text-wrap:pretty] whitespace-pre-line">{label}{req}</span>
+      </label>
+    );
+  }
+  if (q.type === "text") {
+    return (
+      <Field label={<>{label}{req}</>} htmlFor={`q-${q.id}`}>
+        <Input id={`q-${q.id}`} className="h-11 rounded-xl" value={typeof value === "string" ? value : ""} disabled={disabled} maxLength={500} onChange={(e) => onChange(e.target.value)} />
+      </Field>
+    );
+  }
+
+  const picked = Array.isArray(value) ? value : [];
+  return (
+    <fieldset disabled={disabled} className="space-y-2">
+      <legend className="text-sm font-medium mb-2 [text-wrap:pretty] whitespace-pre-line">{label}{req}</legend>
+      <div className="space-y-1.5">
+        {q.options?.map((o) => (
+          <label key={o} className="flex items-center gap-2.5 rounded-xl border border-border/60 px-3 py-2.5 text-sm cursor-pointer has-[:disabled]:cursor-default has-[:checked]:border-primary/60 has-[:checked]:bg-primary/5">
+            <input
+              type={q.type === "radio" ? "radio" : "checkbox"}
+              name={`q-${q.id}`}
+              className="h-4 w-4 shrink-0 accent-primary"
+              checked={q.type === "radio" ? value === o : picked.includes(o)}
+              onChange={() => onChange(q.type === "radio" ? o : picked.includes(o) ? picked.filter((x) => x !== o) : [...picked, o])}
+            />
+            <span>{o}</span>
+          </label>
+        ))}
+      </div>
+      {q.type === "checkbox" && <p className="text-xs text-muted-foreground">{t("apply.checkboxHint")}</p>}
+    </fieldset>
+  );
+}
+
+function Field({ label, htmlFor, children }: { label: React.ReactNode; htmlFor: string; children: React.ReactNode }) {
   return <div className="space-y-2"><Label htmlFor={htmlFor}>{label}</Label>{children}</div>;
 }
 
