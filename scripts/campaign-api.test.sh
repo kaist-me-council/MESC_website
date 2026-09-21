@@ -276,6 +276,36 @@ RC=$(code -X POST "$B/api/campaigns/$PV/orders" -d '{"affiliation":"학부생","
 echo "  비공개 신청 차단 ok ($RC)"
 curl -s "${A[@]}" -X DELETE "$B/api/admin/campaigns/$PVID" >/dev/null
 
+echo "## v6: 추가 문항 — 정의·필수 검증·답변 저장·CSV 칸"
+QS='[{"id":"deposit","type":"consent","label":"보증금 5000원을 입금했습니다","required":true},{"id":"attend","type":"radio","label":"참석 여부","required":true,"options":["참석","불참"]},{"id":"events","type":"checkbox","label":"희망 종목","required":false,"options":["축구","농구"]},{"id":"refund","type":"text","label":"환불 계좌","required":false}]'
+QSLUG="qtest-$RANDOM"
+QID=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d "{\"slug\":\"$QSLUG\",\"title\":\"문항 테스트\",\"enabled\":true,\"questions\":$QS,\"options\":[{\"name\":\"참가\",\"price\":0}]}" | py "print(d['campaign']['id'])")
+QOPT=$(curl -s "$B/api/campaigns/$QSLUG" | py "c=d['campaign']; q=c['questions']; assert [x['id'] for x in q]==['deposit','attend','events','refund'], q; assert q[1]['options']==['참석','불참']; print(c['options'][0]['id'])")
+echo "  문항 공개 ok"
+QBODY="{\"affiliation\":\"학부생\",\"name\":\"문항 테스트\",\"studentId\":\"20990051\",\"email\":\"q@kaist.ac.kr\",\"items\":[{\"optionId\":$QOPT,\"qty\":1}]"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$QSLUG/orders" -d "$QBODY,\"answers\":{\"attend\":\"참석\"}}"); [ "$RC" = 400 ] || fail "필수 동의 미체크가 통과됨 ($RC)"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$QSLUG/orders" -d "$QBODY,\"answers\":{\"deposit\":true}}"); [ "$RC" = 400 ] || fail "필수 단일선택 미응답이 통과됨 ($RC)"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$QSLUG/orders" -d "$QBODY,\"answers\":{\"deposit\":true,\"attend\":\"몰래\"}}"); [ "$RC" = 400 ] || fail "선택지에 없는 값이 통과됨 ($RC)"
+echo "  필수·선택지 검증 ok"
+curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$QSLUG/orders" -d "$QBODY,\"answers\":{\"deposit\":true,\"attend\":\"참석\",\"events\":[\"축구\",\"없는종목\"],\"refund\":\"카뱅 3333\"}}" > /dev/null
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "o=d['orders'][0]; a=o['answers']; assert a['deposit'] is True and a['attend']=='참석' and a['events']==['축구'] and a['refund']=='카뱅 3333', a; print('  답변 저장 ok (정의에 없는 선택지는 버림)')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders?format=csv" | head -2 | py "import sys" 2>/dev/null || true
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders?format=csv" | grep -q "환불 계좌" || fail "CSV 에 문항 칸이 없음"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders?format=csv" | grep -q "카뱅 3333" || fail "CSV 에 답변이 없음"
+echo "  CSV 문항 칸 ok"
+RC=$(code "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID" -d "{\"slug\":\"$QSLUG\",\"title\":\"문항 테스트\",\"enabled\":true,\"questions\":[{\"id\":\"a b\",\"type\":\"text\",\"label\":\"x\"}]}"); [ "$RC" = 400 ] || fail "잘못된 문항 ID 가 통과됨 ($RC)"
+RC=$(code "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID" -d "{\"slug\":\"$QSLUG\",\"title\":\"문항 테스트\",\"enabled\":true,\"questions\":[{\"id\":\"a\",\"type\":\"radio\",\"label\":\"x\",\"options\":[]}]}"); [ "$RC" = 400 ] || fail "선택지 없는 라디오가 통과됨 ($RC)"
+echo "  문항 정의 검증 ok"
+
+echo "## v7: 참석 체크(체크인) — 단건·일괄·CSV"
+QOID=$(curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "print(d['orders'][0]['id'])")
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID/orders" -d "{\"orderId\":$QOID,\"attended\":true}" > /dev/null
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "o=[o for o in d['orders'] if o['id']==$QOID][0]; assert o['attendedAt'], o; print('  단건 참석 ok')"
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID/orders" -d "{\"orderIds\":[$QOID],\"attended\":false}" | py "assert d['updated']==1; print('  일괄 참석 해제 ok')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "o=[o for o in d['orders'] if o['id']==$QOID][0]; assert o['attendedAt'] is None; assert o['status']=='pending', o['status']; print('  참석 해제가 상태를 건드리지 않음 ok')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders?format=csv" | head -1 | grep -q "참석" || fail "CSV 에 참석 칸이 없음"
+echo "  CSV 참석 칸 ok"
+
 echo "## v2: /shop/check redirects"
 RC=$(curl -s -o /dev/null -w '%{http_code}' "$B/shop/check"); case "$RC" in 200|307|308) echo "redirect ok ($RC)";; *) fail "/shop/check $RC";; esac
 case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug='2026-spring-tshirt'" && echo "preset test campaign removed";; esac

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { type Campaign, type Option, toLocal, toIso } from "./types";
+import { readQuestions, type Campaign, type Option, type Question, toLocal, toIso } from "./types";
 
 /** images 는 JSON 문자열 또는 배열로 온다. 없으면 대표 이미지 한 장. */
 function readImages(c: Campaign): string[] {
@@ -17,6 +17,10 @@ function readImages(c: Campaign): string[] {
   try { const a = raw ? JSON.parse(raw) : null; if (Array.isArray(a) && a.length) return a; } catch { /* ignore */ }
   return c.imageUrl ? [c.imageUrl] : [];
 }
+
+const QUESTION_LABELS: Record<Question["type"], string> = {
+  text: "단답 입력", radio: "단일 선택", checkbox: "복수 선택", consent: "동의·확인",
+};
 
 const ADJ_KEYS = ["대학원생", "교수님", "졸업생", "기타"] as const;
 const SIZES = ["S", "M", "L", "XL", "2XL", "3XL", "4XL"];
@@ -50,6 +54,21 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (update: 
   }
   const tshirtPreset = () =>
     addBulk(["흰색", "검정"].flatMap((g) => SIZES.map((s) => `${g},${s},${["2XL", "3XL", "4XL"].includes(s) ? 9500 : 8000},`)).join("\n"));
+
+  const questions = useMemo<Question[]>(() => readQuestions(c), [c]);
+  const setQuestions = (next: Question[]) => setC((prev) => ({ ...prev, questions: next }));
+  const setQ = (i: number, patch: Partial<Question>) => setQuestions(questions.map((q, j) => (j === i ? { ...q, ...patch } : q)));
+  const moveQ = (i: number, d: -1 | 1) => {
+    const next = [...questions];
+    const [it] = next.splice(i, 1);
+    next.splice(i + d, 0, it);
+    setQuestions(next);
+  };
+  const addQ = (type: Question["type"]) => {
+    // id 는 답변·CSV 가 묶이는 키라 한 번 정하면 그대로 둔다. 겹치지 않게 시각으로 만든다.
+    const id = `q${Date.now().toString(36).slice(-6)}`;
+    setQuestions([...questions, { id, type, label: "", required: false, ...(type === "radio" || type === "checkbox" ? { options: [""] } : {}) }]);
+  };
 
   const images = useMemo<string[]>(() => readImages(c), [c]);
   const setImages = (next: string[]) => setC((prev) => ({ ...prev, images: next, imageUrl: next[0] ?? null }));
@@ -147,6 +166,43 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (update: 
           <div className="space-y-1"><Label>입금 계좌 (완료 화면에만 표시)</Label><Input value={c.bankInfo ?? ""} onChange={(e) => set("bankInfo", e.target.value || null)} placeholder="예: 카카오뱅크 3333-00-0000000 홍길동" /></div>
           <div className="space-y-1 sm:col-span-2"><Label>완료 안내</Label><Textarea rows={2} value={c.afterNote ?? ""} onChange={(e) => set("afterNote", e.target.value || null)} placeholder="예: 입금자명은 본인 이름으로. 수령은 종강 직전 학생회실(N7)." /></div>
           <div className="space-y-1 sm:col-span-2"><Label>완료 안내 (EN)</Label><Textarea rows={2} value={c.afterNoteEn ?? ""} onChange={(e) => set("afterNoteEn", e.target.value || null)} /></div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">추가 문항 (신청 폼에서 더 물어볼 것)</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {questions.length === 0 && <p className="text-sm text-muted-foreground">문항이 없습니다. 아래 버튼으로 추가하세요. 답변은 신청 목록과 CSV 에 문항별 칸으로 들어갑니다.</p>}
+          {questions.map((q, i) => (
+            <div key={q.id} className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="rounded bg-muted px-1.5 py-0.5">{QUESTION_LABELS[q.type]}</span>
+                <code>{q.id}</code>
+                <div className="ml-auto flex items-center gap-1">
+                  <button type="button" className="px-1 disabled:opacity-30" disabled={i === 0} onClick={() => moveQ(i, -1)} aria-label="위로"><ChevronLeft className="h-4 w-4 rotate-90" /></button>
+                  <button type="button" className="px-1 disabled:opacity-30" disabled={i === questions.length - 1} onClick={() => moveQ(i, 1)} aria-label="아래로"><ChevronRight className="h-4 w-4 rotate-90" /></button>
+                  <button type="button" className="px-1 text-destructive" onClick={() => setQuestions(questions.filter((_, j) => j !== i))} aria-label="문항 삭제"><X className="h-4 w-4" /></button>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-1 sm:col-span-2"><Label>질문</Label><Textarea rows={2} value={q.label} onChange={(e) => setQ(i, { label: e.target.value })} placeholder="예: 체육대회 보증금 5,000원을 입금하셨나요?" /></div>
+                <div className="space-y-1 sm:col-span-2"><Label>질문 (EN)</Label><Input value={q.labelEn ?? ""} onChange={(e) => setQ(i, { labelEn: e.target.value || null })} /></div>
+                {(q.type === "radio" || q.type === "checkbox") && (
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label>선택지 (한 줄에 하나)</Label>
+                    <Textarea rows={3} value={(q.options ?? []).join("\n")} onChange={(e) => setQ(i, { options: e.target.value.split(/\r?\n/) })} placeholder={"참석\n불참"} />
+                  </div>
+                )}
+              </div>
+              <label className="flex items-center gap-2 text-sm"><Checkbox checked={q.required} onCheckedChange={(v) => setQ(i, { required: v === true })} /> 필수 {q.type === "consent" && "(체크해야 신청됩니다)"}</label>
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(QUESTION_LABELS) as Question["type"][]).map((tp) => (
+              <Button key={tp} type="button" variant="outline" size="sm" onClick={() => addQ(tp)}>+ {QUESTION_LABELS[tp]}</Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">개인정보(계좌번호 등)를 묻는 문항은 꼭 필요한 경우에만. 답변은 신청 기록과 함께 보관됩니다.</p>
         </CardContent>
       </Card>
 

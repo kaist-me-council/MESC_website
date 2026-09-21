@@ -380,6 +380,7 @@ model Campaign {
   kind             String    @default("signup") // goods | signup
   imageUrl         String?
   images           String?   // JSON string[] — 시안·사이즈표 등 여러 장. imageUrl 은 대표(=images[0])
+  questions        String?   // JSON Question[] — 신청 폼에 덧붙이는 추가 문항 (없으면 null)
   confirmEnabled   Boolean   @default(false)
   confirmDeadline  DateTime?
   confirmNote      String?
@@ -418,6 +419,7 @@ model CampaignOrder {
   total         Int
   status        String   @default("pending") // pending | paid | delivered | cancelled
   note          String?
+  answers       String?  // JSON {문항id: 답} — Campaign.questions 에 대한 답변
   adminMemo     String?
   depositorName String?  // 입금자명. null = 이름과 동일
   source        String   @default("web") // web | import
@@ -425,6 +427,7 @@ model CampaignOrder {
   resolution    String?  // JSON Resolution[]
   confirmNote   String?
   confirmedAt   DateTime?
+  attendedAt    DateTime?  // 참석 확인(체크인) 시각. 보증금 환불 대상 산출에 쓴다
   resolvedAt    DateTime?  // 못 받음 건 처리 완료(관리자) 시각
   refundedAt    DateTime?  // 환불 완료 처리 시각 (관리자 체크)
   handedBy      String?    // 배부 담당자 이름 (수령 처리 시 기록)

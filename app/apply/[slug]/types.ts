@@ -4,11 +4,22 @@ export type Affiliation = (typeof AFFILIATIONS)[number];
 
 export interface Option { id: number; group: string | null; name: string; nameEn: string | null; price: number; remaining: number | null }
 
+/** 캠페인마다 관리자가 정의하는 추가 문항. 답은 {문항id: 값} 으로 신청과 함께 보낸다. */
+export interface Question {
+  id: string;
+  type: "text" | "radio" | "checkbox" | "consent";
+  label: string;
+  labelEn?: string | null;
+  required: boolean;
+  options?: string[];
+}
+export type Answer = string | string[] | boolean;
+
 export interface Campaign {
   slug: string; title: string; titleEn: string | null; description: string | null; descriptionEn: string | null;
   kind: "goods" | "signup"; imageUrl: string | null; images?: string[];
   open: boolean; opensAt: string | null; closesAt: string | null; afterNote: string | null; afterNoteEn: string | null;
-  allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: Record<string, number>; options: Option[];
+  allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: Record<string, number>; options: Option[]; questions?: Question[];
   confirmEnabled: boolean; confirmDeadline: string | null; confirmNote: string | null; confirmNoteEn: string | null; confirmOpen: boolean;
   /** 비공개 캠페인을 관리자가 미리 보는 중 (학생에게는 404) */
   preview?: boolean;
