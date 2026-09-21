@@ -114,6 +114,7 @@ export default function ApplyCampaignPage() {
   const fmt = (iso: string) => new Date(iso).toLocaleString(localeOf(lang), { dateStyle: "medium", timeStyle: "short" });
   const groups = [...new Set(campaign.options.map((o) => o.group ?? ""))];
   const goods = campaign.kind === "goods";
+  const images = campaign.images?.length ? campaign.images : campaign.imageUrl ? [campaign.imageUrl] : [];
   const card = "rounded-2xl border-border/60 shadow-lg shadow-primary/5";
   const showSticky = !order && campaign.open && totalQty > 0;
 
@@ -128,7 +129,7 @@ export default function ApplyCampaignPage() {
         </Alert>
       )}
 
-      {goods && <Gallery images={campaign.images?.length ? campaign.images : campaign.imageUrl ? [campaign.imageUrl] : []} title={title} t={t} />}
+      {(goods || images.length > 0) && <Gallery images={images} title={title} t={t} />}
 
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: "60ms" }}>
         <h1 className="text-3xl font-bold mt-2 mb-2 [text-wrap:balance]">{title}</h1>
@@ -269,7 +270,8 @@ function CopyButton({ text, t }: { text: string; t: (k: string) => string }) {
 }
 
 function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: number) => string; t: (k: string) => string; lang: string; onReset: () => void }) {
-  const after = lang === "en" && order.afterNoteEn ? order.afterNoteEn : order.afterNote;
+  const bankInfo = order.campaign?.bankInfo;
+  const after = lang === "en" && order.campaign?.afterNoteEn ? order.campaign.afterNoteEn : order.campaign?.afterNote;
   return (
     <Card className="mb-6 rounded-2xl border-primary/40 shadow-lg shadow-primary/10 animate-in fade-in zoom-in-95 duration-300">
       <CardHeader>
@@ -303,13 +305,13 @@ function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: num
           ))}
           <li className="flex justify-between font-bold border-t border-border/60 pt-2 mt-1"><span>{t("apply.total")}</span><span className="tabular-nums">{won(order.total)}</span></li>
         </ul>
-        {order.total > 0 && order.bankInfo && (
+        {order.total > 0 && bankInfo && (
           <div className="rounded-xl border border-border/60 p-3 text-sm space-y-1">
             <div className="flex items-center justify-between">
               <p className="font-medium flex items-center gap-1.5"><Landmark className="h-4 w-4" />{t("apply.bank")}</p>
-              <CopyButton text={order.bankInfo} t={t} />
+              <CopyButton text={bankInfo} t={t} />
             </div>
-            <p className="whitespace-pre-line select-all">{order.bankInfo}</p>
+            <p className="whitespace-pre-line select-all">{bankInfo}</p>
             <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
             <p className="text-xs">{t("apply.depositorLabel")}: <strong>{order.depositorName || order.name}</strong></p>
           </div>
