@@ -9,8 +9,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   type Campaign, type Order, type Status, STATUS_LABEL, STATUS_VARIANT, CHOICE_LABEL,
   copyEmails, itemLabel, parseItems, parseResolution, putOrder,
-  needsRefund, readQuestions, answerText,
+  needsRefund, depositRefundDue, readQuestions, answerText,
 } from "./types";
+import { parseDeposits, matchDeposits, type MatchResult } from "@/lib/deposit-match";
 
 type Filter = "all" | Status;
 type Sort = "newest" | "oldest" | "name" | "status" | "total";
@@ -27,6 +28,9 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
   const [busy, setBusy] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [editItems, setEditItems] = useState<{ optionId: number; qty: number }[]>([]);
+  const [depositText, setDepositText] = useState("");
+  const [depositResult, setDepositResult] = useState<MatchResult | null>(null);
+  const [depositOpen, setDepositOpen] = useState(false);
 
   // 필터·검색·정렬이 바뀌면 선택을 비운다 (화면 밖 주문이 일괄 처리에 딸려가는 것 방지)
   const clearSelection = () => { setSelected(new Set()); setPendingBulk(null); };
@@ -42,6 +46,9 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     cancelled: orders.filter((o) => o.status === "cancelled").length,
     refundDue: orders.filter((o) => needsRefund(o) && !o.refundedAt).length,
     refundDueAmount: orders.filter((o) => needsRefund(o) && !o.refundedAt).reduce((a, o) => a + o.total, 0),
+    attended: orders.filter((o) => o.attendedAt).length,
+    depositDue: orders.filter(depositRefundDue).length,
+    depositDueAmount: orders.filter(depositRefundDue).reduce((a, o) => a + o.total, 0),
   }), [orders]);
 
   const adjust = useMemo<Record<string, number>>(() => { try { return c.priceAdjust ? JSON.parse(c.priceAdjust) : {}; } catch { return {}; } }, [c.priceAdjust]);
@@ -95,6 +102,28 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
     if (status === "delivered") { const h = askHandedBy(); if (h === null) return Promise.resolve(); return put({ orderId: o.id, status, handedBy: h }); }
     return put({ orderId: o.id, status });
   };
+  const toggleAttend = (o: Order) => put({ orderId: o.id, attended: !o.attendedAt });
+  async function bulkAttend(attended: boolean) {
+    await put({ orderIds: [...selected], attended });
+    clearSelection();
+  }
+
+  // 입금 대조 — 대조 대상은 "입금 대기" 건. 결과를 보여 주기만 하고, 처리는 사람이 누른다.
+  function runDepositMatch() {
+    const targets = orders.filter((o) => o.status === "pending").map((o) => ({ id: o.id, name: o.name, depositorName: o.depositorName, total: o.total }));
+    setDepositResult(matchDeposits(parseDeposits(depositText), targets));
+  }
+  async function applyDepositMatch() {
+    const ids = depositResult?.matched.map((m) => m.orderId) ?? [];
+    if (!ids.length) return;
+    setBusy(true);
+    await put({ orderIds: ids, status: "paid" });
+    setBusy(false);
+    setDepositResult(null);
+    setDepositText("");
+  }
+  const orderById = (id: number) => orders.find((o) => o.id === id);
+
   async function bulk(status: Status) {
     let handedBy: string | undefined;
     if (status === "delivered") { const h = askHandedBy(); if (h === null) return; handedBy = h; }
@@ -141,6 +170,10 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
           ["환불 대기", `${settle.refundDue}건 · ${settle.refundDueAmount.toLocaleString("ko-KR")}원`],
           ["수령 완료", `${settle.deliveredQty.toLocaleString("ko-KR")}벌`],
           ["취소", `${settle.cancelled}건`],
+          ...(settle.attended > 0 ? ([
+            ["참석 확인", `${settle.attended}명`],
+            ["보증금 환불 대상", `${settle.depositDue}건 · ${settle.depositDueAmount.toLocaleString("ko-KR")}원`],
+          ] as [string, string][]) : []),
         ] as [string, string][]).map(([label, v]) => (
           <Card key={label}><CardContent className="p-3">
             <div className="text-xs text-muted-foreground">{label}</div>
@@ -177,6 +210,88 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
         <a className="text-sm underline ml-auto" href={`/api/admin/campaigns/${c.id}/orders?format=csv`}>전체 CSV 내보내기 ({orders.length}건)</a>
       </div>
 
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center justify-between gap-2">
+            <span>입금 대조 (통장 내역 붙여넣기)</span>
+            <Button size="sm" variant="ghost" onClick={() => setDepositOpen((v) => !v)}>{depositOpen ? "접기" : "열기"}</Button>
+          </CardTitle>
+        </CardHeader>
+        {depositOpen && (
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              은행 앱·인터넷뱅킹의 거래내역을 그대로 붙여넣으세요. 입금자명과 금액이 모두 맞는 건만 골라 드립니다.
+              잘 못 읽으면 <code>이름,금액</code> 두 칸으로 붙여넣어도 됩니다. 대조 대상은 「입금 대기」 {counts.pending}건입니다.
+            </p>
+            <textarea
+              className="w-full min-h-28 rounded-md border bg-background p-2 text-sm font-mono"
+              placeholder={"2026.09.22\t홍길동\t5,000\t1,234,567\n이영희,5000"}
+              value={depositText}
+              onChange={(e) => setDepositText(e.target.value)}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" disabled={!depositText.trim()} onClick={runDepositMatch}>대조</Button>
+              {depositResult && <Button size="sm" variant="ghost" onClick={() => { setDepositResult(null); setDepositText(""); }}>지우기</Button>}
+            </div>
+
+            {depositResult && (
+              <div className="space-y-3 text-sm">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">일치 {depositResult.matched.length}</Badge>
+                  <Badge variant="outline">금액 다름 {depositResult.amountMismatch.length}</Badge>
+                  <Badge variant="outline">동명이인 {depositResult.ambiguous.length}</Badge>
+                  <Badge variant="outline">명단에 없음 {depositResult.unmatched.length}</Badge>
+                </div>
+
+                {depositResult.matched.length > 0 && (
+                  <div className="rounded-md border p-2 space-y-1">
+                    <div className="font-medium">입금 처리할 건</div>
+                    {depositResult.matched.map((m) => (
+                      <div key={m.orderId} className="text-xs flex flex-wrap gap-x-2">
+                        <span className="font-mono">{orderById(m.orderId)?.orderNo}</span>
+                        <span>{orderById(m.orderId)?.name}</span>
+                        <span className="tabular-nums">{m.line.amount.toLocaleString("ko-KR")}원</span>
+                      </div>
+                    ))}
+                    <Button size="sm" className="mt-1" disabled={busy} onClick={applyDepositMatch}>
+                      {depositResult.matched.length}건 입금 확인으로 바꾸기
+                    </Button>
+                  </div>
+                )}
+
+                {depositResult.amountMismatch.length > 0 && (
+                  <div className="rounded-md border border-amber-500/40 p-2 space-y-1">
+                    <div className="font-medium">금액이 달라 직접 확인해야 하는 건</div>
+                    {depositResult.amountMismatch.map((m, i) => (
+                      <div key={i} className="text-xs">
+                        {m.line.name} — 입금 <span className="tabular-nums">{m.line.amount.toLocaleString("ko-KR")}</span>원 / 신청 <span className="tabular-nums">{m.expected.toLocaleString("ko-KR")}</span>원
+                        <span className="font-mono ml-2">{orderById(m.orderId)?.orderNo}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {depositResult.ambiguous.length > 0 && (
+                  <div className="rounded-md border border-amber-500/40 p-2 space-y-1">
+                    <div className="font-medium">같은 이름이 여럿이라 고를 수 없는 건</div>
+                    {depositResult.ambiguous.map((m, i) => (
+                      <div key={i} className="text-xs">{m.line.name} — {m.orderIds.map((id) => orderById(id)?.orderNo).join(", ")}</div>
+                    ))}
+                  </div>
+                )}
+
+                {depositResult.unmatched.length > 0 && (
+                  <div className="rounded-md border p-2 space-y-1">
+                    <div className="font-medium">신청 명단에서 못 찾은 입금</div>
+                    {depositResult.unmatched.map((l, i) => <div key={i} className="text-xs text-muted-foreground">{l.raw}</div>)}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
       {selected.size > 0 && (
         <div className="sticky top-2 z-10 rounded-md border bg-background/95 backdrop-blur p-2 flex flex-wrap items-center gap-2 shadow-sm">
           <span className="text-sm font-medium mr-1">{selected.size}건 선택:</span>
@@ -191,6 +306,8 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
               <Button size="sm" onClick={() => setPendingBulk("paid")}>입금 확인</Button>
               <Button size="sm" variant="outline" onClick={() => setPendingBulk("pending")}>입금 취소</Button>
               <Button size="sm" onClick={() => setPendingBulk("delivered")}>수령 완료</Button>
+              <Button size="sm" variant="outline" onClick={() => bulkAttend(true)}>참석 체크</Button>
+              <Button size="sm" variant="ghost" onClick={() => bulkAttend(false)}>참석 해제</Button>
               <Button size="sm" variant="outline" onClick={() => copy(orders.filter((o) => selected.has(o.id)), "선택")}>선택 이메일 복사</Button>
               <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setPendingBulk("cancelled")}>신청 취소</Button>
             </>
@@ -220,6 +337,7 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     {o.confirmation === "received" && <Badge className="text-xs">받음</Badge>}
                     {o.confirmation === "not_received" && <Badge variant="destructive" className="text-xs">못 받음</Badge>}
                     {o.handedBy && <Badge variant="outline" className="text-xs">배부: {o.handedBy}</Badge>}
+                    {o.attendedAt && <Badge className="text-xs bg-sky-600 text-white">참석</Badge>}
                     {o.refundedAt && <Badge className="text-xs bg-emerald-600 text-white">환불 완료</Badge>}
                     {needsRefund(o) && !o.refundedAt && <Badge variant="destructive" className="text-xs">환불 필요</Badge>}
                   </div>
@@ -271,7 +389,12 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     : cancelId === o.id
                       ? <><Button size="sm" variant="destructive" disabled={busy} onClick={() => { setCancelId(null); setStatus(o, "cancelled"); }}>정말 취소</Button><Button size="sm" variant="ghost" onClick={() => setCancelId(null)}>아니오</Button></>
                       : <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setCancelId(o.id)}>취소</Button>}
-                  {(needsRefund(o) || o.refundedAt) && (o.refundedAt
+                  {o.status !== "cancelled" && (
+                    <Button size="sm" variant={o.attendedAt ? "secondary" : "ghost"} disabled={busy} onClick={() => toggleAttend(o)}>
+                      {o.attendedAt ? "참석 취소" : "참석"}
+                    </Button>
+                  )}
+                  {(needsRefund(o) || depositRefundDue(o) || o.refundedAt) && (o.refundedAt
                     ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => put({ orderId: o.id, refunded: false })}>환불 완료 취소</Button>
                     : <Button size="sm" variant="secondary" disabled={busy} onClick={() => put({ orderId: o.id, refunded: true })}>환불 완료</Button>)}
                   <Button size="sm" variant="ghost" onClick={() => editMemo(o)}>메모</Button>

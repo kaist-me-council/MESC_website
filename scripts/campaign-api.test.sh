@@ -297,6 +297,15 @@ RC=$(code "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID" -d "{\"slug\":\"$QSLUG\
 RC=$(code "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID" -d "{\"slug\":\"$QSLUG\",\"title\":\"문항 테스트\",\"enabled\":true,\"questions\":[{\"id\":\"a\",\"type\":\"radio\",\"label\":\"x\",\"options\":[]}]}"); [ "$RC" = 400 ] || fail "선택지 없는 라디오가 통과됨 ($RC)"
 echo "  문항 정의 검증 ok"
 
+echo "## v7: 참석 체크(체크인) — 단건·일괄·CSV"
+QOID=$(curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "print(d['orders'][0]['id'])")
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID/orders" -d "{\"orderId\":$QOID,\"attended\":true}" > /dev/null
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "o=[o for o in d['orders'] if o['id']==$QOID][0]; assert o['attendedAt'], o; print('  단건 참석 ok')"
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID/orders" -d "{\"orderIds\":[$QOID],\"attended\":false}" | py "assert d['updated']==1; print('  일괄 참석 해제 ok')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "o=[o for o in d['orders'] if o['id']==$QOID][0]; assert o['attendedAt'] is None; assert o['status']=='pending', o['status']; print('  참석 해제가 상태를 건드리지 않음 ok')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders?format=csv" | head -1 | grep -q "참석" || fail "CSV 에 참석 칸이 없음"
+echo "  CSV 참석 칸 ok"
+
 echo "## v2: /shop/check redirects"
 RC=$(curl -s -o /dev/null -w '%{http_code}' "$B/shop/check"); case "$RC" in 200|307|308) echo "redirect ok ($RC)";; *) fail "/shop/check $RC";; esac
 case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug='2026-spring-tshirt'" && echo "preset test campaign removed";; esac

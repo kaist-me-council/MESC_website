@@ -52,6 +52,7 @@ export interface Order {
   resolvedAt?: string | null;
   refundedAt?: string | null;
   handedBy?: string | null;
+  attendedAt?: string | null;
   answers?: Record<string, string | string[] | boolean>;
 }
 
@@ -90,6 +91,12 @@ export async function copyEmails(rows: Order[]): Promise<number> {
   await navigator.clipboard.writeText(emails.join(", "));
   return emails.length;
 }
+
+/**
+ * 보증금 환불 대상: 참석 확인된 건 중 아직 환불 처리가 안 된 것.
+ * (체육대회처럼 "참석하면 보증금을 돌려준다" 는 캠페인에서 쓴다. 불참자는 대상이 아니다.)
+ */
+export const depositRefundDue = (o: Order): boolean => o.total > 0 && !!o.attendedAt && !o.refundedAt && o.status !== "cancelled";
 
 /** 환불이 필요해 보이는 주문: 입금 후 취소됐거나, 못 받음 응답에서 환불을 희망한 건. */
 export const needsRefund = (o: Order): boolean => {

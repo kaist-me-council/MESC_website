@@ -39,10 +39,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return `"${(/^[=+\-@\t\r]/.test(s) ? "'" + s : s).replace(/"/g, '""')}"`;
     };
     // 문항은 뒤에 붙인다 — 기존 컬럼 위치가 밀리면 쓰던 스프레드시트 수식이 깨진다.
-    const head = ["주문번호", "상태", "구분", "이름", "입금자명", "이메일", "전화", "항목", "합계", "메모", "관리자메모", "신청시각", "출처", "수령확인", "처리선택", "확인메모", "확인시각", "처리완료", "배부자", "환불완료", ...questions.map((q) => q.label)];
+    const head = ["주문번호", "상태", "구분", "이름", "입금자명", "이메일", "전화", "항목", "합계", "메모", "관리자메모", "신청시각", "출처", "수령확인", "처리선택", "확인메모", "확인시각", "처리완료", "배부자", "환불완료", "참석", ...questions.map((q) => q.label)];
     const lines = orders.map((o) =>
       [o.orderNo, STATUS_KO[o.status] ?? o.status, o.affiliation, o.name, o.depositorName, o.email, o.phone, itemStr(o.items), o.total, o.note, o.adminMemo, new Date(o.createdAt).toLocaleString("ko-KR"),
-        o.source, o.confirmation ? CONFIRM_KO[o.confirmation] : "", resStr(o.resolution), o.confirmNote, o.confirmedAt ? new Date(o.confirmedAt).toLocaleString("ko-KR") : "", o.resolvedAt ? "O" : "", o.handedBy, o.refundedAt ? new Date(o.refundedAt).toLocaleString("ko-KR") : "",
+        o.source, o.confirmation ? CONFIRM_KO[o.confirmation] : "", resStr(o.resolution), o.confirmNote, o.confirmedAt ? new Date(o.confirmedAt).toLocaleString("ko-KR") : "", o.resolvedAt ? "O" : "", o.handedBy, o.refundedAt ? new Date(o.refundedAt).toLocaleString("ko-KR") : "", o.attendedAt ? "O" : "",
         ...questions.map((q) => answerText(q, o.answers[q.id]))].map(esc).join(","),
     );
     return new NextResponse("﻿" + [head.map(esc).join(","), ...lines].join("\n"), {
@@ -69,6 +69,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   // 일괄: { orderIds, status } — 상태는 아무 값으로나 (입금 취소 = pending)
   if (Array.isArray(b.orderIds)) {
     const ids = (b.orderIds as unknown[]).map(Number).filter((n) => Number.isInteger(n));
+    // 참석 일괄 체크는 상태를 건드리지 않는다 (입금 상태와 참석은 다른 축이다)
+    if (typeof b.attended === "boolean") {
+      if (!ids.length) return NextResponse.json({ error: "orderIds 가 필요합니다." }, { status: 400 });
+      const { count } = await prisma.campaignOrder.updateMany({ where: { id: { in: ids }, campaignId: id }, data: { attendedAt: b.attended ? new Date() : null } });
+      await audit(actor, "order.bulkAttend", `campaign:${id}`, `${count}건 → ${b.attended ? "참석" : "참석 취소"}`);
+      return NextResponse.json({ updated: count }, noStore);
+    }
     if (!ids.length || !validStatus(b.status)) return NextResponse.json({ error: "orderIds 와 status 가 필요합니다." }, { status: 400 });
     const bulkData: { status: string; handedBy?: string | null } = { status: String(b.status) };
     if (typeof b.handedBy === "string") bulkData.handedBy = b.handedBy.trim().slice(0, 50) || null; // 수령 일괄 처리 시 배부자
@@ -79,7 +86,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const orderId = Number(b.orderId);
   if (!Number.isInteger(orderId)) return NextResponse.json({ error: "orderId 필요" }, { status: 400 });
-  const data: { status?: string; adminMemo?: string | null; depositorName?: string | null; items?: string; total?: number; confirmation?: string | null; confirmedAt?: Date | null; resolution?: null; resolvedAt?: Date | null; refundedAt?: Date | null; handedBy?: string | null } = {};
+  const data: { status?: string; adminMemo?: string | null; depositorName?: string | null; items?: string; total?: number; confirmation?: string | null; confirmedAt?: Date | null; resolution?: null; resolvedAt?: Date | null; refundedAt?: Date | null; attendedAt?: Date | null; handedBy?: string | null } = {};
   if (b.status !== undefined) {
     if (!validStatus(b.status)) return NextResponse.json({ error: "상태 값이 올바르지 않습니다." }, { status: 400 });
     data.status = String(b.status);
@@ -107,6 +114,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
   if (typeof b.resolved === "boolean") data.resolvedAt = b.resolved ? new Date() : null; // 못 받음 건 처리 완료 표시
   if (typeof b.refunded === "boolean") data.refundedAt = b.refunded ? new Date() : null; // 환불 완료 표시
+  if (typeof b.attended === "boolean") data.attendedAt = b.attended ? new Date() : null; // 참석 확인(체크인)
   const { count } = await prisma.campaignOrder.updateMany({ where: { id: orderId, campaignId: id }, data });
   if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const updated = await prisma.campaignOrder.findUniqueOrThrow({ where: { id: orderId } });

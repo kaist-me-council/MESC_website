@@ -427,6 +427,7 @@ model CampaignOrder {
   resolution    String?  // JSON Resolution[]
   confirmNote   String?
   confirmedAt   DateTime?
+  attendedAt    DateTime?  // 참석 확인(체크인) 시각. 보증금 환불 대상 산출에 쓴다
   resolvedAt    DateTime?  // 못 받음 건 처리 완료(관리자) 시각
   refundedAt    DateTime?  // 환불 완료 처리 시각 (관리자 체크)
   handedBy      String?    // 배부 담당자 이름 (수령 처리 시 기록)
