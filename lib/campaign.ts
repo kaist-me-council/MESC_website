@@ -179,6 +179,8 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
     open: isOpen(c),
     opensAt: c.opensAt,
     closesAt: c.closesAt,
+    eventAt: c.eventAt,
+    eventPlace: c.eventPlace,
     afterNote: c.afterNote,
     afterNoteEn: c.afterNoteEn,
     allowQty: c.allowQty,
@@ -470,7 +472,8 @@ export function parseCampaignBody(b: Record<string, unknown>) {
   const opensAt = date(b.opensAt);
   const closesAt = date(b.closesAt);
   const confirmDeadline = date(b.confirmDeadline);
-  if (opensAt === undefined || closesAt === undefined || confirmDeadline === undefined) return { error: "날짜 형식이 올바르지 않습니다." };
+  const eventAt = date(b.eventAt);
+  if (opensAt === undefined || closesAt === undefined || confirmDeadline === undefined || eventAt === undefined) return { error: "날짜 형식이 올바르지 않습니다." };
   // priceAdjust: 객체 또는 JSON 문자열 둘 다 허용 (관리자 화면은 문자열로 보냄)
   let priceAdjust: string | null = null;
   let adjRaw: unknown = b.priceAdjust;
@@ -531,6 +534,8 @@ export function parseCampaignBody(b: Record<string, unknown>) {
     enabled: Boolean(b.enabled),
     opensAt,
     closesAt,
+    eventAt,
+    eventPlace: str(b.eventPlace, 100),
     bankInfo: str(b.bankInfo, 200),
     afterNote: str(b.afterNote, 1000),
     afterNoteEn: str(b.afterNoteEn, 1000),

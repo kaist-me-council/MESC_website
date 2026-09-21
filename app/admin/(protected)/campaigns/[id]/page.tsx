@@ -10,6 +10,7 @@ import { SettingsTab } from "./settings-tab";
 import { OrdersTab } from "./orders-tab";
 import { ConfirmTab } from "./confirm-tab";
 import { ImportSection } from "./import-section";
+import { AlertTriangle } from "lucide-react";
 import type { Campaign, Order } from "./types";
 
 type Tab = "orders" | "confirm" | "settings" | "import";
@@ -21,6 +22,17 @@ function openStateOf(c: Campaign): string {
   if (c.opensAt && new Date(c.opensAt).getTime() > now) return "접수 예정";
   if (c.closesAt && new Date(c.closesAt).getTime() <= now) return "접수 마감";
   return "접수 중";
+}
+/**
+ * 지금 학생이 들어오면 신청이 안 되는 상태인지 알려 준다.
+ * (공개·접수 중인데 고를 옵션이 하나도 없으면 폼이 열려 있어도 제출이 막힌다 — 눈에 띄어야 한다)
+ */
+function blockerOf(c: Campaign): string | null {
+  if (openStateOf(c) !== "접수 중") return null;
+  const usable = c.options.filter((o) => o.enabled);
+  if (!usable.length) return "지금 공개돼 있지만 선택할 옵션이 없어 학생이 신청할 수 없습니다. 아래 설정 탭에서 옵션을 추가하세요.";
+  if (usable.every((o) => o.stock !== null && o.stock <= 0)) return "모든 옵션이 품절이라 신청할 수 없습니다.";
+  return null;
 }
 function confirmStateOf(c: Campaign): string | null {
   if (!c.confirmEnabled) return null;
@@ -72,6 +84,7 @@ export default function AdminCampaignDetailPage() {
 
   const openState = openStateOf(c);
   const confirmState = confirmStateOf(c);
+  const blocker = blockerOf(c);
   const importCount = orders.filter((o) => o.source === "import").length;
   const unconfirmed = orders.filter((o) => o.status !== "cancelled" && !o.confirmation).length;
 
@@ -95,6 +108,13 @@ export default function AdminCampaignDetailPage() {
         <a className="underline text-muted-foreground" href={`/apply/${c.slug}`} target="_blank" rel="noreferrer">{c.enabled ? "공개 페이지 보기" : "미리보기 (비공개 — 관리자만 보임)"}</a>
         {c.confirmEnabled && <a className="underline text-muted-foreground" href={`/apply/${c.slug}/confirm`} target="_blank" rel="noreferrer">수령 확인 페이지</a>}
       </div>
+
+      {blocker && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+          <span>{blocker}</span>
+        </div>
+      )}
 
       <AdminGuide id={`campaign-${c.id}`} title="캠페인 관리 사용법">
         <ol className="list-decimal pl-5 space-y-1">
