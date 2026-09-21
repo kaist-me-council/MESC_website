@@ -24,8 +24,8 @@ SLUG="apitest-$RANDOM"
 CID=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d "{\"slug\":\"$SLUG\",\"title\":\"API 테스트\",\"enabled\":true,\"bankInfo\":\"국민 000-00 홍길동\",\"afterNote\":\"수령은 종강 직전\",\"priceAdjust\":{\"대학원생\":1000},\"options\":[{\"group\":\"흰색\",\"name\":\"L\",\"price\":8000,\"stock\":2},{\"group\":\"검정\",\"name\":\"XL\",\"price\":8000,\"stock\":null}]}" | py "print(d['campaign']['id'])")
 echo "campaign id $CID"
 
-echo "## public list contains slug"
-curl -s "$B/api/campaigns" | py "assert any(c['slug']=='$SLUG' and c['open'] for c in d['campaigns']); print('ok')"
+echo "## public list contains slug + 목록 UI 가 쓰는 필드(kind·imageUrl·confirmOpen)"
+curl -s "$B/api/campaigns" | py "c=next(c for c in d['campaigns'] if c['slug']=='$SLUG'); assert c['open']; assert c['kind']=='signup' and 'imageUrl' in c and 'confirmOpen' in c, c; print('ok')"
 
 echo "## public detail: options + remaining, no bankInfo"
 OPT=$(curl -s "$B/api/campaigns/$SLUG" | py "c=d['campaign']; assert 'bankInfo' not in c; o=c['options']; assert o[0]['remaining']==2 and o[1]['remaining'] is None; print(o[0]['id'], o[1]['id'])")
@@ -100,6 +100,9 @@ echo "## v2: preset tshirt campaign (create, dup -> 409)"
 PRE=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d '{"preset":"tshirt-2026-spring"}')
 PID=$(echo "$PRE" | py "c=d['campaign']; assert c['slug']=='2026-spring-tshirt' and c['kind']=='goods' and c['confirmEnabled'] and len(c['options'])==14; print(c['id'])")
 RC=$(code "${A[@]}" -X POST "$B/api/admin/campaigns" -d '{"preset":"tshirt-2026-spring"}'); [ "$RC" = 409 ] || fail "preset dup ($RC)"
+# 프리셋의 confirmDeadline 은 2026-09-13 고정이라 그날이 지나면 아래 수령확인 절이 통째로 죽는다.
+# 시계에 기대지 않도록 여기서 미래로 밀어 둔다 (주문 마감 closesAt 은 과거 그대로 유지).
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$PID" -d '{"slug":"2026-spring-tshirt","title":"2026 상반기 기계과 반팔티","enabled":true,"kind":"goods","closesAt":"2026-06-30T14:59:59.000Z","confirmEnabled":true,"confirmNote":"수령 확인","confirmDeadline":"2099-12-31T14:59:59.000Z"}' >/dev/null
 curl -s "$B/api/campaigns/2026-spring-tshirt" | py "c=d['campaign']; assert c['confirmOpen'] and not c['open'] and c['kind']=='goods'; print('public ok: confirmOpen, closed for orders')"
 RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/2026-spring-tshirt/orders" -d "{\"affiliation\":\"학부생\",\"name\":\"x\",\"studentId\":\"20990001\",\"email\":\"x@kaist.ac.kr\",\"items\":[]}"); [ "$RC" = 403 ] || fail "closed campaign accepted order ($RC)"
 

@@ -122,7 +122,7 @@ export function MyOrders({ campaign, t, lang, won }: { campaign: Campaign; t: T;
                 {o.items.map((it, idx) => <li key={idx}>{it.group ? `${it.group} · ` : ""}{it.name} × {it.qty}</li>)}
               </ul>
               <div className="flex justify-between"><span>{t("apply.total")}</span><span className="font-medium tabular-nums">{won(o.total)}</span></div>
-              {o.status === "pending" && o.total > 0 && o.bankInfo && <p className="text-xs whitespace-pre-line select-all rounded-lg bg-muted/40 p-2">{t("apply.bank")}: {o.bankInfo}</p>}
+              {o.status === "pending" && o.total > 0 && o.campaign?.bankInfo && <p className="text-xs whitespace-pre-line select-all rounded-lg bg-muted/40 p-2">{t("apply.bank")}: {o.campaign.bankInfo}</p>}
               <p className="text-xs text-muted-foreground">{t("apply.appliedAt")}: {new Date(o.createdAt).toLocaleString(localeOf(lang))}</p>
 
               {msg[o.orderNo] && <p className="text-xs">{msg[o.orderNo]}</p>}

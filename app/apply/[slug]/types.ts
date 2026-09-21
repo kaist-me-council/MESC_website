@@ -22,7 +22,9 @@ export interface Order {
   orderNo: string; status: "pending" | "paid" | "delivered" | "cancelled"; items: OrderItem[]; total: number; createdAt: string;
   affiliation: string; name: string; depositorName?: string | null; source?: "web" | "import";
   confirmation?: "received" | "not_received" | null; resolution?: Resolution[] | null; confirmNote?: string | null; confirmedAt?: string | null;
-  canCancel?: boolean; bankInfo?: string | null; afterNote?: string | null; afterNoteEn?: string | null;
+  canCancel?: boolean;
+  /** 계좌·안내문은 여기 안에 있다. 평평한 order.bankInfo 로 읽으면 안 보인다 (publicOrder 계약). */
+  campaign?: { slug?: string; title?: string; titleEn?: string | null; bankInfo?: string | null; afterNote?: string | null; afterNoteEn?: string | null; confirmOpen?: boolean; confirmDeadline?: string | null };
   /** 신청 직후 1회만 내려오는 평문 관리 코드 (취소에 필요). 재전송(idempotent replay)이면 없다. */
   manageCode?: string | null;
 }

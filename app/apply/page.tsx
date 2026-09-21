@@ -78,7 +78,7 @@ export default function ApplyListPage() {
               <Card className="rounded-2xl border-border/60 shadow-lg shadow-primary/5 hover-lift-premium">
                 <CardContent className="p-4 flex items-center gap-4">
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/10 dark:ring-white/10 grid place-items-center bg-gradient-to-br from-primary/15 via-accent/10 to-primary/5">
-                    {goods && c.imageUrl ? (
+                    {c.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.imageUrl} alt="" className="h-full w-full object-cover" />
                     ) : goods ? (
