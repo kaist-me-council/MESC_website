@@ -388,6 +388,8 @@ model Campaign {
   requiresPayment  Boolean   @default(false) // 유료(입금 필요) 행사. 켜면 신청 폼에 계좌를 보여 주고 "입금했습니다" 체크를 받는다
   eventAt          DateTime? // 행사 일시 (신청 마감과 별개). 있으면 캘린더 추가(.ics) 를 제공한다
   eventPlace       String?   // 행사 장소
+  cancelDeadline   DateTime? // 신청자 직접 취소 접수 마감. null 이면 기존처럼 pending 동안 취소 가능
+  refundPolicy     String?   // JSON RefundTier[] — [{deadline,refundPercent,note,noteEn}]
   confirmEnabled   Boolean   @default(false)
   confirmDeadline  DateTime?
   confirmNote      String?

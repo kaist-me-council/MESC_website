@@ -7,16 +7,18 @@ import type { Campaign } from "./types";
 import { BasicSection } from "./sections/basic";
 import { ScheduleSection } from "./sections/schedule";
 import { PricingSection } from "./sections/pricing";
+import { RefundsSection } from "./sections/refunds";
 import { QuestionsSection } from "./sections/questions";
 import { OptionsSection } from "./sections/options";
 import { AdvancedSection } from "./sections/advanced";
 
-const SECTIONS = [["basic", "기본"], ["schedule", "일정"], ["pricing", "참가비·정원"], ["questions", "문항"], ["options", "옵션"], ["advanced", "고급"]] as const;
+const SECTIONS = [["basic", "기본"], ["schedule", "일정"], ["pricing", "참가비·정원"], ["refunds", "취소·환불"], ["questions", "문항"], ["options", "옵션"], ["advanced", "고급"]] as const;
 type SectionId = typeof SECTIONS[number][0];
 function errorSection(message: string): SectionId {
   if (/문항|질문|선택지|question|중복.*id/i.test(message)) return "questions";
   if (/옵션|재고|가격|option|stock/i.test(message)) return "options";
   if (/계좌|입금|수량|정원|payment|max/i.test(message)) return "pricing";
+  if (/취소|환불|refund|cancel/i.test(message)) return "refunds";
   if (/일시|시작|마감|장소|date|open|close/i.test(message)) return "schedule";
   return "basic";
 }
@@ -50,7 +52,7 @@ export function SettingsTab({ c, setC, onSaved, onDirtyChange }: { c: Campaign; 
   }
   const reset = () => { setC(() => JSON.parse(baseline) as Campaign); setMessage(""); setErrorAt(null); };
   const warnings = [c.enabled && !c.options.some((o) => o.enabled) ? "공개 중이지만 사용 가능한 옵션이 없습니다." : null, c.options.some((o) => o.price > 0) && !c.requiresPayment ? "가격이 있는 옵션이 있지만 유료 행사가 꺼져 있습니다." : null].filter(Boolean) as string[];
-  const contents: Record<SectionId, ReactNode> = { basic: <BasicSection {...props} />, schedule: <ScheduleSection {...props} />, pricing: <PricingSection {...props} />, questions: <QuestionsSection {...props} />, options: <OptionsSection {...props} />, advanced: <AdvancedSection {...props} /> };
+  const contents: Record<SectionId, ReactNode> = { basic: <BasicSection {...props} />, schedule: <ScheduleSection {...props} />, pricing: <PricingSection {...props} />, refunds: <RefundsSection {...props} />, questions: <QuestionsSection {...props} />, options: <OptionsSection {...props} />, advanced: <AdvancedSection {...props} /> };
   return <div className="space-y-5 pb-40">
     {!!warnings.length && <div className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">{warnings.map((w) => <p key={w} className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{w}</p>)}</div>}
     <div className="sticky top-0 z-20 -mx-1 overflow-x-auto border-b bg-background/95 px-1 py-3 backdrop-blur"><div className="flex w-max gap-2">{SECTIONS.map(([id, label]) => <button key={id} onClick={() => jump(id)} className={`rounded-full px-4 py-2 text-sm transition-colors ${active === id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{label}</button>)}</div></div>

@@ -35,6 +35,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     return bad("주문번호 또는 취소 비밀번호가 올바르지 않습니다.", 404);
   }
   if (target.status === "cancelled") return NextResponse.json({ order: publicOrder(target, c) }, noStore);
+  if (c.cancelDeadline && Date.now() > c.cancelDeadline.getTime()) {
+    return bad(`취소 접수 마감(${c.cancelDeadline.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })})이 지났습니다. 학생회에 문의해주세요.`, 409);
+  }
   if (target.status !== "pending") return bad("입금 확인 후에는 학생회에 문의해 취소해주세요.", 409);
 
   // 조회 시점 이후 관리자가 입금 확인했을 수 있다 → pending 인 동안에만 조건부로 바꾼다.

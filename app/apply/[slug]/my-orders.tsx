@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ChevronDown, ClipboardCheck, AlertTriangle } from "lucide-react";
 import type { Campaign, Cred, Order, ReqFail, T } from "./types";
 import { errText, localeOf, request } from "./types";
+import { CancellationPolicy } from "./cancellation-policy";
 
 export const statusVariant = (s: Order["status"]) =>
   s === "paid" || s === "delivered" ? ("default" as const) : s === "cancelled" ? ("destructive" as const) : ("secondary" as const);
@@ -98,6 +99,7 @@ export function MyOrders({ campaign, t, lang, won }: { campaign: Campaign; t: T;
         <CardContent className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
           <LookupForm requireStudentId={campaign.requireStudentId} loading={loading} onLookup={lookup} t={t}
             labels={{ byStudentId: t("apply.byStudentId"), byEmail: t("apply.byEmail"), byOrderNo: t("apply.byOrderNo"), name: t("apply.name"), studentId: t("apply.studentId"), email: t("apply.email"), orderNo: t("apply.orderNoPlaceholder"), button: t("apply.lookupButton"), loading: t("apply.loading") }} />
+          <CancellationPolicy policy={campaign} t={t} lang={lang} compact />
           {fail && (
             <Alert variant="destructive" className="rounded-xl">
               <AlertTriangle className="h-4 w-4" />
@@ -144,6 +146,7 @@ export function MyOrders({ campaign, t, lang, won }: { campaign: Campaign; t: T;
                 )
               )}
               {(o.status === "paid" || o.status === "delivered") && <p className="text-xs text-muted-foreground">{t("apply.cancelAfterPaid")}</p>}
+              {o.status === "pending" && o.canCancel === false && <p className="text-xs text-muted-foreground">{t("apply.cancellationDeadlinePassed")}</p>}
             </div>
           ))}
           {campaign.confirmEnabled && orders && orders.length > 0 && (

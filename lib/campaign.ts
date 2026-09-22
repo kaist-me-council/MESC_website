@@ -37,6 +37,13 @@ export interface OrderItem {
   unitPrice: number;
 }
 
+export interface RefundTier {
+  deadline: string;
+  refundPercent: number;
+  note?: string | null;
+  noteEn?: string | null;
+}
+
 /** 수령 확인에서 못 받은 항목에 대한 본인 선택 (주문 items 와 optionId 로 1:1) */
 export interface Resolution {
   optionId: number;
@@ -118,6 +125,13 @@ export function parseQuestions(c: { questions: string | null }): Question[] {
   } catch { return []; }
 }
 
+export function parseRefundPolicy(c: { refundPolicy: string | null }): RefundTier[] {
+  try {
+    const value = c.refundPolicy ? JSON.parse(c.refundPolicy) : null;
+    return Array.isArray(value) ? (value as RefundTier[]) : [];
+  } catch { return []; }
+}
+
 /**
  * 제출된 답변을 문항 정의에 맞춰 검증·정규화한다. 정의에 없는 키는 버린다.
  * 반환: { answers } 또는 { error } — error 는 학생에게 그대로 보여 준다.
@@ -182,6 +196,8 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
     closesAt: c.closesAt,
     eventAt: c.eventAt,
     eventPlace: c.eventPlace,
+    cancelDeadline: c.cancelDeadline,
+    refundPolicy: parseRefundPolicy(c),
     requiresPayment: c.requiresPayment,
     // 유료 행사에서만 신청 전에 계좌를 내려준다 — 입금하고 오라고 해 놓고 계좌를 안 보여줄 수는 없다.
     bankInfo: c.requiresPayment ? c.bankInfo : null,
@@ -221,7 +237,7 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
 /** 본인 조회·완료 화면용. 해시·전화·관리자메모 제외, 계좌·안내는 포함. */
 export function publicOrder(
   o: CampaignOrder,
-  c: Pick<Campaign, "bankInfo" | "bankName" | "accountNumber" | "afterNote" | "afterNoteEn" | "title" | "titleEn" | "slug" | "enabled" | "confirmEnabled" | "confirmDeadline">,
+  c: Pick<Campaign, "bankInfo" | "bankName" | "accountNumber" | "afterNote" | "afterNoteEn" | "title" | "titleEn" | "slug" | "enabled" | "confirmEnabled" | "confirmDeadline" | "cancelDeadline" | "refundPolicy">,
   manageCode?: string,
 ) {
   const bank = campaignBankDetails(c);
@@ -242,11 +258,11 @@ export function publicOrder(
     resolution: o.resolution ? (JSON.parse(o.resolution) as Resolution[]) : null,
     confirmNote: o.confirmNote,
     confirmedAt: o.confirmedAt,
-    canCancel: o.status === "pending",
+    canCancel: o.status === "pending" && (!c.cancelDeadline || Date.now() <= c.cancelDeadline.getTime()),
     createdAt: o.createdAt,
     campaign: {
       slug: c.slug, title: c.title, titleEn: c.titleEn, bankInfo: c.bankInfo, bankName: bank.bankName, accountNumber: bank.accountNumber, afterNote: c.afterNote, afterNoteEn: c.afterNoteEn,
-      confirmOpen: isConfirmOpen(c), confirmDeadline: c.confirmDeadline,
+      confirmOpen: isConfirmOpen(c), confirmDeadline: c.confirmDeadline, cancelDeadline: c.cancelDeadline, refundPolicy: parseRefundPolicy(c),
     },
   };
 }
@@ -506,7 +522,8 @@ export function parseCampaignBody(b: Record<string, unknown>) {
   const closesAt = date(b.closesAt);
   const confirmDeadline = date(b.confirmDeadline);
   const eventAt = date(b.eventAt);
-  if (opensAt === undefined || closesAt === undefined || confirmDeadline === undefined || eventAt === undefined) return { error: "날짜 형식이 올바르지 않습니다." };
+  const cancelDeadline = date(b.cancelDeadline);
+  if (opensAt === undefined || closesAt === undefined || confirmDeadline === undefined || eventAt === undefined || cancelDeadline === undefined) return { error: "날짜 형식이 올바르지 않습니다." };
   // priceAdjust: 객체 또는 JSON 문자열 둘 다 허용 (관리자 화면은 문자열로 보냄)
   let priceAdjust: string | null = null;
   let adjRaw: unknown = b.priceAdjust;
@@ -551,6 +568,20 @@ export function parseCampaignBody(b: Record<string, unknown>) {
     }
     questions = list;
   }
+  let refundRaw: unknown = b.refundPolicy;
+  if (typeof refundRaw === "string") { try { refundRaw = JSON.parse(refundRaw); } catch { return { error: "환불 기준 형식이 올바르지 않습니다." }; } }
+  const refundPolicy: RefundTier[] = [];
+  if (Array.isArray(refundRaw)) {
+    if (refundRaw.length > 10) return { error: "환불 기준은 최대 10단계까지 만들 수 있습니다." };
+    for (const [i, item] of (refundRaw as Record<string, unknown>[]).entries()) {
+      const deadline = date(item?.deadline);
+      const refundPercent = Number(item?.refundPercent);
+      if (!deadline) return { error: `${i + 1}번째 환불 기준의 마감 시각을 입력해 주세요.` };
+      if (!Number.isInteger(refundPercent) || refundPercent < 0 || refundPercent > 100) return { error: `${i + 1}번째 환불률은 0~100의 정수여야 합니다.` };
+      refundPolicy.push({ deadline: deadline.toISOString(), refundPercent, note: str(item?.note, 200), noteEn: str(item?.noteEn, 200) });
+    }
+    refundPolicy.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+  }
   const legacy = str(b.imageUrl, 500);
   if (legacy && !/^https?:\/\//.test(legacy)) return { error: "이미지 URL 형식이 올바르지 않습니다." };
   const imageUrl = images ? images[0] ?? null : legacy;
@@ -569,6 +600,8 @@ export function parseCampaignBody(b: Record<string, unknown>) {
     closesAt,
     eventAt,
     eventPlace: str(b.eventPlace, 100),
+    cancelDeadline,
+    refundPolicy: refundPolicy.length ? JSON.stringify(refundPolicy) : null,
     requiresPayment: Boolean(b.requiresPayment),
     bankInfo: str(b.bankInfo, 200),
     bankName: str(b.bankName, 50),

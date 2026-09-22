@@ -9,16 +9,23 @@ export interface Question {
   required: boolean;
   options?: string[];
 }
+export interface RefundTier { deadline: string; refundPercent: number; note?: string | null; noteEn?: string | null }
 
 export interface Campaign {
   id: number; slug: string; title: string; titleEn: string | null; description: string | null; descriptionEn: string | null;
   kind: "goods" | "signup"; imageUrl: string | null; images?: string | string[] | null;
   enabled: boolean; opensAt: string | null; closesAt: string | null; bankInfo: string | null; bankName: string | null; accountNumber: string | null; afterNote: string | null; afterNoteEn: string | null;
   eventAt?: string | null; eventPlace?: string | null; requiresPayment?: boolean; showRemaining: boolean;
+  cancelDeadline?: string | null; refundPolicy?: RefundTier[] | string | null;
   allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; requirePhone: boolean; priceAdjust: string | null; order?: number;
   confirmEnabled: boolean; confirmDeadline: string | null; confirmNote: string | null; confirmNoteEn: string | null;
   questions?: Question[] | string | null;
   options: Option[];
+}
+
+export function readRefundPolicy(c: { refundPolicy?: RefundTier[] | string | null }): RefundTier[] {
+  if (Array.isArray(c.refundPolicy)) return c.refundPolicy;
+  try { const value = c.refundPolicy ? JSON.parse(c.refundPolicy) : null; return Array.isArray(value) ? value : []; } catch { return []; }
 }
 
 /** questions 는 JSON 문자열 또는 배열로 온다. */
