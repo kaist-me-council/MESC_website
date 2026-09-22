@@ -38,6 +38,14 @@ function confirmStateOf(c: Campaign): string | null {
   if (!c.confirmEnabled) return null;
   return c.confirmDeadline && new Date(c.confirmDeadline).getTime() <= Date.now() ? "수령 확인 마감" : "수령 확인 중";
 }
+function legacyBankFields(bankInfo: string | null) {
+  const legacy = bankInfo?.trim() ?? "";
+  const match = legacy.match(/\d[\d\s-]{4,}\d/);
+  return {
+    bankName: match ? legacy.slice(0, match.index).trim() : legacy,
+    accountNumber: match ? match[0].replace(/\s+/g, "") : "",
+  };
+}
 
 const readTab = (): Tab => {
   if (typeof window === "undefined") return "orders";
@@ -63,10 +71,13 @@ export default function AdminCampaignDetailPage() {
     if (!res.ok) return;
     const data = await res.json();
     const camp: Campaign = data.campaign ?? data;
+    const legacyBank = legacyBankFields(camp.bankInfo);
     setC({
       ...camp,
       kind: camp.kind ?? "signup",
       imageUrl: camp.imageUrl ?? null,
+      bankName: camp.bankName ?? legacyBank.bankName ?? null,
+      accountNumber: camp.accountNumber ?? legacyBank.accountNumber ?? null,
       showRemaining: camp.showRemaining ?? true,
       confirmEnabled: camp.confirmEnabled ?? false,
       confirmDeadline: camp.confirmDeadline ?? null,

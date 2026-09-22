@@ -21,7 +21,7 @@ export interface Campaign {
   open: boolean; opensAt: string | null; closesAt: string | null; afterNote: string | null; afterNoteEn: string | null;
   eventAt?: string | null; eventPlace?: string | null;
   /** 유료(입금 필요) 행사. true 면 bankInfo 가 함께 내려오고 "입금했습니다" 체크가 필수다. */
-  requiresPayment?: boolean; bankInfo?: string | null;
+  requiresPayment?: boolean; bankInfo?: string | null; bankName?: string | null; accountNumber?: string | null;
   allowQty: boolean; showRemaining: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: Record<string, number>; options: Option[]; questions?: Question[];
   confirmEnabled: boolean; confirmDeadline: string | null; confirmNote: string | null; confirmNoteEn: string | null; confirmOpen: boolean;
   /** 비공개 캠페인을 관리자가 미리 보는 중 (학생에게는 404) */
@@ -38,9 +38,10 @@ export interface Order {
   confirmation?: "received" | "not_received" | null; resolution?: Resolution[] | null; confirmNote?: string | null; confirmedAt?: string | null;
   canCancel?: boolean;
   /** 계좌·안내문은 여기 안에 있다. 평평한 order.bankInfo 로 읽으면 안 보인다 (publicOrder 계약). */
-  campaign?: { slug?: string; title?: string; titleEn?: string | null; bankInfo?: string | null; afterNote?: string | null; afterNoteEn?: string | null; confirmOpen?: boolean; confirmDeadline?: string | null };
+  campaign?: { slug?: string; title?: string; titleEn?: string | null; bankInfo?: string | null; bankName?: string | null; accountNumber?: string | null; afterNote?: string | null; afterNoteEn?: string | null; confirmOpen?: boolean; confirmDeadline?: string | null };
   /** 신청 직후 1회만 내려오는 평문 관리 코드 (취소에 필요). 재전송(idempotent replay)이면 없다. */
   manageCode?: string | null;
+  hasCancelPassword?: boolean;
 }
 
 export type { T } from "@/lib/fetch-state";

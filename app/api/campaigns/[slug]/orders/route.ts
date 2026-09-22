@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { enforce, getClientIp } from "@/lib/rate-limit";
 import { isValidString } from "@/lib/validation";
 import { studentIdHash } from "@/lib/tshirt";
-import { manageCodeHash } from "@/lib/anon";
+import { hashPassword, manageCodeHash } from "@/lib/anon";
 import {
   AFFILIATIONS, availability, isEmail, isOpen, makeManageCode, makeOrderNo, parseAnswers, parseQuestions, personQtyUsed, publicOrder, unitPrice,
   type Db, type OrderItem,
@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
   if (!isEmail(email)) return bad("이메일 형식이 올바르지 않습니다.");
   const studentId = typeof b.studentId === "string" ? b.studentId.replace(/\D/g, "") : "";
-  if (c.requireStudentId && (studentId.length < 5 || studentId.length > 10)) return bad("학번을 입력해주세요.");
+  if (c.requireStudentId && affiliation !== "교수님" && (studentId.length < 5 || studentId.length > 10)) return bad("학번을 입력해주세요.");
   const phone = typeof b.phone === "string" ? b.phone.trim().slice(0, 30) || null : null;
   const note = typeof b.note === "string" ? b.note.trim().slice(0, 500) || null : null;
   const depositorName = typeof b.depositorName === "string" ? b.depositorName.trim().slice(0, 50) || null : null;
@@ -82,6 +82,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   });
   const total = items.reduce((a, it) => a + it.qty * it.unitPrice, 0);
   const manageCode = makeManageCode();
+  const cancelPassword = typeof b.cancelPassword === "string" ? b.cancelPassword : "";
+  if (cancelPassword && (cancelPassword.length < 6 || cancelPassword.length > 32)) return bad("취소 비밀번호는 6~32자로 입력해주세요.");
 
   // 재고 재검사 + 1인 누적 한도 + 생성. 검사와 쓰기 사이가 갈라지면 초과 판매가 나므로 한 트랜잭션에서 한다.
   const create = async (db: Db) => {
@@ -118,6 +120,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
         depositCheckedAt,
         depositorName,
         manageCodeHash: manageCodeHash(manageCode),
+        cancelPasswordHash: cancelPassword ? hashPassword(cancelPassword) : null,
         idempotencyKey,
       },
     });

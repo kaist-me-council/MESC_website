@@ -31,6 +31,8 @@ export default function ApplyCampaignPage() {
   const [depositorName, setDepositorName] = useState("");
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [depositChecked, setDepositChecked] = useState(false);
+  const [cancelPassword, setCancelPassword] = useState("");
+  const [cancelPasswordConfirm, setCancelPasswordConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [retryHint, setRetryHint] = useState(false); // 네트워크 실패 — 이미 접수됐을 수 있음
@@ -79,12 +81,15 @@ export default function ApplyCampaignPage() {
     if (!campaign) return;
     const items = campaign.options.filter((o) => (qty[o.id] ?? 0) > 0).map((o) => ({ optionId: o.id, qty: qty[o.id] }));
     if (!items.length) { setError(t("apply.selectError")); return; }
-    if (!name.trim() || !email.trim() || (campaign.requireStudentId && !studentId.trim())) { setError(t("apply.formError")); return; }
+    const needsStudentId = campaign.requireStudentId && affiliation !== "교수님";
+    if (!name.trim() || !email.trim() || (needsStudentId && !studentId.trim())) { setError(t(needsStudentId ? "apply.formError" : "apply.formErrorNoStudentId")); return; }
+    if (cancelPassword.length < 6 || cancelPassword.length > 32) { setError(t("apply.cancelPasswordRequired")); return; }
+    if (cancelPassword !== cancelPasswordConfirm) { setError(t("apply.cancelPasswordMismatch")); return; }
     if (campaign.requiresPayment && !depositChecked) { setError(t("apply.payRequired")); return; }
     setSubmitting(true); setError(""); setRetryHint(false);
     const r = await request<{ order: Order }>(`/api/campaigns/${slug}/orders`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, answers, depositChecked, items, idempotencyKey: idemKey }),
+      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, answers, depositChecked, cancelPassword, items, idempotencyKey: idemKey }),
     });
     setSubmitting(false); // 실패해도 버튼을 다시 열어 재시도 가능하게. 입력값은 그대로 유지.
     if (!r.ok) {
@@ -102,6 +107,8 @@ export default function ApplyCampaignPage() {
     setQty({});
     setAnswers({});
     setDepositChecked(false);
+    setCancelPassword("");
+    setCancelPasswordConfirm("");
     setIdemKey(newIdemKey());
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -182,7 +189,7 @@ export default function ApplyCampaignPage() {
         </Link>
       )}
 
-      {order && <DoneCard order={order} won={won} t={t} lang={lang} onReset={() => { setOrder(null); setQty(defaultQty(campaign)); }} />}
+      {order && <DoneCard order={order} won={won} t={t} lang={lang} />}
 
       {!order && !campaign.open && !campaign.preview && (
         <Alert className="mb-6 rounded-2xl"><Lock className="h-4 w-4" /><AlertDescription>{t("apply.closedNote")}</AlertDescription></Alert>
@@ -247,11 +254,16 @@ export default function ApplyCampaignPage() {
               </select>
             </Field>
             <Field label={t("apply.name")} htmlFor="name"><Input id="name" className="h-11 rounded-xl" value={name} disabled={!campaign.open} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
-            <Field label={campaign.requireStudentId ? t("apply.studentId") : t("apply.studentIdOptional")} htmlFor="sid"><Input id="sid" className="h-11 rounded-xl" inputMode="numeric" value={studentId} disabled={!campaign.open} onChange={(e) => setStudentId(e.target.value)} placeholder="20250001" /></Field>
+            <Field label={campaign.requireStudentId && affiliation !== "교수님" ? t("apply.studentId") : t("apply.studentIdOptional")} htmlFor="sid"><Input id="sid" className="h-11 rounded-xl" inputMode="numeric" value={studentId} disabled={!campaign.open} onChange={(e) => setStudentId(e.target.value)} placeholder="20250001" /></Field>
             <Field label={t("apply.email")} htmlFor="email"><Input id="email" className="h-11 rounded-xl" type="email" value={email} disabled={!campaign.open} onChange={(e) => setEmail(e.target.value)} placeholder="id@kaist.ac.kr" autoComplete="email" /></Field>
             <Field label={t("apply.phoneOptional")} htmlFor="phone"><Input id="phone" className="h-11 rounded-xl" type="tel" value={phone} disabled={!campaign.open} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" autoComplete="tel" /></Field>
             <Field label={t("apply.depositorName")} htmlFor="depositor"><Input id="depositor" className="h-11 rounded-xl" value={depositorName} disabled={!campaign.open} onChange={(e) => setDepositorName(e.target.value)} placeholder={t("apply.depositorPlaceholder")} /></Field>
             <Field label={t("apply.note")} htmlFor="note"><Textarea id="note" className="rounded-xl" rows={2} value={note} disabled={!campaign.open} onChange={(e) => setNote(e.target.value)} /></Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("apply.cancelPassword")} htmlFor="cancel-password"><Input id="cancel-password" className="h-11 rounded-xl" type="password" minLength={6} maxLength={32} autoComplete="new-password" value={cancelPassword} disabled={!campaign.open} onChange={(e) => setCancelPassword(e.target.value)} /></Field>
+              <Field label={t("apply.cancelPasswordConfirm")} htmlFor="cancel-password-confirm"><Input id="cancel-password-confirm" className="h-11 rounded-xl" type="password" minLength={6} maxLength={32} autoComplete="new-password" value={cancelPasswordConfirm} disabled={!campaign.open} onChange={(e) => setCancelPasswordConfirm(e.target.value)} /></Field>
+              <p className="text-xs text-muted-foreground sm:col-span-2 -mt-2">{t("apply.cancelPasswordHint")}</p>
+            </div>
 
             {campaign.questions?.map((q) => (
               <QuestionField
@@ -264,13 +276,14 @@ export default function ApplyCampaignPage() {
             {campaign.requiresPayment && (
               <div className="space-y-2 rounded-xl border border-primary/40 bg-primary/5 p-3">
                 <p className="text-sm font-medium">{t("apply.payNotice")}</p>
-                {campaign.bankInfo && (
+                {campaign.accountNumber && (
                   <div className="rounded-lg bg-background/70 p-2.5 text-sm space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium inline-flex items-center gap-1.5"><Landmark className="h-4 w-4" aria-hidden="true" />{t("apply.bank")}</span>
-                      <CopyButton text={campaign.bankInfo} t={t} />
+                      <CopyButton text={campaign.accountNumber} t={t} />
                     </div>
-                    <p className="whitespace-pre-line select-all">{campaign.bankInfo}</p>
+                    {campaign.bankName && <p className="text-xs text-muted-foreground">{campaign.bankName}</p>}
+                    <p className="font-semibold tabular-nums select-all">{campaign.accountNumber}</p>
                     <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
                     <p className="text-xs">{t("apply.depositorLabel")}: <strong>{depositorName.trim() || name.trim() || "—"}</strong></p>
                   </div>
@@ -383,8 +396,9 @@ function CopyButton({ text, t }: { text: string; t: (k: string) => string }) {
   );
 }
 
-function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: number) => string; t: (k: string) => string; lang: string; onReset: () => void }) {
-  const bankInfo = order.campaign?.bankInfo;
+function DoneCard({ order, won, t, lang }: { order: Order; won: (n: number) => string; t: (k: string) => string; lang: string }) {
+  const bankName = order.campaign?.bankName;
+  const accountNumber = order.campaign?.accountNumber;
   const after = lang === "en" && order.campaign?.afterNoteEn ? order.campaign.afterNoteEn : order.campaign?.afterNote;
   const needsPay = order.status === "pending" && order.total > 0;
   return (
@@ -397,16 +411,18 @@ function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: num
         {needsPay && (
           <div className="rounded-xl border-2 border-primary/50 bg-primary/5 p-4 space-y-2">
             <p className="text-base font-bold [text-wrap:pretty]">{t("apply.payPending")}</p>
-            {bankInfo && (
+            {accountNumber && (
               <div className="rounded-lg bg-background/80 p-3 space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium inline-flex items-center gap-1.5"><Landmark className="h-4 w-4" aria-hidden="true" />{t("apply.bank")}</span>
-                  <CopyButton text={bankInfo} t={t} />
+                  <CopyButton text={accountNumber} t={t} />
                 </div>
-                <p className="text-lg font-bold tabular-nums whitespace-pre-line select-all [overflow-wrap:anywhere]">{bankInfo}</p>
+                {bankName && <p className="text-sm text-muted-foreground">{bankName}</p>}
+                <p className="text-lg font-bold tabular-nums select-all [overflow-wrap:anywhere]">{accountNumber}</p>
                 <p className="flex justify-between text-sm"><span className="text-muted-foreground">{t("apply.total")}</span><strong className="tabular-nums">{won(order.total)}</strong></p>
                 <p className="text-sm">{t("apply.depositorLabel")}: <strong>{order.depositorName || order.name}</strong></p>
                 <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
+                <p className="text-xs text-muted-foreground [text-wrap:pretty]">{t("apply.paymentReviewDelay")}</p>
               </div>
             )}
           </div>
@@ -421,7 +437,7 @@ function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: num
           )}
         </ul>
 
-        {after && <LinkifyText text={after} className="text-sm [text-wrap:pretty]" />}
+        {!needsPay && after && <LinkifyText text={after} className="text-sm [text-wrap:pretty]" />}
 
         {/* 신청번호·관리 코드는 나중에 조회·취소할 때만 쓴다 — 작게, 설명과 함께 */}
         <div className="rounded-xl border border-border/60 divide-y divide-border/60 text-sm">
@@ -432,7 +448,9 @@ function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: num
             </div>
             <CopyButton text={order.orderNo} t={t} />
           </div>
-          {order.manageCode ? (
+          {order.hasCancelPassword ? (
+            <p className="p-3 text-xs text-muted-foreground [text-wrap:pretty]">{t("apply.cancelPasswordSaved")}</p>
+          ) : order.manageCode ? (
             <div className="p-3 space-y-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -449,7 +467,6 @@ function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: num
         </div>
 
         <p className="text-xs text-muted-foreground flex items-start gap-1.5"><AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />{t("apply.screenshot")}</p>
-        <Button variant="outline" className="w-full h-11 rounded-xl" onClick={onReset}>{t("apply.newOrder")}</Button>
       </CardContent>
     </Card>
   );

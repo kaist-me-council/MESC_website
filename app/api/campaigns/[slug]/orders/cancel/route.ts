@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enforce, getClientIp } from "@/lib/rate-limit";
-import { hashEquals, manageCodeHash } from "@/lib/anon";
+import { hashEquals, manageCodeHash, verifyPassword } from "@/lib/anon";
 import { publicOrder } from "@/lib/campaign";
 
 const noStore = { headers: { "Cache-Control": "private, no-store" } };
@@ -10,7 +10,7 @@ const STATUS_KO: Record<string, string> = { pending: "입금 대기", paid: "입
 
 /**
  * 공개: 본인 신청 취소 — 입금 확인 전(pending)만.
- * 이름·학번만으로는 취소할 수 없다. 신청 때 받은 주문번호 + 관리 코드가 필요하다.
+ * 이름·학번만으로는 취소할 수 없다. 주문번호 + 사용자가 정한 비밀번호 또는 기존 관리 코드가 필요하다.
  * 적재 주문(관리 코드 없음)은 취소 불가 — 학생회 문의로 안내한다.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -20,16 +20,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   try { b = await req.json(); } catch { return bad("Invalid JSON"); }
   const orderNo = typeof b.orderNo === "string" ? b.orderNo.trim().toUpperCase() : "";
   const manageCode = typeof b.manageCode === "string" ? b.manageCode.trim().toUpperCase() : "";
-  if (!/^[A-Z0-9]{4}-[A-Z0-9]{6}$/.test(orderNo) || !/^[A-Z0-9]{6,16}$/.test(manageCode)) {
-    return bad("주문번호와 관리 코드를 입력해주세요.");
+  const cancelPassword = typeof b.cancelPassword === "string" ? b.cancelPassword : "";
+  if (!/^[A-Z0-9]{4}-[A-Z0-9]{6}$/.test(orderNo) || (!cancelPassword && !manageCode)) {
+    return bad("주문번호와 취소 비밀번호(또는 관리 코드)를 입력해주세요.");
   }
 
   const c = await prisma.campaign.findUnique({ where: { slug } });
   if (!c) return bad("Not found", 404);
   const target = await prisma.campaignOrder.findUnique({ where: { orderNo } });
   // 존재 여부·코드 오류를 구분하지 않는다 (주문번호 열거 방지)
-  if (!target || target.campaignId !== c.id || !target.manageCodeHash || !hashEquals(target.manageCodeHash, manageCodeHash(manageCode))) {
-    return bad("주문번호 또는 관리 코드가 올바르지 않습니다.", 404);
+  const passwordOk = !!target?.cancelPasswordHash && !!cancelPassword && verifyPassword(cancelPassword, target.cancelPasswordHash);
+  const codeOk = !!target?.manageCodeHash && /^[A-Z0-9]{6,16}$/.test(manageCode) && hashEquals(target.manageCodeHash, manageCodeHash(manageCode));
+  if (!target || target.campaignId !== c.id || (!passwordOk && !codeOk)) {
+    return bad("주문번호 또는 취소 비밀번호가 올바르지 않습니다.", 404);
   }
   if (target.status === "cancelled") return NextResponse.json({ order: publicOrder(target, c) }, noStore);
   if (target.status !== "pending") return bad("입금 확인 후에는 학생회에 문의해 취소해주세요.", 409);

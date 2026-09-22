@@ -370,6 +370,8 @@ model Campaign {
   opensAt          DateTime?
   closesAt         DateTime?
   bankInfo         String?
+  bankName         String?   // 입금 은행명. bankInfo 는 기존 데이터 호환용
+  accountNumber    String?   // 복사 가능한 계좌번호만 저장
   afterNote        String?
   afterNoteEn      String?
   allowQty         Boolean   @default(true)
@@ -437,6 +439,7 @@ model CampaignOrder {
   refundedAt    DateTime?  // 환불 완료 처리 시각 (관리자 체크)
   handedBy      String?    // 배부 담당자 이름 (수령 처리 시 기록)
   manageCodeHash String?   // 본인 취소용 관리 코드 해시 (평문 미저장). 적재 주문은 null
+  cancelPasswordHash String? // 사용자가 정한 취소 비밀번호 scrypt 해시
   idempotencyKey String?   // 클라이언트 생성 키 — 재전송 시 중복 주문 방지
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

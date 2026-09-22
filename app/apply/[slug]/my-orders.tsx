@@ -49,7 +49,7 @@ export function MyOrders({ campaign, t, lang, won }: { campaign: Campaign; t: T;
   const [cred, setCred] = useState<Cred | null>(null);
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [arming, setArming] = useState<string | null>(null); // 취소 2단계 중인 orderNo
-  const [code, setCode] = useState(""); // 취소용 관리 코드
+  const [code, setCode] = useState(""); // 취소 비밀번호 또는 기존 관리 코드
   const [msg, setMsg] = useState<Record<string, string>>({});
   const [err, setErr] = useState<Record<string, string>>({});
   const [fail, setFail] = useState<ReqFail | null>(null);
@@ -70,7 +70,7 @@ export function MyOrders({ campaign, t, lang, won }: { campaign: Campaign; t: T;
     setErr({ ...err, [o.orderNo]: "" });
     const r = await request<{ order: Order }>(`/api/campaigns/${campaign.slug}/orders/cancel`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...(cred ?? {}), orderNo: o.orderNo, manageCode: code.trim().toUpperCase() }),
+      body: JSON.stringify({ ...(cred ?? {}), orderNo: o.orderNo, cancelPassword: code, manageCode: code.trim().toUpperCase() }),
     });
     if (!r.ok) {
       // 서버는 주문번호 열거 방지를 위해 "없음"과 "코드 불일치"를 모두 404 로 돌려준다.
@@ -122,7 +122,7 @@ export function MyOrders({ campaign, t, lang, won }: { campaign: Campaign; t: T;
                 {o.items.map((it, idx) => <li key={idx}>{it.group ? `${it.group} · ` : ""}{it.name} × {it.qty}</li>)}
               </ul>
               <div className="flex justify-between"><span>{t("apply.total")}</span><span className="font-medium tabular-nums">{won(o.total)}</span></div>
-              {o.status === "pending" && o.total > 0 && o.campaign?.bankInfo && <p className="text-xs whitespace-pre-line select-all rounded-lg bg-muted/40 p-2">{t("apply.bank")}: {o.campaign.bankInfo}</p>}
+              {o.status === "pending" && o.total > 0 && o.campaign?.accountNumber && <div className="rounded-lg bg-muted/40 p-2 text-xs"><span className="text-muted-foreground">{t("apply.bank")}: </span>{o.campaign.bankName && <span>{o.campaign.bankName} </span>}<span className="tabular-nums select-all">{o.campaign.accountNumber}</span><p className="mt-1 text-muted-foreground [text-wrap:pretty]">{t("apply.paymentReviewDelay")}</p></div>}
               <p className="text-xs text-muted-foreground">{t("apply.appliedAt")}: {new Date(o.createdAt).toLocaleString(localeOf(lang))}</p>
 
               {msg[o.orderNo] && <p className="text-xs">{msg[o.orderNo]}</p>}
@@ -130,7 +130,7 @@ export function MyOrders({ campaign, t, lang, won }: { campaign: Campaign; t: T;
                 arming === o.orderNo ? (
                   <div className="space-y-2 rounded-lg bg-destructive/5 p-2">
                     <p className="text-xs">{t("apply.cancelConfirm")}</p>
-                    <Input className="h-10 rounded-lg uppercase tracking-wider" value={code} onChange={(e) => setCode(e.target.value)}
+                    <Input className="h-10 rounded-lg" type="password" autoComplete="current-password" value={code} onChange={(e) => setCode(e.target.value)}
                       placeholder={t("apply.cancelCodePlaceholder")} aria-label={t("apply.cancelCodeLabel")} onKeyDown={(e) => e.key === "Enter" && cancel(o)} />
                     {err[o.orderNo] && <p className="text-xs text-destructive" role="alert">{err[o.orderNo]}</p>}
                     <div className="flex items-center gap-2">

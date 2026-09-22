@@ -166,6 +166,7 @@ export function answerText(q: Question, v: Answer | undefined): string {
 }
 
 export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avail: Map<number, number | null>) {
+  const bank = campaignBankDetails(c);
   return {
     slug: c.slug,
     title: c.title,
@@ -184,6 +185,8 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
     requiresPayment: c.requiresPayment,
     // 유료 행사에서만 신청 전에 계좌를 내려준다 — 입금하고 오라고 해 놓고 계좌를 안 보여줄 수는 없다.
     bankInfo: c.requiresPayment ? c.bankInfo : null,
+    bankName: c.requiresPayment ? bank.bankName : null,
+    accountNumber: c.requiresPayment ? bank.accountNumber : null,
     afterNote: c.afterNote,
     afterNoteEn: c.afterNoteEn,
     allowQty: c.allowQty,
@@ -217,12 +220,14 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
 /** 본인 조회·완료 화면용. 해시·전화·관리자메모 제외, 계좌·안내는 포함. */
 export function publicOrder(
   o: CampaignOrder,
-  c: Pick<Campaign, "bankInfo" | "afterNote" | "afterNoteEn" | "title" | "titleEn" | "slug" | "enabled" | "confirmEnabled" | "confirmDeadline">,
+  c: Pick<Campaign, "bankInfo" | "bankName" | "accountNumber" | "afterNote" | "afterNoteEn" | "title" | "titleEn" | "slug" | "enabled" | "confirmEnabled" | "confirmDeadline">,
   manageCode?: string,
 ) {
+  const bank = campaignBankDetails(c);
   return {
     ...(manageCode ? { manageCode } : {}), // 발급 직후 1회만. 이후 조회에는 없다.
     hasManageCode: !!o.manageCodeHash,
+    hasCancelPassword: !!o.cancelPasswordHash,
     orderNo: o.orderNo,
     status: o.status,
     affiliation: o.affiliation,
@@ -239,7 +244,7 @@ export function publicOrder(
     canCancel: o.status === "pending",
     createdAt: o.createdAt,
     campaign: {
-      slug: c.slug, title: c.title, titleEn: c.titleEn, bankInfo: c.bankInfo, afterNote: c.afterNote, afterNoteEn: c.afterNoteEn,
+      slug: c.slug, title: c.title, titleEn: c.titleEn, bankInfo: c.bankInfo, bankName: bank.bankName, accountNumber: bank.accountNumber, afterNote: c.afterNote, afterNoteEn: c.afterNoteEn,
       confirmOpen: isConfirmOpen(c), confirmDeadline: c.confirmDeadline,
     },
   };
@@ -476,6 +481,18 @@ export interface OptionInput {
 }
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) || null : null);
+
+/** 새 분리 필드를 우선하고, 기존 bankInfo 는 화면 호환을 위해 계좌번호 패턴만 안전하게 추출한다. */
+export function campaignBankDetails(c: { bankInfo?: string | null; bankName?: string | null; accountNumber?: string | null }) {
+  if (c.bankName || c.accountNumber) return { bankName: c.bankName ?? null, accountNumber: c.accountNumber ?? null };
+  const legacy = c.bankInfo?.trim() ?? "";
+  const match = legacy.match(/\d[\d\s-]{4,}\d/);
+  if (!match) return { bankName: legacy || null, accountNumber: null };
+  return {
+    bankName: legacy.slice(0, match.index).trim() || null,
+    accountNumber: match[0].replace(/\s+/g, "").trim() || null,
+  };
+}
 const date = (v: unknown) => (typeof v === "string" && v ? (isNaN(new Date(v).getTime()) ? undefined : new Date(v)) : null);
 const int = (v: unknown, fallback: number | null) => (v === null || v === "" || v === undefined ? fallback : Number.isInteger(Number(v)) ? Number(v) : fallback);
 
@@ -553,6 +570,8 @@ export function parseCampaignBody(b: Record<string, unknown>) {
     eventPlace: str(b.eventPlace, 100),
     requiresPayment: Boolean(b.requiresPayment),
     bankInfo: str(b.bankInfo, 200),
+    bankName: str(b.bankName, 50),
+    accountNumber: str(b.accountNumber, 100),
     afterNote: str(b.afterNote, 1000),
     afterNoteEn: str(b.afterNoteEn, 1000),
     allowQty: b.allowQty === undefined ? true : Boolean(b.allowQty),
