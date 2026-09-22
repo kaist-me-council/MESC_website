@@ -181,6 +181,9 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
     closesAt: c.closesAt,
     eventAt: c.eventAt,
     eventPlace: c.eventPlace,
+    requiresPayment: c.requiresPayment,
+    // 유료 행사에서만 신청 전에 계좌를 내려준다 — 입금하고 오라고 해 놓고 계좌를 안 보여줄 수는 없다.
+    bankInfo: c.requiresPayment ? c.bankInfo : null,
     afterNote: c.afterNote,
     afterNoteEn: c.afterNoteEn,
     allowQty: c.allowQty,
@@ -536,6 +539,7 @@ export function parseCampaignBody(b: Record<string, unknown>) {
     closesAt,
     eventAt,
     eventPlace: str(b.eventPlace, 100),
+    requiresPayment: Boolean(b.requiresPayment),
     bankInfo: str(b.bankInfo, 200),
     afterNote: str(b.afterNote, 1000),
     afterNoteEn: str(b.afterNoteEn, 1000),

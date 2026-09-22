@@ -30,6 +30,7 @@ export default function ApplyCampaignPage() {
   const [note, setNote] = useState("");
   const [depositorName, setDepositorName] = useState("");
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  const [depositChecked, setDepositChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [retryHint, setRetryHint] = useState(false); // 네트워크 실패 — 이미 접수됐을 수 있음
@@ -79,10 +80,11 @@ export default function ApplyCampaignPage() {
     const items = campaign.options.filter((o) => (qty[o.id] ?? 0) > 0).map((o) => ({ optionId: o.id, qty: qty[o.id] }));
     if (!items.length) { setError(t("apply.selectError")); return; }
     if (!name.trim() || !email.trim() || (campaign.requireStudentId && !studentId.trim())) { setError(t("apply.formError")); return; }
+    if (campaign.requiresPayment && !depositChecked) { setError(t("apply.payRequired")); return; }
     setSubmitting(true); setError(""); setRetryHint(false);
     const r = await request<{ order: Order }>(`/api/campaigns/${slug}/orders`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, answers, items, idempotencyKey: idemKey }),
+      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, answers, depositChecked, items, idempotencyKey: idemKey }),
     });
     setSubmitting(false); // 실패해도 버튼을 다시 열어 재시도 가능하게. 입력값은 그대로 유지.
     if (!r.ok) {
@@ -99,6 +101,7 @@ export default function ApplyCampaignPage() {
     setOrder(r.data.order);
     setQty({});
     setAnswers({});
+    setDepositChecked(false);
     setIdemKey(newIdemKey());
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -128,6 +131,8 @@ export default function ApplyCampaignPage() {
   const fmt = (iso: string) => new Date(iso).toLocaleString(localeOf(lang), { dateStyle: "medium", timeStyle: "short" });
   const groups = [...new Set(campaign.options.map((o) => o.group ?? ""))];
   const goods = campaign.kind === "goods";
+  // 신청형 + 고를 게 하나 + 1인 1개 = 사실상 "참가 신청". 수량 스테퍼도 "남은 수량" 도 오해를 부른다.
+  const soloSignup = !goods && campaign.options.length === 1 && (campaign.maxPerPerson === 1 || !campaign.allowQty);
   const images = campaign.images?.length ? campaign.images : campaign.imageUrl ? [campaign.imageUrl] : [];
   const card = "rounded-2xl border-border/60 shadow-lg shadow-primary/5";
   const showSticky = !order && campaign.open && totalQty > 0;
@@ -186,8 +191,10 @@ export default function ApplyCampaignPage() {
       {!order && (
         <Card className={`mb-6 ${card} animate-in fade-in slide-in-from-bottom-2 duration-300`} style={{ animationDelay: "120ms" }}>
           <CardHeader>
-            <CardTitle>{t("apply.options")}</CardTitle>
-            {campaign.maxPerPerson && !goods && <CardDescription>{fill(t("apply.maxPerPerson"), campaign.maxPerPerson)}</CardDescription>}
+            <CardTitle>{soloSignup ? t("apply.signupWhat") : t("apply.options")}</CardTitle>
+            {soloSignup
+              ? <CardDescription>{t("apply.signupSelf")}</CardDescription>
+              : campaign.maxPerPerson && !goods && <CardDescription>{fill(t("apply.maxPerPerson"), campaign.maxPerPerson)}</CardDescription>}
           </CardHeader>
           <CardContent className="space-y-4">
             {goods ? (
@@ -205,10 +212,12 @@ export default function ApplyCampaignPage() {
                           <span className="font-medium">{optName(o)}</span>
                           <span className="ml-2 text-muted-foreground tabular-nums">{unit(o) === 0 ? t("apply.free") : won(unit(o))}</span>
                           <div className="text-xs text-muted-foreground tabular-nums">
-                            {out ? t("apply.soldOut") : o.remaining === null ? t("apply.unlimited") : fill(t("apply.remaining"), o.remaining)}
+                            {out ? t("apply.soldOut") : o.remaining === null ? (goods ? t("apply.unlimited") : "") : fill(t(goods ? "apply.remaining" : "apply.seatsLeft"), o.remaining)}
                           </div>
                         </div>
-                        {campaign.allowQty ? (
+                        {soloSignup ? (
+                          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary" aria-hidden="true"><Check className="h-5 w-5" /></span>
+                        ) : campaign.allowQty ? (
                           <div className="flex items-center gap-1 shrink-0">
                             <Button type="button" size="icon-lg" variant="outline" className="h-10 w-10 rounded-lg" disabled={!campaign.open || q === 0} onClick={() => setQ(o, q - 1)} aria-label="-"><Minus className="h-4 w-4" /></Button>
                             <span className="w-6 text-center tabular-nums font-medium">{q}</span>
@@ -252,6 +261,27 @@ export default function ApplyCampaignPage() {
               />
             ))}
 
+            {campaign.requiresPayment && (
+              <div className="space-y-2 rounded-xl border border-primary/40 bg-primary/5 p-3">
+                <p className="text-sm font-medium">{t("apply.payNotice")}</p>
+                {campaign.bankInfo && (
+                  <div className="rounded-lg bg-background/70 p-2.5 text-sm space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium inline-flex items-center gap-1.5"><Landmark className="h-4 w-4" aria-hidden="true" />{t("apply.bank")}</span>
+                      <CopyButton text={campaign.bankInfo} t={t} />
+                    </div>
+                    <p className="whitespace-pre-line select-all">{campaign.bankInfo}</p>
+                    <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
+                    <p className="text-xs">{t("apply.depositorLabel")}: <strong>{depositorName.trim() || name.trim() || "—"}</strong></p>
+                  </div>
+                )}
+                <label className="flex items-start gap-2.5 text-sm cursor-pointer has-[:disabled]:cursor-default">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={depositChecked} disabled={!campaign.open} onChange={(e) => setDepositChecked(e.target.checked)} />
+                  <span>{t("apply.payCheck")}<span className="text-destructive"> *</span></span>
+                </label>
+              </div>
+            )}
+
             <div className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-3">
               <span className="text-sm font-medium">{t("apply.total")}</span>
               <span className="text-lg font-bold tabular-nums">{won(total)}</span>
@@ -260,7 +290,7 @@ export default function ApplyCampaignPage() {
             {retryHint && (
               <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.submitNetworkHint")}</AlertDescription></Alert>
             )}
-            <Button onClick={submit} disabled={!campaign.open || campaign.preview || submitting} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{campaign.preview ? t("apply.previewNoSubmit") : submitting ? t("apply.submitting") : t("apply.submit")}</Button>
+            <Button onClick={submit} disabled={!campaign.open || campaign.preview || submitting || (!!campaign.requiresPayment && !depositChecked)} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{campaign.preview ? t("apply.previewNoSubmit") : submitting ? t("apply.submitting") : t("apply.submit")}</Button>
             <p className="text-xs text-muted-foreground flex items-start gap-1.5"><Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />{t("apply.privacyNote")}</p>
           </CardContent>
         </Card>
@@ -356,58 +386,74 @@ function CopyButton({ text, t }: { text: string; t: (k: string) => string }) {
 function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: number) => string; t: (k: string) => string; lang: string; onReset: () => void }) {
   const bankInfo = order.campaign?.bankInfo;
   const after = lang === "en" && order.campaign?.afterNoteEn ? order.campaign.afterNoteEn : order.campaign?.afterNote;
+  const needsPay = order.status === "pending" && order.total > 0;
   return (
     <Card className="mb-6 rounded-2xl border-primary/40 shadow-lg shadow-primary/10 animate-in fade-in zoom-in-95 duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-primary" />{t("apply.doneTitle")}</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-xl"><CheckCircle2 className="h-6 w-6 text-primary shrink-0" />{t("apply.doneTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl bg-primary/5 p-4 text-center space-y-1">
-            <p className="text-xs text-muted-foreground">{t("apply.orderNo")}</p>
-            <p className="text-2xl font-black tracking-[0.15em] tabular-nums">{order.orderNo}</p>
-            <CopyButton text={order.orderNo} t={t} />
+        {/* 입금이 남았으면 그게 제일 중요하다 — 계좌와 안내를 맨 위에 크게 둔다 */}
+        {needsPay && (
+          <div className="rounded-xl border-2 border-primary/50 bg-primary/5 p-4 space-y-2">
+            <p className="text-base font-bold [text-wrap:pretty]">{t("apply.payPending")}</p>
+            {bankInfo && (
+              <div className="rounded-lg bg-background/80 p-3 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium inline-flex items-center gap-1.5"><Landmark className="h-4 w-4" aria-hidden="true" />{t("apply.bank")}</span>
+                  <CopyButton text={bankInfo} t={t} />
+                </div>
+                <p className="text-lg font-bold tabular-nums whitespace-pre-line select-all [overflow-wrap:anywhere]">{bankInfo}</p>
+                <p className="flex justify-between text-sm"><span className="text-muted-foreground">{t("apply.total")}</span><strong className="tabular-nums">{won(order.total)}</strong></p>
+                <p className="text-sm">{t("apply.depositorLabel")}: <strong>{order.depositorName || order.name}</strong></p>
+                <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
+              </div>
+            )}
           </div>
-          {order.manageCode ? (
-            <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 text-center space-y-1">
-              <p className="text-xs text-muted-foreground">{t("apply.manageCode")}</p>
-              <p className="text-2xl font-black tracking-[0.15em]">{order.manageCode}</p>
-              <CopyButton text={order.manageCode} t={t} />
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border/60 p-4 text-center text-sm text-muted-foreground grid place-items-center">
-              {t("apply.alreadyReceived")}
-            </div>
-          )}
-        </div>
-        {order.manageCode && (
-          <Alert className="rounded-xl border-primary/40"><Lock className="h-4 w-4" /><AlertDescription>{t("apply.manageCodeHint")}</AlertDescription></Alert>
         )}
+
         <ul className="text-sm space-y-1">
           {order.items.map((i, idx) => (
             <li key={idx} className="flex justify-between"><span>{i.group ? `${i.group} · ` : ""}{i.name} × {i.qty}</span><span className="tabular-nums">{won(i.unitPrice * i.qty)}</span></li>
           ))}
-          <li className="flex justify-between font-bold border-t border-border/60 pt-2 mt-1"><span>{t("apply.total")}</span><span className="tabular-nums">{won(order.total)}</span></li>
+          {!needsPay && (
+            <li className="flex justify-between font-bold border-t border-border/60 pt-2 mt-1"><span>{t("apply.total")}</span><span className="tabular-nums">{won(order.total)}</span></li>
+          )}
         </ul>
-        {order.total > 0 && bankInfo && (
-          <div className="rounded-xl border border-border/60 p-3 text-sm space-y-1">
-            <div className="flex items-center justify-between">
-              <p className="font-medium flex items-center gap-1.5"><Landmark className="h-4 w-4" />{t("apply.bank")}</p>
-              <CopyButton text={bankInfo} t={t} />
-            </div>
-            <p className="whitespace-pre-line select-all">{bankInfo}</p>
-            <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
-            <p className="text-xs">{t("apply.depositorLabel")}: <strong>{order.depositorName || order.name}</strong></p>
-          </div>
-        )}
+
         {after && <LinkifyText text={after} className="text-sm [text-wrap:pretty]" />}
-        <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.screenshot")}</AlertDescription></Alert>
+
+        {/* 신청번호·관리 코드는 나중에 조회·취소할 때만 쓴다 — 작게, 설명과 함께 */}
+        <div className="rounded-xl border border-border/60 divide-y divide-border/60 text-sm">
+          <div className="flex items-center justify-between gap-2 p-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">{t("apply.orderNo")}</p>
+              <p className="font-mono font-semibold tracking-wide [overflow-wrap:anywhere]">{order.orderNo}</p>
+            </div>
+            <CopyButton text={order.orderNo} t={t} />
+          </div>
+          {order.manageCode ? (
+            <div className="p-3 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">{t("apply.manageCode")}</p>
+                  <p className="font-mono font-semibold tracking-wide [overflow-wrap:anywhere]">{order.manageCode}</p>
+                </div>
+                <CopyButton text={order.manageCode} t={t} />
+              </div>
+              <p className="text-xs text-muted-foreground [text-wrap:pretty]">{t("apply.manageCodeHint")}</p>
+            </div>
+          ) : (
+            <p className="p-3 text-xs text-muted-foreground">{t("apply.alreadyReceived")}</p>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground flex items-start gap-1.5"><AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />{t("apply.screenshot")}</p>
         <Button variant="outline" className="w-full h-11 rounded-xl" onClick={onReset}>{t("apply.newOrder")}</Button>
       </CardContent>
     </Card>
   );
 }
-
 function PageSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-lg space-y-4 animate-pulse" aria-busy="true">

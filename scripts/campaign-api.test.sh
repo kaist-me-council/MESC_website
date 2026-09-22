@@ -27,8 +27,8 @@ echo "campaign id $CID"
 echo "## public list contains slug + 목록 UI 가 쓰는 필드(kind·imageUrl·confirmOpen)"
 curl -s "$B/api/campaigns" | py "c=next(c for c in d['campaigns'] if c['slug']=='$SLUG'); assert c['open']; assert c['kind']=='signup' and 'imageUrl' in c and 'confirmOpen' in c, c; print('ok')"
 
-echo "## public detail: options + remaining, no bankInfo"
-OPT=$(curl -s "$B/api/campaigns/$SLUG" | py "c=d['campaign']; assert 'bankInfo' not in c; o=c['options']; assert o[0]['remaining']==2 and o[1]['remaining'] is None; print(o[0]['id'], o[1]['id'])")
+echo "## public detail: options + remaining, 무료 행사는 계좌 비공개"
+OPT=$(curl -s "$B/api/campaigns/$SLUG" | py "c=d['campaign']; assert c['bankInfo'] is None; o=c['options']; assert o[0]['remaining']==2 and o[1]['remaining'] is None; print(o[0]['id'], o[1]['id'])")
 O1=${OPT% *}; O2=${OPT#* }
 
 echo "## order: 대학원생, 흰 L x2 + 검 XL x1 -> total (8000+1000)*3"
@@ -305,6 +305,20 @@ curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$QID/orders" -d "{\"orderIds\":
 curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders" | py "o=[o for o in d['orders'] if o['id']==$QOID][0]; assert o['attendedAt'] is None; assert o['status']=='pending', o['status']; print('  참석 해제가 상태를 건드리지 않음 ok')"
 curl -s "${A[@]}" "$B/api/admin/campaigns/$QID/orders?format=csv" | head -1 | grep -q "참석" || fail "CSV 에 참석 칸이 없음"
 echo "  CSV 참석 칸 ok"
+
+echo "## v9: 유료 행사 — 신청 폼 계좌 공개 + 입금 체크 필수"
+PSLUG="paytest-$RANDOM"
+PYID=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d "{\"slug\":\"$PSLUG\",\"title\":\"유료 테스트\",\"enabled\":true,\"requiresPayment\":true,\"bankInfo\":\"신한 110-619-744164\",\"options\":[{\"name\":\"참가\",\"price\":5000}]}" | py "print(d['campaign']['id'])")
+POPT=$(curl -s "$B/api/campaigns/$PSLUG" | py "c=d['campaign']; assert c['requiresPayment'] and c['bankInfo']=='신한 110-619-744164', c; print(c['options'][0]['id'])")
+echo "  신청 전 계좌 공개 ok"
+PBODY="{\"affiliation\":\"학부생\",\"name\":\"입금 테스트\",\"studentId\":\"20990061\",\"email\":\"p@kaist.ac.kr\",\"items\":[{\"optionId\":$POPT,\"qty\":1}]"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$PSLUG/orders" -d "$PBODY}"); [ "$RC" = 400 ] || fail "입금 체크 없이 신청이 통과됨 ($RC)"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$PSLUG/orders" -d "$PBODY,\"depositChecked\":false}"); [ "$RC" = 400 ] || fail "입금 체크 false 가 통과됨 ($RC)"
+curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$PSLUG/orders" -d "$PBODY,\"depositChecked\":true}" | py "assert d['order']['status']=='pending'; print('  체크 후 접수 ok')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$PYID/orders" | py "o=d['orders'][0]; assert o['depositCheckedAt'], o; print('  입금 체크 기록 ok')"
+curl -s "${A[@]}" "$B/api/admin/campaigns/$PYID/orders?format=csv" | head -1 | grep -q "입금체크" || fail "CSV 에 입금체크 칸이 없음"
+echo "  CSV 입금체크 칸 ok"
+curl -s "$B/api/campaigns/$QSLUG" | py "assert d['campaign']['bankInfo'] is None; print('  무료 행사는 계좌를 신청 전에 내보내지 않음 ok')"
 
 echo "## v8: 행사 일시 + 캘린더(.ics)"
 RC=$(code "$B/api/campaigns/$QSLUG/event.ics"); [ "$RC" = 404 ] || fail "행사 일시가 없는데 .ics 가 나옴 ($RC)"
