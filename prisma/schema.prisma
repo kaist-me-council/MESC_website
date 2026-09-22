@@ -373,6 +373,7 @@ model Campaign {
   afterNote        String?
   afterNoteEn      String?
   allowQty         Boolean   @default(true)
+  showRemaining    Boolean   @default(true) // 학생 화면에 남은 자리/수량을 공개할지
   maxPerPerson     Int?
   requireStudentId Boolean   @default(true)
   order            Int       @default(0)      // 목록 표시 순서 (작을수록 위)

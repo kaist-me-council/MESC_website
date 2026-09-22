@@ -330,8 +330,21 @@ echo "$ICS" | grep -q "DTSTART:20261029T073000Z" || fail ".ics 시작 시각 틀
 echo "$ICS" | grep -q "LOCATION:서측 체육관" || fail ".ics 장소 없음"
 echo "  .ics 생성 ok"
 
+echo "## v10: 남은 자리 숨김 — 잔여량은 감추고 품절·재고 검증은 유지"
+VSLUG="visibility-$RANDOM"
+VID=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d "{\"slug\":\"$VSLUG\",\"title\":\"잔여 공개 테스트\",\"enabled\":true,\"options\":[{\"name\":\"참가\",\"stock\":2}]}" | py "print(d['campaign']['id'])")
+VOPT=$(curl -s "$B/api/campaigns/$VSLUG" | py "c=d['campaign']; assert c['showRemaining'] is True; o=c['options'][0]; assert o['remaining']==2 and o['soldOut'] is False, o; print(o['id'])")
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$VID" -d "{\"slug\":\"$VSLUG\",\"title\":\"잔여 공개 테스트\",\"enabled\":true,\"showRemaining\":false}" | py "assert d['campaign']['showRemaining'] is False; print('  숨김 저장 ok')"
+curl -s "$B/api/campaigns/$VSLUG" | py "c=d['campaign']; o=c['options'][0]; assert c['showRemaining'] is False and o['remaining'] is None and o['soldOut'] is False, o; print('  잔여량 숨김 ok')"
+VBODY="{\"affiliation\":\"학부생\",\"name\":\"잔여 테스트\",\"studentId\":\"20990071\",\"email\":\"visibility@kaist.ac.kr\",\"items\":[{\"optionId\":$VOPT,\"qty\":2}]}"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$VSLUG/orders" -d "$VBODY"); [ "$RC" = 201 ] || fail "재고 2건 신청 실패 ($RC)"
+curl -s "$B/api/campaigns/$VSLUG" | py "o=d['campaign']['options'][0]; assert o['remaining'] is None and o['soldOut'] is True, o; print('  숨김 상태 품절 공개 ok')"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$VSLUG/orders" -d "$VBODY"); [ "$RC" = 409 ] || fail "숨김 상태 재고 초과 허용 ($RC)"
+curl -s "${A[@]}" -X PUT "$B/api/admin/campaigns/$VID" -d "{\"slug\":\"$VSLUG\",\"title\":\"잔여 공개 테스트\",\"enabled\":true,\"showRemaining\":true}" >/dev/null
+curl -s "$B/api/campaigns/$VSLUG" | py "c=d['campaign']; o=c['options'][0]; assert c['showRemaining'] is True and o['remaining']==0 and o['soldOut'] is True, o; print('  다시 공개하면 잔여 0 ok')"
+
 echo "## v2: /shop/check redirects"
 RC=$(curl -s -o /dev/null -w '%{http_code}' "$B/shop/check"); case "$RC" in 200|307|308) echo "redirect ok ($RC)";; *) fail "/shop/check $RC";; esac
 case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug='2026-spring-tshirt'" && echo "preset test campaign removed";; esac
-case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug LIKE 'apitest-%' OR slug LIKE 'apitest4-%'" && echo "local dev.db test rows removed";; esac
+case "$B" in *localhost*) [ -f dev.db ] && sqlite3 dev.db "DELETE FROM Campaign WHERE slug LIKE 'apitest-%' OR slug LIKE 'apitest4-%' OR slug LIKE 'visibility-%'" && echo "local dev.db test rows removed";; esac
 echo "ALL PASSED"

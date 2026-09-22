@@ -49,7 +49,9 @@ export default function AdminCampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   // 초기 탭은 주소(?tab=)에서. lazy initializer 라 effect 안 setState 가 아님
   const [tab, setTabState] = useState<Tab>(readTab);
+  const [settingsDirty, setSettingsDirty] = useState(false);
   const setTab = (t: Tab) => {
+    if (tab === "settings" && t !== "settings" && settingsDirty && !window.confirm("저장하지 않은 변경이 있습니다. 이동하시겠습니까?")) return;
     setTabState(t);
     const u = new URL(window.location.href); u.searchParams.set("tab", t); window.history.replaceState(null, "", u.toString());
   };
@@ -65,6 +67,7 @@ export default function AdminCampaignDetailPage() {
       ...camp,
       kind: camp.kind ?? "signup",
       imageUrl: camp.imageUrl ?? null,
+      showRemaining: camp.showRemaining ?? true,
       confirmEnabled: camp.confirmEnabled ?? false,
       confirmDeadline: camp.confirmDeadline ?? null,
       confirmNote: camp.confirmNote ?? null,
@@ -133,7 +136,7 @@ export default function AdminCampaignDetailPage() {
 
       {tab === "orders" && <OrdersTab c={c} orders={orders} reload={loadOrders} />}
       {tab === "confirm" && <ConfirmTab c={c} orders={orders} reload={loadOrders} />}
-      {tab === "settings" && <SettingsTab c={c} setC={(fn) => setC((prev) => (prev ? fn(prev) : prev))} onSaved={load} />}
+      {tab === "settings" && <SettingsTab c={c} setC={(fn) => setC((prev) => (prev ? fn(prev) : prev))} onSaved={load} onDirtyChange={setSettingsDirty} />}
       {tab === "import" && (
         <div className="space-y-4">
           <ImportSection campaignId={c.id} importCount={importCount} onDone={loadOrders} />

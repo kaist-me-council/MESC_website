@@ -1,0 +1,1 @@
+ALTER TABLE "Campaign" ADD COLUMN "showRemaining" BOOLEAN NOT NULL DEFAULT true;

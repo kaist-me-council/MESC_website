@@ -187,6 +187,7 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
     afterNote: c.afterNote,
     afterNoteEn: c.afterNoteEn,
     allowQty: c.allowQty,
+    showRemaining: c.showRemaining,
     maxPerPerson: c.maxPerPerson,
     requireStudentId: c.requireStudentId,
     priceAdjust: parsePriceAdjust(c.priceAdjust),
@@ -198,7 +199,18 @@ export function publicCampaign(c: Campaign & { options: CampaignOption[] }, avai
     options: c.options
       .filter((o) => o.enabled)
       .sort((a, b) => a.order - b.order || a.id - b.id)
-      .map((o) => ({ id: o.id, group: o.group, name: o.name, nameEn: o.nameEn, price: o.price, remaining: avail.get(o.id) ?? null })),
+      .map((o) => {
+        const left = avail.get(o.id) ?? null;
+        return {
+          id: o.id,
+          group: o.group,
+          name: o.name,
+          nameEn: o.nameEn,
+          price: o.price,
+          remaining: c.showRemaining ? left : null,
+          soldOut: left !== null && left <= 0,
+        };
+      }),
   };
 }
 
@@ -544,6 +556,7 @@ export function parseCampaignBody(b: Record<string, unknown>) {
     afterNote: str(b.afterNote, 1000),
     afterNoteEn: str(b.afterNoteEn, 1000),
     allowQty: b.allowQty === undefined ? true : Boolean(b.allowQty),
+    showRemaining: b.showRemaining === undefined ? true : Boolean(b.showRemaining),
     maxPerPerson: int(b.maxPerPerson, null),
     order: int(b.order, 0) ?? 0,
     requireStudentId: b.requireStudentId === undefined ? true : Boolean(b.requireStudentId),

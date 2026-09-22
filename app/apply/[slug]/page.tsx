@@ -42,7 +42,7 @@ export default function ApplyCampaignPage() {
   /** 고를 게 하나뿐이면 미리 담아 둔다 — "참가" 를 한 번 더 누르게 할 이유가 없다. */
   const defaultQty = (c: Campaign): Record<number, number> => {
     const only = c.options.length === 1 ? c.options[0] : null;
-    return only && c.open && only.remaining !== 0 ? { [only.id]: 1 } : {};
+    return only && c.open && !only.soldOut ? { [only.id]: 1 } : {};
   };
 
   const load = useCallback(async () => {
@@ -205,14 +205,14 @@ export default function ApplyCampaignPage() {
                   {g && <p className="text-sm font-semibold">{g}</p>}
                   {campaign.options.filter((o) => (o.group ?? "") === g).map((o) => {
                     const q = qty[o.id] ?? 0;
-                    const out = o.remaining !== null && o.remaining <= 0;
+                    const out = o.soldOut;
                     return (
                       <div key={o.id} className={`flex items-center justify-between rounded-xl border border-border/60 px-3 py-2.5 text-sm transition-colors ${q ? "border-primary/50 bg-primary/5" : ""} ${out ? "opacity-50" : ""}`}>
                         <div className="min-w-0">
                           <span className="font-medium">{optName(o)}</span>
                           <span className="ml-2 text-muted-foreground tabular-nums">{unit(o) === 0 ? t("apply.free") : won(unit(o))}</span>
                           <div className="text-xs text-muted-foreground tabular-nums">
-                            {out ? t("apply.soldOut") : o.remaining === null ? (goods ? t("apply.unlimited") : "") : fill(t(goods ? "apply.remaining" : "apply.seatsLeft"), o.remaining)}
+                            {out ? t("apply.soldOut") : campaign.showRemaining && o.remaining !== null ? fill(t(goods ? "apply.remaining" : "apply.seatsLeft"), o.remaining) : ""}
                           </div>
                         </div>
                         {soloSignup ? (

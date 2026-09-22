@@ -33,7 +33,7 @@ export function GoodsPicker({ campaign, qty, setQty, unit, optName, won, t }: {
     return Math.max(0, Math.min(stock, person, campaign.allowQty ? Infinity : 1));
   };
   const disabled = !campaign.open;
-  const out = (o: Option) => o.remaining !== null && o.remaining - (qty[o.id] ?? 0) <= 0;
+  const out = (o: Option) => o.soldOut;
 
   function add() {
     if (!picked) return;
@@ -73,7 +73,7 @@ export function GoodsPicker({ campaign, qty, setQty, unit, optName, won, t }: {
           {sizes.map((o) => (
             <button key={o.id} type="button" disabled={disabled || out(o)} className={chip(optId === o.id, out(o))} onClick={() => setOptId(o.id)} title={out(o) ? t("apply.soldOut") : undefined}>
               {optName(o)}
-              {o.remaining !== null && !out(o) && <span className="ml-1 text-[11px] opacity-70 tabular-nums">{o.remaining - (qty[o.id] ?? 0)}</span>}
+              {campaign.showRemaining && o.remaining !== null && !out(o) && <span className="ml-1 text-[11px] opacity-70 tabular-nums">{o.remaining - (qty[o.id] ?? 0)}</span>}
             </button>
           ))}
         </div>

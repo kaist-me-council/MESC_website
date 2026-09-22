@@ -1,275 +1,60 @@
 "use client";
-
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { readQuestions, type Campaign, type Option, type Question, toLocal, toIso } from "./types";
+import type { Campaign } from "./types";
+import { BasicSection } from "./sections/basic";
+import { ScheduleSection } from "./sections/schedule";
+import { PricingSection } from "./sections/pricing";
+import { QuestionsSection } from "./sections/questions";
+import { OptionsSection } from "./sections/options";
+import { AdvancedSection } from "./sections/advanced";
 
-/** images 는 JSON 문자열 또는 배열로 온다. 없으면 대표 이미지 한 장. */
-function readImages(c: Campaign): string[] {
-  const raw = c.images;
-  if (Array.isArray(raw)) return raw;
-  try { const a = raw ? JSON.parse(raw) : null; if (Array.isArray(a) && a.length) return a; } catch { /* ignore */ }
-  return c.imageUrl ? [c.imageUrl] : [];
+const SECTIONS = [["basic", "기본"], ["schedule", "일정"], ["pricing", "참가비·정원"], ["questions", "문항"], ["options", "옵션"], ["advanced", "고급"]] as const;
+type SectionId = typeof SECTIONS[number][0];
+function errorSection(message: string): SectionId {
+  if (/문항|질문|선택지|question|중복.*id/i.test(message)) return "questions";
+  if (/옵션|재고|가격|option|stock/i.test(message)) return "options";
+  if (/계좌|입금|수량|정원|payment|max/i.test(message)) return "pricing";
+  if (/일시|시작|마감|장소|date|open|close/i.test(message)) return "schedule";
+  return "basic";
 }
-
-const QUESTION_LABELS: Record<Question["type"], string> = {
-  text: "단답 입력", radio: "단일 선택", checkbox: "복수 선택", consent: "동의·확인",
-};
-
-const ADJ_KEYS = ["대학원생", "교수님", "졸업생", "기타"] as const;
-const SIZES = ["S", "M", "L", "XL", "2XL", "3XL", "4XL"];
-
-export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (update: (prev: Campaign) => Campaign) => void; onSaved: () => Promise<void> }) {
-  const [bulk, setBulk] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
-  const adj = useMemo<Record<string, number>>(() => { try { return c.priceAdjust ? JSON.parse(c.priceAdjust) : {}; } catch { return {}; } }, [c.priceAdjust]);
-  // 항상 함수형 갱신 — 업로드·저장이 도는 동안 최신 입력을 덮어쓰지 않게
-  const set = <K extends keyof Campaign>(k: K, v: Campaign[K]) => setC((prev) => ({ ...prev, [k]: v }));
-  const setOpt = (i: number, patch: Partial<Option>) => setC((prev) => ({ ...prev, options: prev.options.map((o, j) => (j === i ? { ...o, ...patch } : o)) }));
-  const setAdj = (k: string, v: string) => {
-    const next = { ...adj };
-    if (v === "" || Number(v) === 0) delete next[k]; else next[k] = Number(v);
-    set("priceAdjust", Object.keys(next).length ? JSON.stringify(next) : null);
-  };
-
-  function addBulk(text: string) {
-    setC((prev) => {
-      const start = prev.options.length;
-      const added: Option[] = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l, i) => {
-        const [group = "", name = "", price = "0", stock = ""] = l.split(",").map((s) => s.trim());
-        return { group, name, nameEn: "", price: Number(price) || 0, stock: stock === "" ? null : Number(stock), order: start + i, enabled: true };
-      }).filter((o) => o.name);
-      return { ...prev, options: [...prev.options, ...added] };
-    });
-    setBulk("");
-  }
-  const tshirtPreset = () =>
-    addBulk(["흰색", "검정"].flatMap((g) => SIZES.map((s) => `${g},${s},${["2XL", "3XL", "4XL"].includes(s) ? 9500 : 8000},`)).join("\n"));
-
-  const questions = useMemo<Question[]>(() => readQuestions(c), [c]);
-  const setQuestions = (next: Question[]) => setC((prev) => ({ ...prev, questions: next }));
-  const setQ = (i: number, patch: Partial<Question>) => setQuestions(questions.map((q, j) => (j === i ? { ...q, ...patch } : q)));
-  const moveQ = (i: number, d: -1 | 1) => {
-    const next = [...questions];
-    const [it] = next.splice(i, 1);
-    next.splice(i + d, 0, it);
-    setQuestions(next);
-  };
-  const addQ = (type: Question["type"]) => {
-    // id 는 답변·CSV 가 묶이는 키라 한 번 정하면 그대로 둔다. 겹치지 않게 시각으로 만든다.
-    const id = `q${Date.now().toString(36).slice(-6)}`;
-    setQuestions([...questions, { id, type, label: "", required: false, ...(type === "radio" || type === "checkbox" ? { options: [""] } : {}) }]);
-  };
-
-  const images = useMemo<string[]>(() => readImages(c), [c]);
-  const setImages = (next: string[]) => setC((prev) => ({ ...prev, images: next, imageUrl: next[0] ?? null }));
-  const appendImages = (urls: string[]) => setC((prev) => {
-    const cur = readImages(prev).concat(urls).slice(0, 8);
-    return { ...prev, images: cur, imageUrl: cur[0] ?? null };
-  });
-
-  async function upload(files: FileList) {
-    setUploading(true); setMsg("");
-    const added: string[] = [];
-    for (const file of Array.from(files).slice(0, 8 - images.length)) {
-      const fd = new FormData(); fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setMsg(data.error ?? "업로드 실패"); break; }
-      added.push(data.url);
-    }
-    setUploading(false);
-    if (added.length) appendImages(added);
-  }
-  const moveImage = (i: number, d: -1 | 1) => {
-    const j = i + d; if (j < 0 || j >= images.length) return;
-    const next = [...images]; [next[i], next[j]] = [next[j], next[i]]; setImages(next);
-  };
-
+export function SettingsTab({ c, setC, onSaved, onDirtyChange }: { c: Campaign; setC: (update: (prev: Campaign) => Campaign) => void; onSaved: () => Promise<void>; onDirtyChange?: (dirty: boolean) => void }) {
+  const [baseline, setBaseline] = useState(() => JSON.stringify(c));
+  const [active, setActive] = useState<SectionId>("basic"); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [errorAt, setErrorAt] = useState<SectionId | null>(null);
+  const dirty = JSON.stringify(c) !== baseline;
+  const set = <K extends keyof Campaign>(key: K, value: Campaign[K]) => setC((prev) => ({ ...prev, [key]: value }));
+  const props = { c, set, setC };
+  const questions = useMemo(() => { try { return Array.isArray(c.questions) ? c.questions : c.questions ? JSON.parse(c.questions) : []; } catch { return []; } }, [c.questions]);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+  useEffect(() => { const fn = (e: BeforeUnloadEvent) => { if (dirty) e.preventDefault(); }; window.addEventListener("beforeunload", fn); return () => window.removeEventListener("beforeunload", fn); }, [dirty]);
+  useEffect(() => {
+    const guardLinks = (event: MouseEvent) => {
+      if (!dirty || event.defaultPrevented) return;
+      const link = (event.target as Element | null)?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || link.href === window.location.href) return;
+      if (!window.confirm("저장하지 않은 변경이 있습니다. 이동하시겠습니까?")) { event.preventDefault(); event.stopPropagation(); }
+    };
+    document.addEventListener("click", guardLinks, true); return () => document.removeEventListener("click", guardLinks, true);
+  }, [dirty]);
+  useEffect(() => { const observer = new IntersectionObserver((entries) => { const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]; if (visible) setActive(visible.target.id.replace("settings-", "") as SectionId); }, { rootMargin: "-25% 0px -60%", threshold: [0, .25, .5] }); SECTIONS.forEach(([id]) => { const el = document.getElementById(`settings-${id}`); if (el) observer.observe(el); }); return () => observer.disconnect(); }, []);
+  const jump = (id: SectionId) => { setActive(id); document.getElementById(`settings-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
   async function save() {
-    if (busy) return; // 중복 제출 방지
-    const snapshot = c; // 저장 시점 값을 그대로 보낸다
-    setBusy(true); setMsg("");
-    const res = await fetch(`/api/admin/campaigns/${snapshot.id}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...snapshot, options: snapshot.options.map((o) => ({ ...o, group: o.group || null, nameEn: o.nameEn || null })) }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (!res.ok) { setMsg(data.error ?? "저장 실패"); return; }
-    setMsg("저장됨"); await onSaved();
+    if (busy || !dirty) return; const snapshot = c; setBusy(true); setMessage(""); setErrorAt(null);
+    const res = await fetch(`/api/admin/campaigns/${snapshot.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...snapshot, options: snapshot.options.map((o) => ({ ...o, group: o.group || null, nameEn: o.nameEn || null })) }) });
+    const data = await res.json().catch(() => ({})); setBusy(false);
+    if (!res.ok) { const text = data.error ?? "저장 실패"; const section = errorSection(text); setMessage(text); setErrorAt(section); jump(section); return; }
+    setBaseline(JSON.stringify(snapshot)); onDirtyChange?.(false); setMessage("저장되었습니다."); window.setTimeout(() => setMessage(""), 1500); await onSaved();
   }
-  async function remove() {
-    const res = await fetch(`/api/admin/campaigns/${c.id}`, { method: "DELETE" });
-    if (res.ok) location.href = "/admin/campaigns";
-    else { setConfirmDel(false); setMsg((await res.json().catch(() => ({}))).error ?? "삭제 실패"); }
-  }
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader><CardTitle className="text-base">기본 정보</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1"><Label>제목</Label><Input value={c.title} onChange={(e) => set("title", e.target.value)} /></div>
-          <div className="space-y-1"><Label>제목 (EN)</Label><Input value={c.titleEn ?? ""} onChange={(e) => set("titleEn", e.target.value || null)} /></div>
-          <div className="space-y-1"><Label>주소 (slug)</Label><Input value={c.slug} onChange={(e) => set("slug", e.target.value.replace(/[^a-zA-Z0-9-]/g, "").toLowerCase())} /></div>
-          <div className="space-y-1">
-            <Label>종류</Label>
-            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={c.kind} onChange={(e) => set("kind", e.target.value as Campaign["kind"])}>
-              <option value="goods">굿즈 (색상·사이즈 상품형 화면)</option>
-              <option value="signup">일반 신청 (목록형 화면)</option>
-            </select>
-          </div>
-          <div className="flex flex-wrap items-center gap-4 pt-1 text-sm sm:col-span-2">
-            <label className="flex items-center gap-2"><Checkbox checked={c.enabled} onCheckedChange={(v) => set("enabled", v === true)} /> 공개</label>
-            <label className="flex items-center gap-2"><Checkbox checked={c.allowQty} onCheckedChange={(v) => set("allowQty", v === true)} /> 수량 선택 허용</label>
-            <label className="flex items-center gap-2"><Checkbox checked={c.requireStudentId} onCheckedChange={(v) => set("requireStudentId", v === true)} /> 학번 필수</label>
-            <label className="flex items-center gap-2"><Checkbox checked={!!c.requiresPayment} onCheckedChange={(v) => set("requiresPayment", v === true)} /> 유료 행사 (입금 필요)</label>
-          </div>
-          <div className="sm:col-span-2 -mt-2 text-xs text-muted-foreground">
-            유료 행사를 켜면 신청 폼에 아래 「입금 계좌」가 그대로 보이고, 「입금했습니다」 체크를 해야만 신청이 접수됩니다.
-            {c.options.some((o) => o.price > 0) && !c.requiresPayment && (
-              <span className="block mt-1 text-destructive">옵션에 가격이 있는데 유료 행사가 꺼져 있습니다. 학생은 계좌를 신청 뒤에야 보게 됩니다.</span>
-            )}
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label>이미지 (최대 8장 — 첫 장이 대표. 시안·사이즈표 등. JPG/PNG/WebP 4MB 이하, 원본 크기 유지)</Label>
-            {images.length > 0 && (
-              <div className="flex flex-wrap gap-3">
-                {images.map((u, i) => (
-                  <div key={u} className="relative w-28">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={u} alt="" className="h-28 w-28 rounded-md object-contain border bg-muted/40" />
-                    {i === 0 && <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">대표</span>}
-                    <div className="mt-1 flex justify-between text-xs">
-                      <button type="button" className="px-1 disabled:opacity-30" disabled={i === 0} onClick={() => moveImage(i, -1)} aria-label="앞으로"><ChevronLeft className="h-4 w-4" /></button>
-                      <button type="button" className="px-1 text-destructive" onClick={() => setImages(images.filter((_, j) => j !== i))}>삭제</button>
-                      <button type="button" className="px-1 disabled:opacity-30" disabled={i === images.length - 1} onClick={() => moveImage(i, 1)} aria-label="뒤로"><ChevronRight className="h-4 w-4" /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-3">
-              <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="text-sm" disabled={uploading || images.length >= 8} onChange={(e) => { if (e.target.files?.length) upload(e.target.files); e.target.value = ""; }} />
-              {uploading && <span className="text-xs text-muted-foreground">업로드 중...</span>}
-            </div>
-          </div>
-          <div className="space-y-1 sm:col-span-2"><Label>설명</Label><Textarea rows={4} value={c.description ?? ""} onChange={(e) => set("description", e.target.value || null)} /></div>
-          <div className="space-y-1 sm:col-span-2"><Label>설명 (EN)</Label><Textarea rows={3} value={c.descriptionEn ?? ""} onChange={(e) => set("descriptionEn", e.target.value || null)} /></div>
-          <div className="space-y-1"><Label>시작 (비우면 즉시)</Label><Input type="datetime-local" value={toLocal(c.opensAt)} onChange={(e) => set("opensAt", toIso(e.target.value))} /></div>
-          <div className="space-y-1"><Label>마감 (비우면 무기한)</Label><Input type="datetime-local" value={toLocal(c.closesAt)} onChange={(e) => set("closesAt", toIso(e.target.value))} /></div>
-          <div className="space-y-1"><Label>행사 일시 (비우면 표시 안 함)</Label><Input type="datetime-local" value={toLocal(c.eventAt ?? null)} onChange={(e) => set("eventAt", toIso(e.target.value))} /></div>
-          <div className="space-y-1"><Label>행사 장소</Label><Input value={c.eventPlace ?? ""} onChange={(e) => set("eventPlace", e.target.value || null)} placeholder="예: 서측 체육관" /></div>
-          <div className="space-y-1"><Label>1인 최대 수량 (비우면 무제한)</Label><Input type="number" min={1} value={c.maxPerPerson ?? ""} onChange={(e) => set("maxPerPerson", e.target.value ? Number(e.target.value) : null)} /></div>
-          <div className="space-y-1"><Label>표시 순서 (작을수록 목록 위, 같으면 최신순)</Label><Input type="number" value={c.order ?? 0} onChange={(e) => set("order", Number(e.target.value) || 0)} /></div>
-          <div className="space-y-1"><Label>입금 계좌 (유료 행사면 신청 폼에도 표시)</Label><Input value={c.bankInfo ?? ""} onChange={(e) => set("bankInfo", e.target.value || null)} placeholder="예: 카카오뱅크 3333-00-0000000 홍길동" /></div>
-          <div className="space-y-1 sm:col-span-2"><Label>완료 안내</Label><Textarea rows={2} value={c.afterNote ?? ""} onChange={(e) => set("afterNote", e.target.value || null)} placeholder="예: 입금자명은 본인 이름으로. 수령은 종강 직전 학생회실(N7)." /></div>
-          <div className="space-y-1 sm:col-span-2"><Label>완료 안내 (EN)</Label><Textarea rows={2} value={c.afterNoteEn ?? ""} onChange={(e) => set("afterNoteEn", e.target.value || null)} /></div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">추가 문항 (신청 폼에서 더 물어볼 것)</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          {questions.length === 0 && <p className="text-sm text-muted-foreground">문항이 없습니다. 아래 버튼으로 추가하세요. 답변은 신청 목록과 CSV 에 문항별 칸으로 들어갑니다.</p>}
-          {questions.map((q, i) => (
-            <div key={q.id} className="rounded-lg border p-3 space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="rounded bg-muted px-1.5 py-0.5">{QUESTION_LABELS[q.type]}</span>
-                <code>{q.id}</code>
-                <div className="ml-auto flex items-center gap-1">
-                  <button type="button" className="px-1 disabled:opacity-30" disabled={i === 0} onClick={() => moveQ(i, -1)} aria-label="위로"><ChevronLeft className="h-4 w-4 rotate-90" /></button>
-                  <button type="button" className="px-1 disabled:opacity-30" disabled={i === questions.length - 1} onClick={() => moveQ(i, 1)} aria-label="아래로"><ChevronRight className="h-4 w-4 rotate-90" /></button>
-                  <button type="button" className="px-1 text-destructive" onClick={() => setQuestions(questions.filter((_, j) => j !== i))} aria-label="문항 삭제"><X className="h-4 w-4" /></button>
-                </div>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="space-y-1 sm:col-span-2"><Label>질문</Label><Textarea rows={2} value={q.label} onChange={(e) => setQ(i, { label: e.target.value })} placeholder="예: 체육대회 보증금 5,000원을 입금하셨나요?" /></div>
-                <div className="space-y-1 sm:col-span-2"><Label>질문 (EN)</Label><Input value={q.labelEn ?? ""} onChange={(e) => setQ(i, { labelEn: e.target.value || null })} /></div>
-                {(q.type === "radio" || q.type === "checkbox") && (
-                  <div className="space-y-1 sm:col-span-2">
-                    <Label>선택지 (한 줄에 하나)</Label>
-                    <Textarea rows={3} value={(q.options ?? []).join("\n")} onChange={(e) => setQ(i, { options: e.target.value.split(/\r?\n/) })} placeholder={"참석\n불참"} />
-                  </div>
-                )}
-              </div>
-              <label className="flex items-center gap-2 text-sm"><Checkbox checked={q.required} onCheckedChange={(v) => setQ(i, { required: v === true })} /> 필수 {q.type === "consent" && "(체크해야 신청됩니다)"}</label>
-            </div>
-          ))}
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(QUESTION_LABELS) as Question["type"][]).map((tp) => (
-              <Button key={tp} type="button" variant="outline" size="sm" onClick={() => addQ(tp)}>+ {QUESTION_LABELS[tp]}</Button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">개인정보(계좌번호 등)를 묻는 문항은 꼭 필요한 경우에만. 답변은 신청 기록과 함께 보관됩니다.</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">수령 확인 (배부 후 받았어요 / 못 받았어요 조사)</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <label className="flex items-center gap-2 text-sm sm:col-span-2"><Checkbox checked={c.confirmEnabled} onCheckedChange={(v) => set("confirmEnabled", v === true)} /> 수령 확인 받기 — 켜면 <code className="text-xs">/apply/{c.slug}/confirm</code> 이 열립니다</label>
-          <div className="space-y-1"><Label>확인 마감 (비우면 무기한)</Label><Input type="datetime-local" value={toLocal(c.confirmDeadline)} onChange={(e) => set("confirmDeadline", toIso(e.target.value))} /></div>
-          <div className="space-y-1 sm:col-span-2"><Label>확인 페이지 안내</Label><Textarea rows={3} value={c.confirmNote ?? ""} onChange={(e) => set("confirmNote", e.target.value || null)} placeholder="예: 못 받은 항목은 재고가 있으면 학생회실(N7)에서 드리고, 없으면 환불 또는 교환해 드립니다." /></div>
-          <div className="space-y-1 sm:col-span-2"><Label>확인 페이지 안내 (EN)</Label><Textarea rows={2} value={c.confirmNoteEn ?? ""} onChange={(e) => set("confirmNoteEn", e.target.value || null)} /></div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">구분별 가산 금액 (옵션 가격에 더함, 원)</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {ADJ_KEYS.map((k) => (
-            <div key={k} className="space-y-1"><Label>{k}</Label><Input type="number" step={100} value={adj[k] ?? ""} onChange={(e) => setAdj(k, e.target.value)} placeholder="0" /></div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">옵션 ({c.options.length}) — 굿즈는 그룹=색상, 이름=사이즈</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="hidden sm:grid grid-cols-[1fr_1fr_1fr_90px_80px_60px_50px_40px] gap-2 text-xs text-muted-foreground px-1">
-            <span>그룹</span><span>이름</span><span>EN</span><span>가격</span><span>재고</span><span>순서</span><span>사용</span><span></span>
-          </div>
-          {c.options.map((o, i) => (
-            <div key={o.id ?? `new-${i}`} className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_1fr_90px_80px_60px_50px_40px] gap-2 items-center">
-              <Input value={o.group} onChange={(e) => setOpt(i, { group: e.target.value })} placeholder="그룹" />
-              <Input value={o.name} onChange={(e) => setOpt(i, { name: e.target.value })} placeholder="이름" />
-              <Input value={o.nameEn} onChange={(e) => setOpt(i, { nameEn: e.target.value })} placeholder="EN" />
-              <Input type="number" value={o.price} onChange={(e) => setOpt(i, { price: Number(e.target.value) || 0 })} />
-              <Input type="number" value={o.stock ?? ""} onChange={(e) => setOpt(i, { stock: e.target.value === "" ? null : Number(e.target.value) })} placeholder="∞" />
-              <Input type="number" value={o.order} onChange={(e) => setOpt(i, { order: Number(e.target.value) || 0 })} />
-              <Checkbox checked={o.enabled} onCheckedChange={(v) => setOpt(i, { enabled: v === true })} />
-              <Button size="sm" variant="ghost" aria-label="옵션 삭제" onClick={() => setC((prev) => ({ ...prev, options: prev.options.filter((_, j) => j !== i) }))}><X className="h-4 w-4" /></Button>
-            </div>
-          ))}
-          <div className="rounded-md bg-muted/40 p-3 space-y-2">
-            <Label>옵션 일괄 추가 — 한 줄에 <code>그룹,이름,가격,재고</code> (재고 비우면 무제한)</Label>
-            <Textarea rows={3} value={bulk} onChange={(e) => setBulk(e.target.value)} placeholder={"흰색,XL,8000,10\n검정,L,8000,"} className="font-mono text-xs" />
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={!bulk.trim()} onClick={() => addBulk(bulk)}>추가</Button>
-              <Button size="sm" variant="outline" onClick={tshirtPreset}>반팔티 14옵션 채우기</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button disabled={busy} onClick={save}>{busy ? "저장 중..." : "저장"}</Button>
-        {confirmDel
-          ? <><Button variant="destructive" size="sm" onClick={remove}>정말 삭제</Button><Button variant="ghost" size="sm" onClick={() => setConfirmDel(false)}>아니오</Button></>
-          : <Button variant="outline" size="sm" onClick={() => setConfirmDel(true)}>캠페인 삭제</Button>}
-        {msg && <span className="text-sm">{msg}</span>}
-      </div>
-    </div>
-  );
+  const reset = () => { setC(() => JSON.parse(baseline) as Campaign); setMessage(""); setErrorAt(null); };
+  const warnings = [c.enabled && !c.options.some((o) => o.enabled) ? "공개 중이지만 사용 가능한 옵션이 없습니다." : null, c.options.some((o) => o.price > 0) && !c.requiresPayment ? "가격이 있는 옵션이 있지만 유료 행사가 꺼져 있습니다." : null].filter(Boolean) as string[];
+  const contents: Record<SectionId, ReactNode> = { basic: <BasicSection {...props} />, schedule: <ScheduleSection {...props} />, pricing: <PricingSection {...props} />, questions: <QuestionsSection {...props} />, options: <OptionsSection {...props} />, advanced: <AdvancedSection {...props} /> };
+  return <div className="space-y-5 pb-40">
+    {!!warnings.length && <div className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">{warnings.map((w) => <p key={w} className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{w}</p>)}</div>}
+    <div className="sticky top-0 z-20 -mx-1 overflow-x-auto border-b bg-background/95 px-1 py-3 backdrop-blur"><div className="flex w-max gap-2">{SECTIONS.map(([id, label]) => <button key={id} onClick={() => jump(id)} className={`rounded-full px-4 py-2 text-sm transition-colors ${active === id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{label}</button>)}</div></div>
+    <div className="space-y-8">{SECTIONS.map(([id, title]) => <Card id={`settings-${id}`} key={id} className={`scroll-mt-20 rounded-2xl border-border/60 ${errorAt === id ? "border-destructive ring-1 ring-destructive/30" : ""}`}><CardHeader><CardTitle className="text-base font-semibold">{title}{id === "options" ? ` (${c.options.length})` : ""}</CardTitle></CardHeader><CardContent>{errorAt === id && message && <p role="alert" className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{message}</p>}{contents[id]}</CardContent></Card>)}</div>
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pt-3 shadow-[0_-8px_24px_rgba(0,0,0,.08)] backdrop-blur" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}><div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1 text-xs text-muted-foreground"><p>{c.requiresPayment ? "계좌 보임 · 입금 체크 필수" : "무료(계좌 비공개)"}</p><p>{c.showRemaining !== false ? "남은 자리 보임" : "남은 자리 숨김"} · {questions.length ? `추가 문항 ${questions.length}개` : "추가 문항 없음"}</p></div>{message && !errorAt && <span className="text-sm text-primary">{message}</span>}<div className="flex gap-2"><Button variant="outline" disabled={!dirty || busy} onClick={reset}>되돌리기</Button><Button disabled={!dirty || busy} onClick={() => void save()}>{busy ? "저장 중..." : "저장"}</Button></div></div></div>
+  </div>;
 }
