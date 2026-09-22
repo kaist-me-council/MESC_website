@@ -1,0 +1,1 @@
+ALTER TABLE "Campaign" ADD COLUMN "requirePhone" BOOLEAN NOT NULL DEFAULT false;

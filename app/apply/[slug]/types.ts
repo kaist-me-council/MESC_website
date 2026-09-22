@@ -22,7 +22,7 @@ export interface Campaign {
   eventAt?: string | null; eventPlace?: string | null;
   /** 유료(입금 필요) 행사. true 면 bankInfo 가 함께 내려오고 "입금했습니다" 체크가 필수다. */
   requiresPayment?: boolean; bankInfo?: string | null; bankName?: string | null; accountNumber?: string | null;
-  allowQty: boolean; showRemaining: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: Record<string, number>; options: Option[]; questions?: Question[];
+  allowQty: boolean; showRemaining: boolean; maxPerPerson: number | null; requireStudentId: boolean; requirePhone: boolean; priceAdjust: Record<string, number>; options: Option[]; questions?: Question[];
   confirmEnabled: boolean; confirmDeadline: string | null; confirmNote: string | null; confirmNoteEn: string | null; confirmOpen: boolean;
   /** 비공개 캠페인을 관리자가 미리 보는 중 (학생에게는 404) */
   preview?: boolean;

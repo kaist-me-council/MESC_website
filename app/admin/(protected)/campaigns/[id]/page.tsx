@@ -79,6 +79,7 @@ export default function AdminCampaignDetailPage() {
       bankName: camp.bankName ?? legacyBank.bankName ?? null,
       accountNumber: camp.accountNumber ?? legacyBank.accountNumber ?? null,
       showRemaining: camp.showRemaining ?? true,
+      requirePhone: camp.requirePhone ?? false,
       confirmEnabled: camp.confirmEnabled ?? false,
       confirmDeadline: camp.confirmDeadline ?? null,
       confirmNote: camp.confirmNote ?? null,

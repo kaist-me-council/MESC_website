@@ -311,10 +311,12 @@ echo "  CSV 참석 칸 ok"
 
 echo "## v9: 유료 행사 — 신청 폼 계좌 공개 + 입금 체크 필수"
 PSLUG="paytest-$RANDOM"
-PYID=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d "{\"slug\":\"$PSLUG\",\"title\":\"유료 테스트\",\"enabled\":true,\"requiresPayment\":true,\"bankName\":\"신한은행\",\"accountNumber\":\"110-619-744164\",\"options\":[{\"name\":\"참가\",\"price\":5000}]}" | py "print(d['campaign']['id'])")
-POPT=$(curl -s "$B/api/campaigns/$PSLUG" | py "c=d['campaign']; assert c['requiresPayment'] and c['bankName']=='신한은행' and c['accountNumber']=='110-619-744164', c; print(c['options'][0]['id'])")
+PYID=$(curl -s "${A[@]}" -X POST "$B/api/admin/campaigns" -d "{\"slug\":\"$PSLUG\",\"title\":\"유료 테스트\",\"enabled\":true,\"requiresPayment\":true,\"requirePhone\":true,\"bankName\":\"신한은행\",\"accountNumber\":\"110-619-744164\",\"options\":[{\"name\":\"참가\",\"price\":5000}]}" | py "print(d['campaign']['id'])")
+POPT=$(curl -s "$B/api/campaigns/$PSLUG" | py "c=d['campaign']; assert c['requiresPayment'] and c['requirePhone'] and c['bankName']=='신한은행' and c['accountNumber']=='110-619-744164', c; print(c['options'][0]['id'])")
 echo "  신청 전 계좌 공개 ok"
-PBODY="{\"affiliation\":\"학부생\",\"name\":\"입금 테스트\",\"studentId\":\"20990061\",\"email\":\"p@kaist.ac.kr\",\"cancelPassword\":\"cancel-1234\",\"items\":[{\"optionId\":$POPT,\"qty\":1}]"
+NPHONE="{\"affiliation\":\"학부생\",\"name\":\"입금 테스트\",\"studentId\":\"20990061\",\"email\":\"p@kaist.ac.kr\",\"cancelPassword\":\"cancel-1234\",\"items\":[{\"optionId\":$POPT,\"qty\":1}],\"depositChecked\":true}"
+RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$PSLUG/orders" -d "$NPHONE"); [ "$RC" = 400 ] || fail "필수 전화번호 없이 신청 통과 ($RC)"
+PBODY="{\"affiliation\":\"학부생\",\"name\":\"입금 테스트\",\"studentId\":\"20990061\",\"email\":\"p@kaist.ac.kr\",\"phone\":\"010-1234-5678\",\"cancelPassword\":\"cancel-1234\",\"items\":[{\"optionId\":$POPT,\"qty\":1}]"
 RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$PSLUG/orders" -d "$PBODY}"); [ "$RC" = 400 ] || fail "입금 체크 없이 신청이 통과됨 ($RC)"
 RC=$(code -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$PSLUG/orders" -d "$PBODY,\"depositChecked\":false}"); [ "$RC" = 400 ] || fail "입금 체크 false 가 통과됨 ($RC)"
 PORDER=$(curl -s -H 'Content-Type: application/json' -X POST "$B/api/campaigns/$PSLUG/orders" -d "$PBODY,\"depositChecked\":true}")

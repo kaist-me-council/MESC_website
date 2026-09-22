@@ -83,13 +83,14 @@ export default function ApplyCampaignPage() {
     if (!items.length) { setError(t("apply.selectError")); return; }
     const needsStudentId = campaign.requireStudentId && affiliation !== "교수님";
     if (!name.trim() || !email.trim() || (needsStudentId && !studentId.trim())) { setError(t(needsStudentId ? "apply.formError" : "apply.formErrorNoStudentId")); return; }
+    if (campaign.requirePhone && !phone.trim()) { setError(t("apply.phoneRequired")); return; }
     if (cancelPassword.length < 6 || cancelPassword.length > 32) { setError(t("apply.cancelPasswordRequired")); return; }
     if (cancelPassword !== cancelPasswordConfirm) { setError(t("apply.cancelPasswordMismatch")); return; }
     if (campaign.requiresPayment && !depositChecked) { setError(t("apply.payRequired")); return; }
     setSubmitting(true); setError(""); setRetryHint(false);
     const r = await request<{ order: Order }>(`/api/campaigns/${slug}/orders`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, answers, depositChecked, cancelPassword, items, idempotencyKey: idemKey }),
+      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: campaign.requiresPayment ? depositorName.trim() || undefined : undefined, note: note.trim() || undefined, answers, depositChecked, cancelPassword, items, idempotencyKey: idemKey }),
     });
     setSubmitting(false); // 실패해도 버튼을 다시 열어 재시도 가능하게. 입력값은 그대로 유지.
     if (!r.ok) {
@@ -257,8 +258,8 @@ export default function ApplyCampaignPage() {
             <Field label={t("apply.name")} htmlFor="name"><Input id="name" className="h-11 rounded-xl" value={name} disabled={!canApply} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
             <Field label={campaign.requireStudentId && affiliation !== "교수님" ? t("apply.studentId") : t("apply.studentIdOptional")} htmlFor="sid"><Input id="sid" className="h-11 rounded-xl" inputMode="numeric" value={studentId} disabled={!canApply} onChange={(e) => setStudentId(e.target.value)} placeholder="20250001" /></Field>
             <Field label={t("apply.email")} htmlFor="email"><Input id="email" className="h-11 rounded-xl" type="email" value={email} disabled={!canApply} onChange={(e) => setEmail(e.target.value)} placeholder="id@kaist.ac.kr" autoComplete="email" /></Field>
-            <Field label={t("apply.phoneOptional")} htmlFor="phone"><Input id="phone" className="h-11 rounded-xl" type="tel" value={phone} disabled={!canApply} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" autoComplete="tel" /></Field>
-            <Field label={t("apply.depositorName")} htmlFor="depositor"><Input id="depositor" className="h-11 rounded-xl" value={depositorName} disabled={!canApply} onChange={(e) => setDepositorName(e.target.value)} placeholder={t("apply.depositorPlaceholder")} /></Field>
+            <Field label={campaign.requirePhone ? t("apply.phone") : t("apply.phoneOptional")} htmlFor="phone"><Input id="phone" className="h-11 rounded-xl" type="tel" value={phone} disabled={!canApply} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" autoComplete="tel" /></Field>
+            {campaign.requiresPayment && <Field label={t("apply.depositorName")} htmlFor="depositor"><Input id="depositor" className="h-11 rounded-xl" value={depositorName} disabled={!canApply} onChange={(e) => setDepositorName(e.target.value)} placeholder={t("apply.depositorPlaceholder")} /></Field>}
             <Field label={t("apply.note")} htmlFor="note"><Textarea id="note" className="rounded-xl" rows={2} value={note} disabled={!canApply} onChange={(e) => setNote(e.target.value)} /></Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("apply.cancelPassword")} htmlFor="cancel-password"><Input id="cancel-password" className="h-11 rounded-xl" type="password" minLength={6} maxLength={32} autoComplete="new-password" value={cancelPassword} disabled={!canApply} onChange={(e) => setCancelPassword(e.target.value)} /></Field>

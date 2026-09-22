@@ -40,8 +40,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const studentId = typeof b.studentId === "string" ? b.studentId.replace(/\D/g, "") : "";
   if (c.requireStudentId && affiliation !== "교수님" && (studentId.length < 5 || studentId.length > 10)) return bad("학번을 입력해주세요.");
   const phone = typeof b.phone === "string" ? b.phone.trim().slice(0, 30) || null : null;
+  if (c.requirePhone && !phone) return bad("전화번호를 입력해주세요.");
   const note = typeof b.note === "string" ? b.note.trim().slice(0, 500) || null : null;
-  const depositorName = typeof b.depositorName === "string" ? b.depositorName.trim().slice(0, 50) || null : null;
+  const depositorName = c.requiresPayment && typeof b.depositorName === "string" ? b.depositorName.trim().slice(0, 50) || null : null;
   const name = (b.name as string).trim();
   const sidHash = studentId ? studentIdHash(studentId) : null;
 

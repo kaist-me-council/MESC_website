@@ -15,7 +15,7 @@ export interface Campaign {
   kind: "goods" | "signup"; imageUrl: string | null; images?: string | string[] | null;
   enabled: boolean; opensAt: string | null; closesAt: string | null; bankInfo: string | null; bankName: string | null; accountNumber: string | null; afterNote: string | null; afterNoteEn: string | null;
   eventAt?: string | null; eventPlace?: string | null; requiresPayment?: boolean; showRemaining: boolean;
-  allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; priceAdjust: string | null; order?: number;
+  allowQty: boolean; maxPerPerson: number | null; requireStudentId: boolean; requirePhone: boolean; priceAdjust: string | null; order?: number;
   confirmEnabled: boolean; confirmDeadline: string | null; confirmNote: string | null; confirmNoteEn: string | null;
   questions?: Question[] | string | null;
   options: Option[];
