@@ -42,6 +42,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const name = (b.name as string).trim();
   const sidHash = studentId ? studentIdHash(studentId) : null;
 
+  // 유료 행사는 "입금했습니다" 체크를 받아야 접수한다. 화면에서 막아도 서버에서 다시 본다.
+  if (c.requiresPayment && b.depositChecked !== true) return bad("입금 후 '입금했습니다' 에 체크해 주세요.");
+  const depositCheckedAt = c.requiresPayment ? new Date() : null;
+
   // 추가 문항 — 필수 미응답은 여기서 막는다 (화면 검증만으로는 못 막는다)
   const questions = parseQuestions(c);
   const parsedAnswers = parseAnswers(questions, b.answers);
@@ -111,6 +115,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
         total,
         note,
         answers,
+        depositCheckedAt,
         depositorName,
         manageCodeHash: manageCodeHash(manageCode),
         idempotencyKey,

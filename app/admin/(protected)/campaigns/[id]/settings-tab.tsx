@@ -133,6 +133,13 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (update: 
             <label className="flex items-center gap-2"><Checkbox checked={c.enabled} onCheckedChange={(v) => set("enabled", v === true)} /> 공개</label>
             <label className="flex items-center gap-2"><Checkbox checked={c.allowQty} onCheckedChange={(v) => set("allowQty", v === true)} /> 수량 선택 허용</label>
             <label className="flex items-center gap-2"><Checkbox checked={c.requireStudentId} onCheckedChange={(v) => set("requireStudentId", v === true)} /> 학번 필수</label>
+            <label className="flex items-center gap-2"><Checkbox checked={!!c.requiresPayment} onCheckedChange={(v) => set("requiresPayment", v === true)} /> 유료 행사 (입금 필요)</label>
+          </div>
+          <div className="sm:col-span-2 -mt-2 text-xs text-muted-foreground">
+            유료 행사를 켜면 신청 폼에 아래 「입금 계좌」가 그대로 보이고, 「입금했습니다」 체크를 해야만 신청이 접수됩니다.
+            {c.options.some((o) => o.price > 0) && !c.requiresPayment && (
+              <span className="block mt-1 text-destructive">옵션에 가격이 있는데 유료 행사가 꺼져 있습니다. 학생은 계좌를 신청 뒤에야 보게 됩니다.</span>
+            )}
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label>이미지 (최대 8장 — 첫 장이 대표. 시안·사이즈표 등. JPG/PNG/WebP 4MB 이하, 원본 크기 유지)</Label>
@@ -165,7 +172,7 @@ export function SettingsTab({ c, setC, onSaved }: { c: Campaign; setC: (update: 
           <div className="space-y-1"><Label>행사 장소</Label><Input value={c.eventPlace ?? ""} onChange={(e) => set("eventPlace", e.target.value || null)} placeholder="예: 서측 체육관" /></div>
           <div className="space-y-1"><Label>1인 최대 수량 (비우면 무제한)</Label><Input type="number" min={1} value={c.maxPerPerson ?? ""} onChange={(e) => set("maxPerPerson", e.target.value ? Number(e.target.value) : null)} /></div>
           <div className="space-y-1"><Label>표시 순서 (작을수록 목록 위, 같으면 최신순)</Label><Input type="number" value={c.order ?? 0} onChange={(e) => set("order", Number(e.target.value) || 0)} /></div>
-          <div className="space-y-1"><Label>입금 계좌 (완료 화면에만 표시)</Label><Input value={c.bankInfo ?? ""} onChange={(e) => set("bankInfo", e.target.value || null)} placeholder="예: 카카오뱅크 3333-00-0000000 홍길동" /></div>
+          <div className="space-y-1"><Label>입금 계좌 (유료 행사면 신청 폼에도 표시)</Label><Input value={c.bankInfo ?? ""} onChange={(e) => set("bankInfo", e.target.value || null)} placeholder="예: 카카오뱅크 3333-00-0000000 홍길동" /></div>
           <div className="space-y-1 sm:col-span-2"><Label>완료 안내</Label><Textarea rows={2} value={c.afterNote ?? ""} onChange={(e) => set("afterNote", e.target.value || null)} placeholder="예: 입금자명은 본인 이름으로. 수령은 종강 직전 학생회실(N7)." /></div>
           <div className="space-y-1 sm:col-span-2"><Label>완료 안내 (EN)</Label><Textarea rows={2} value={c.afterNoteEn ?? ""} onChange={(e) => set("afterNoteEn", e.target.value || null)} /></div>
         </CardContent>

@@ -39,10 +39,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return `"${(/^[=+\-@\t\r]/.test(s) ? "'" + s : s).replace(/"/g, '""')}"`;
     };
     // 문항은 뒤에 붙인다 — 기존 컬럼 위치가 밀리면 쓰던 스프레드시트 수식이 깨진다.
-    const head = ["주문번호", "상태", "구분", "이름", "입금자명", "이메일", "전화", "항목", "합계", "메모", "관리자메모", "신청시각", "출처", "수령확인", "처리선택", "확인메모", "확인시각", "처리완료", "배부자", "환불완료", "참석", ...questions.map((q) => q.label)];
+    const head = ["주문번호", "상태", "구분", "이름", "입금자명", "이메일", "전화", "항목", "합계", "메모", "관리자메모", "신청시각", "출처", "수령확인", "처리선택", "확인메모", "확인시각", "처리완료", "배부자", "환불완료", "참석", "입금체크", ...questions.map((q) => q.label)];
     const lines = orders.map((o) =>
       [o.orderNo, STATUS_KO[o.status] ?? o.status, o.affiliation, o.name, o.depositorName, o.email, o.phone, itemStr(o.items), o.total, o.note, o.adminMemo, new Date(o.createdAt).toLocaleString("ko-KR"),
-        o.source, o.confirmation ? CONFIRM_KO[o.confirmation] : "", resStr(o.resolution), o.confirmNote, o.confirmedAt ? new Date(o.confirmedAt).toLocaleString("ko-KR") : "", o.resolvedAt ? "O" : "", o.handedBy, o.refundedAt ? new Date(o.refundedAt).toLocaleString("ko-KR") : "", o.attendedAt ? "O" : "",
+        o.source, o.confirmation ? CONFIRM_KO[o.confirmation] : "", resStr(o.resolution), o.confirmNote, o.confirmedAt ? new Date(o.confirmedAt).toLocaleString("ko-KR") : "", o.resolvedAt ? "O" : "", o.handedBy, o.refundedAt ? new Date(o.refundedAt).toLocaleString("ko-KR") : "", o.attendedAt ? "O" : "", o.depositCheckedAt ? "O" : "",
         ...questions.map((q) => answerText(q, o.answers[q.id]))].map(esc).join(","),
     );
     return new NextResponse("﻿" + [head.map(esc).join(","), ...lines].join("\n"), {

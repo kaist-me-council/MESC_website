@@ -337,6 +337,7 @@ export function OrdersTab({ c, orders, reload }: { c: Campaign; orders: Order[];
                     {o.confirmation === "received" && <Badge className="text-xs">받음</Badge>}
                     {o.confirmation === "not_received" && <Badge variant="destructive" className="text-xs">못 받음</Badge>}
                     {o.handedBy && <Badge variant="outline" className="text-xs">배부: {o.handedBy}</Badge>}
+                    {o.depositCheckedAt && o.status === "pending" && <Badge variant="outline" className="text-xs">입금했다고 체크함</Badge>}
                     {o.attendedAt && <Badge className="text-xs bg-sky-600 text-white">참석</Badge>}
                     {o.refundedAt && <Badge className="text-xs bg-emerald-600 text-white">환불 완료</Badge>}
                     {needsRefund(o) && !o.refundedAt && <Badge variant="destructive" className="text-xs">환불 필요</Badge>}

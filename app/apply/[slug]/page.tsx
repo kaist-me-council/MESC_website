@@ -30,6 +30,7 @@ export default function ApplyCampaignPage() {
   const [note, setNote] = useState("");
   const [depositorName, setDepositorName] = useState("");
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  const [depositChecked, setDepositChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [retryHint, setRetryHint] = useState(false); // 네트워크 실패 — 이미 접수됐을 수 있음
@@ -79,10 +80,11 @@ export default function ApplyCampaignPage() {
     const items = campaign.options.filter((o) => (qty[o.id] ?? 0) > 0).map((o) => ({ optionId: o.id, qty: qty[o.id] }));
     if (!items.length) { setError(t("apply.selectError")); return; }
     if (!name.trim() || !email.trim() || (campaign.requireStudentId && !studentId.trim())) { setError(t("apply.formError")); return; }
+    if (campaign.requiresPayment && !depositChecked) { setError(t("apply.payRequired")); return; }
     setSubmitting(true); setError(""); setRetryHint(false);
     const r = await request<{ order: Order }>(`/api/campaigns/${slug}/orders`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, answers, items, idempotencyKey: idemKey }),
+      body: JSON.stringify({ affiliation, name: name.trim(), studentId: studentId.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined, depositorName: depositorName.trim() || undefined, note: note.trim() || undefined, answers, depositChecked, items, idempotencyKey: idemKey }),
     });
     setSubmitting(false); // 실패해도 버튼을 다시 열어 재시도 가능하게. 입력값은 그대로 유지.
     if (!r.ok) {
@@ -99,6 +101,7 @@ export default function ApplyCampaignPage() {
     setOrder(r.data.order);
     setQty({});
     setAnswers({});
+    setDepositChecked(false);
     setIdemKey(newIdemKey());
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -252,6 +255,27 @@ export default function ApplyCampaignPage() {
               />
             ))}
 
+            {campaign.requiresPayment && (
+              <div className="space-y-2 rounded-xl border border-primary/40 bg-primary/5 p-3">
+                <p className="text-sm font-medium">{t("apply.payNotice")}</p>
+                {campaign.bankInfo && (
+                  <div className="rounded-lg bg-background/70 p-2.5 text-sm space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium inline-flex items-center gap-1.5"><Landmark className="h-4 w-4" aria-hidden="true" />{t("apply.bank")}</span>
+                      <CopyButton text={campaign.bankInfo} t={t} />
+                    </div>
+                    <p className="whitespace-pre-line select-all">{campaign.bankInfo}</p>
+                    <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
+                    <p className="text-xs">{t("apply.depositorLabel")}: <strong>{depositorName.trim() || name.trim() || "—"}</strong></p>
+                  </div>
+                )}
+                <label className="flex items-start gap-2.5 text-sm cursor-pointer has-[:disabled]:cursor-default">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={depositChecked} disabled={!campaign.open} onChange={(e) => setDepositChecked(e.target.checked)} />
+                  <span>{t("apply.payCheck")}<span className="text-destructive"> *</span></span>
+                </label>
+              </div>
+            )}
+
             <div className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-3">
               <span className="text-sm font-medium">{t("apply.total")}</span>
               <span className="text-lg font-bold tabular-nums">{won(total)}</span>
@@ -260,7 +284,7 @@ export default function ApplyCampaignPage() {
             {retryHint && (
               <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.submitNetworkHint")}</AlertDescription></Alert>
             )}
-            <Button onClick={submit} disabled={!campaign.open || campaign.preview || submitting} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{campaign.preview ? t("apply.previewNoSubmit") : submitting ? t("apply.submitting") : t("apply.submit")}</Button>
+            <Button onClick={submit} disabled={!campaign.open || campaign.preview || submitting || (!!campaign.requiresPayment && !depositChecked)} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{campaign.preview ? t("apply.previewNoSubmit") : submitting ? t("apply.submitting") : t("apply.submit")}</Button>
             <p className="text-xs text-muted-foreground flex items-start gap-1.5"><Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />{t("apply.privacyNote")}</p>
           </CardContent>
         </Card>
@@ -399,6 +423,9 @@ function DoneCard({ order, won, t, lang, onReset }: { order: Order; won: (n: num
             <p className="text-xs text-muted-foreground">{t("apply.bankHint")}</p>
             <p className="text-xs">{t("apply.depositorLabel")}: <strong>{order.depositorName || order.name}</strong></p>
           </div>
+        )}
+        {order.status === "pending" && order.total > 0 && (
+          <Alert className="rounded-xl"><Landmark className="h-4 w-4" /><AlertDescription>{t("apply.payPending")}</AlertDescription></Alert>
         )}
         {after && <LinkifyText text={after} className="text-sm [text-wrap:pretty]" />}
         <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.screenshot")}</AlertDescription></Alert>

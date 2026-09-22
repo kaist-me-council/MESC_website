@@ -381,6 +381,7 @@ model Campaign {
   imageUrl         String?
   images           String?   // JSON string[] — 시안·사이즈표 등 여러 장. imageUrl 은 대표(=images[0])
   questions        String?   // JSON Question[] — 신청 폼에 덧붙이는 추가 문항 (없으면 null)
+  requiresPayment  Boolean   @default(false) // 유료(입금 필요) 행사. 켜면 신청 폼에 계좌를 보여 주고 "입금했습니다" 체크를 받는다
   eventAt          DateTime? // 행사 일시 (신청 마감과 별개). 있으면 캘린더 추가(.ics) 를 제공한다
   eventPlace       String?   // 행사 장소
   confirmEnabled   Boolean   @default(false)
@@ -422,6 +423,7 @@ model CampaignOrder {
   status        String   @default("pending") // pending | paid | delivered | cancelled
   note          String?
   answers       String?  // JSON {문항id: 답} — Campaign.questions 에 대한 답변
+  depositCheckedAt DateTime? // 신청자가 "입금했습니다" 에 체크한 시각 (실제 입금 확인은 status=paid)
   adminMemo     String?
   depositorName String?  // 입금자명. null = 이름과 동일
   source        String   @default("web") // web | import
