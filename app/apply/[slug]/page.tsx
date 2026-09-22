@@ -301,6 +301,12 @@ export default function ApplyCampaignPage() {
               <span className="text-sm font-medium">{t("apply.total")}</span>
               <span className="text-lg font-bold tabular-nums">{won(total)}</span>
             </div>
+            <div className="space-y-1.5 rounded-xl border border-border/60 p-3 text-xs text-muted-foreground [text-wrap:pretty]">
+              <p className="font-semibold text-foreground">{t("apply.cancellationPolicyTitle")}</p>
+              <p>{t("apply.cancellationPolicyAuto")}</p>
+              <p>{t("apply.cancellationPolicyAfterPaid")}</p>
+              <p><Link href="/terms#cancellation-refunds" className="text-primary underline underline-offset-2">{t("apply.cancellationPolicyTerms")}</Link></p>
+            </div>
             {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
             {retryHint && (
               <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.submitNetworkHint")}</AlertDescription></Alert>
