@@ -4,6 +4,7 @@ import { enforce, getClientIp } from "@/lib/rate-limit";
 import { isValidString } from "@/lib/validation";
 import { studentIdHash } from "@/lib/tshirt";
 import { hashPassword, manageCodeHash } from "@/lib/anon";
+import { auth } from "@/lib/auth";
 import {
   AFFILIATIONS, availability, isEmail, isOpen, makeManageCode, makeOrderNo, parseAnswers, parseQuestions, personQtyUsed, publicOrder, unitPrice,
   type Db, type OrderItem,
@@ -26,8 +27,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   try { b = await req.json(); } catch { return bad("Invalid JSON"); }
 
   const c = await prisma.campaign.findUnique({ where: { slug }, include: { options: true } });
-  if (!c || !c.enabled) return bad("Not found", 404);
-  if (!isOpen(c)) return bad("신청 기간이 아닙니다.", 403);
+  if (!c) return bad("Not found", 404);
+  const adminPreview = !c.enabled && !!(await auth());
+  if (!c.enabled && !adminPreview) return bad("Not found", 404);
+  if (!adminPreview && !isOpen(c)) return bad("신청 기간이 아닙니다.", 403);
 
   const affiliation = typeof b.affiliation === "string" && (AFFILIATIONS as readonly string[]).includes(b.affiliation) ? b.affiliation : null;
   if (!affiliation) return bad("구분을 선택해주세요.");

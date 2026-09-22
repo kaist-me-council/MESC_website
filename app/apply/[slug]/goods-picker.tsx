@@ -32,7 +32,7 @@ export function GoodsPicker({ campaign, qty, setQty, unit, optName, won, t }: {
     const person = campaign.maxPerPerson ? campaign.maxPerPerson - totalQty : Infinity;
     return Math.max(0, Math.min(stock, person, campaign.allowQty ? Infinity : 1));
   };
-  const disabled = !campaign.open;
+  const disabled = !campaign.open && !campaign.preview;
   const out = (o: Option) => o.soldOut;
 
   function add() {

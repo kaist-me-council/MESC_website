@@ -260,8 +260,8 @@ export const translations = {
     // Check Fee Page
     apply: {
       previewBadge: "비공개",
-      previewNote: "비공개 캠페인 미리보기입니다. 관리자에게만 보이며 학생에게는 이 페이지가 열리지 않습니다. 공개하려면 관리자 설정에서 '공개'를 켜세요.",
-      previewNoSubmit: "미리보기에서는 신청할 수 없습니다",
+      previewNote: "비공개 캠페인 관리자 테스트 화면입니다. 학생에게는 보이지 않지만 신청하면 실제 테스트 주문이 생성되어 신청 목록과 재고에 반영됩니다.",
+      previewSubmit: "관리자 테스트 신청",
 
       kind_goods: "굿즈",
       kind_signup: "신청",
@@ -718,8 +718,8 @@ export const translations = {
     // Check Fee Page
     apply: {
       previewBadge: "Unpublished",
-      previewNote: "Preview of an unpublished campaign. Only administrators can see this; students get a not-found page. Turn on 공개 in the admin settings to publish.",
-      previewNoSubmit: "Cannot submit in preview",
+      previewNote: "Admin test view for an unpublished campaign. Students cannot access it, but submitting creates a real test order that affects the order list and stock.",
+      previewSubmit: "Submit admin test",
 
       kind_goods: "Goods",
       kind_signup: "Sign-up",

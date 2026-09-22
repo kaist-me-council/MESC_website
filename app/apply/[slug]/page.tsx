@@ -44,7 +44,7 @@ export default function ApplyCampaignPage() {
   /** 고를 게 하나뿐이면 미리 담아 둔다 — "참가" 를 한 번 더 누르게 할 이유가 없다. */
   const defaultQty = (c: Campaign): Record<number, number> => {
     const only = c.options.length === 1 ? c.options[0] : null;
-    return only && c.open && !only.soldOut ? { [only.id]: 1 } : {};
+    return only && (c.open || c.preview) && !only.soldOut ? { [only.id]: 1 } : {};
   };
 
   const load = useCallback(async () => {
@@ -142,7 +142,8 @@ export default function ApplyCampaignPage() {
   const soloSignup = !goods && campaign.options.length === 1 && (campaign.maxPerPerson === 1 || !campaign.allowQty);
   const images = campaign.images?.length ? campaign.images : campaign.imageUrl ? [campaign.imageUrl] : [];
   const card = "rounded-2xl border-border/60 shadow-lg shadow-primary/5";
-  const showSticky = !order && campaign.open && totalQty > 0;
+  const canApply = campaign.open || !!campaign.preview;
+  const showSticky = !order && canApply && totalQty > 0;
 
   return (
     <div className={`container mx-auto px-4 py-8 max-w-lg ${showSticky ? "pb-28" : ""}`}>
@@ -226,12 +227,12 @@ export default function ApplyCampaignPage() {
                           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary" aria-hidden="true"><Check className="h-5 w-5" /></span>
                         ) : campaign.allowQty ? (
                           <div className="flex items-center gap-1 shrink-0">
-                            <Button type="button" size="icon-lg" variant="outline" className="h-10 w-10 rounded-lg" disabled={!campaign.open || q === 0} onClick={() => setQ(o, q - 1)} aria-label="-"><Minus className="h-4 w-4" /></Button>
+                            <Button type="button" size="icon-lg" variant="outline" className="h-10 w-10 rounded-lg" disabled={!canApply || q === 0} onClick={() => setQ(o, q - 1)} aria-label="-"><Minus className="h-4 w-4" /></Button>
                             <span className="w-6 text-center tabular-nums font-medium">{q}</span>
-                            <Button type="button" size="icon-lg" variant="outline" className="h-10 w-10 rounded-lg" disabled={!campaign.open || out} onClick={() => setQ(o, q + 1)} aria-label="+"><Plus className="h-4 w-4" /></Button>
+                            <Button type="button" size="icon-lg" variant="outline" className="h-10 w-10 rounded-lg" disabled={!canApply || out} onClick={() => setQ(o, q + 1)} aria-label="+"><Plus className="h-4 w-4" /></Button>
                           </div>
                         ) : (
-                          <Button type="button" size="sm" className="h-10 w-10 rounded-lg" variant={q ? "default" : "outline"} disabled={!campaign.open || out} onClick={() => setQ(o, q ? 0 : 1)} aria-label={optName(o)}>{q ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}</Button>
+                          <Button type="button" size="sm" className="h-10 w-10 rounded-lg" variant={q ? "default" : "outline"} disabled={!canApply || out} onClick={() => setQ(o, q ? 0 : 1)} aria-label={optName(o)}>{q ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}</Button>
                         )}
                       </div>
                     );
@@ -249,25 +250,25 @@ export default function ApplyCampaignPage() {
           <CardHeader><CardTitle>{t("apply.applicant")}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <Field label={t("apply.affiliation")} htmlFor="aff">
-              <select id="aff" className="h-11 w-full rounded-xl border border-border/60 bg-background px-3 text-sm" value={affiliation} disabled={!campaign.open} onChange={(e) => setAffiliation(e.target.value as Affiliation)}>
+              <select id="aff" className="h-11 w-full rounded-xl border border-border/60 bg-background px-3 text-sm" value={affiliation} disabled={!canApply} onChange={(e) => setAffiliation(e.target.value as Affiliation)}>
                 {AFFILIATIONS.map((a) => <option key={a} value={a}>{t(`apply.aff_${a}`)}</option>)}
               </select>
             </Field>
-            <Field label={t("apply.name")} htmlFor="name"><Input id="name" className="h-11 rounded-xl" value={name} disabled={!campaign.open} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
-            <Field label={campaign.requireStudentId && affiliation !== "교수님" ? t("apply.studentId") : t("apply.studentIdOptional")} htmlFor="sid"><Input id="sid" className="h-11 rounded-xl" inputMode="numeric" value={studentId} disabled={!campaign.open} onChange={(e) => setStudentId(e.target.value)} placeholder="20250001" /></Field>
-            <Field label={t("apply.email")} htmlFor="email"><Input id="email" className="h-11 rounded-xl" type="email" value={email} disabled={!campaign.open} onChange={(e) => setEmail(e.target.value)} placeholder="id@kaist.ac.kr" autoComplete="email" /></Field>
-            <Field label={t("apply.phoneOptional")} htmlFor="phone"><Input id="phone" className="h-11 rounded-xl" type="tel" value={phone} disabled={!campaign.open} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" autoComplete="tel" /></Field>
-            <Field label={t("apply.depositorName")} htmlFor="depositor"><Input id="depositor" className="h-11 rounded-xl" value={depositorName} disabled={!campaign.open} onChange={(e) => setDepositorName(e.target.value)} placeholder={t("apply.depositorPlaceholder")} /></Field>
-            <Field label={t("apply.note")} htmlFor="note"><Textarea id="note" className="rounded-xl" rows={2} value={note} disabled={!campaign.open} onChange={(e) => setNote(e.target.value)} /></Field>
+            <Field label={t("apply.name")} htmlFor="name"><Input id="name" className="h-11 rounded-xl" value={name} disabled={!canApply} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
+            <Field label={campaign.requireStudentId && affiliation !== "교수님" ? t("apply.studentId") : t("apply.studentIdOptional")} htmlFor="sid"><Input id="sid" className="h-11 rounded-xl" inputMode="numeric" value={studentId} disabled={!canApply} onChange={(e) => setStudentId(e.target.value)} placeholder="20250001" /></Field>
+            <Field label={t("apply.email")} htmlFor="email"><Input id="email" className="h-11 rounded-xl" type="email" value={email} disabled={!canApply} onChange={(e) => setEmail(e.target.value)} placeholder="id@kaist.ac.kr" autoComplete="email" /></Field>
+            <Field label={t("apply.phoneOptional")} htmlFor="phone"><Input id="phone" className="h-11 rounded-xl" type="tel" value={phone} disabled={!canApply} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" autoComplete="tel" /></Field>
+            <Field label={t("apply.depositorName")} htmlFor="depositor"><Input id="depositor" className="h-11 rounded-xl" value={depositorName} disabled={!canApply} onChange={(e) => setDepositorName(e.target.value)} placeholder={t("apply.depositorPlaceholder")} /></Field>
+            <Field label={t("apply.note")} htmlFor="note"><Textarea id="note" className="rounded-xl" rows={2} value={note} disabled={!canApply} onChange={(e) => setNote(e.target.value)} /></Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("apply.cancelPassword")} htmlFor="cancel-password"><Input id="cancel-password" className="h-11 rounded-xl" type="password" minLength={6} maxLength={32} autoComplete="new-password" value={cancelPassword} disabled={!campaign.open} onChange={(e) => setCancelPassword(e.target.value)} /></Field>
-              <Field label={t("apply.cancelPasswordConfirm")} htmlFor="cancel-password-confirm"><Input id="cancel-password-confirm" className="h-11 rounded-xl" type="password" minLength={6} maxLength={32} autoComplete="new-password" value={cancelPasswordConfirm} disabled={!campaign.open} onChange={(e) => setCancelPasswordConfirm(e.target.value)} /></Field>
+              <Field label={t("apply.cancelPassword")} htmlFor="cancel-password"><Input id="cancel-password" className="h-11 rounded-xl" type="password" minLength={6} maxLength={32} autoComplete="new-password" value={cancelPassword} disabled={!canApply} onChange={(e) => setCancelPassword(e.target.value)} /></Field>
+              <Field label={t("apply.cancelPasswordConfirm")} htmlFor="cancel-password-confirm"><Input id="cancel-password-confirm" className="h-11 rounded-xl" type="password" minLength={6} maxLength={32} autoComplete="new-password" value={cancelPasswordConfirm} disabled={!canApply} onChange={(e) => setCancelPasswordConfirm(e.target.value)} /></Field>
               <p className="text-xs text-muted-foreground sm:col-span-2 -mt-2">{t("apply.cancelPasswordHint")}</p>
             </div>
 
             {campaign.questions?.map((q) => (
               <QuestionField
-                key={q.id} q={q} lang={lang} t={t} disabled={!campaign.open}
+                key={q.id} q={q} lang={lang} t={t} disabled={!canApply}
                 value={answers[q.id]}
                 onChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
               />
@@ -289,7 +290,7 @@ export default function ApplyCampaignPage() {
                   </div>
                 )}
                 <label className="flex items-start gap-2.5 text-sm cursor-pointer has-[:disabled]:cursor-default">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={depositChecked} disabled={!campaign.open} onChange={(e) => setDepositChecked(e.target.checked)} />
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-primary" checked={depositChecked} disabled={!canApply} onChange={(e) => setDepositChecked(e.target.checked)} />
                   <span>{t("apply.payCheck")}<span className="text-destructive"> *</span></span>
                 </label>
               </div>
@@ -303,7 +304,7 @@ export default function ApplyCampaignPage() {
             {retryHint && (
               <Alert className="rounded-xl"><AlertTriangle className="h-4 w-4" /><AlertDescription>{t("apply.submitNetworkHint")}</AlertDescription></Alert>
             )}
-            <Button onClick={submit} disabled={!campaign.open || campaign.preview || submitting || (!!campaign.requiresPayment && !depositChecked)} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{campaign.preview ? t("apply.previewNoSubmit") : submitting ? t("apply.submitting") : t("apply.submit")}</Button>
+            <Button onClick={submit} disabled={!canApply || submitting || (!!campaign.requiresPayment && !depositChecked)} className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50">{submitting ? t("apply.submitting") : campaign.preview ? t("apply.previewSubmit") : t("apply.submit")}</Button>
             <p className="text-xs text-muted-foreground flex items-start gap-1.5"><Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />{t("apply.privacyNote")}</p>
           </CardContent>
         </Card>
