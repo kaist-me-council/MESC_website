@@ -1,5 +1,6 @@
 "use client";
 
+import { translateKo } from "@/lib/translate-client";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -386,19 +387,8 @@ export default function AdminNoticesPage() {
     if (!title.trim() && !content.trim()) return;
     setTranslating(true);
     try {
-      const tr = async (text: string) => {
-        if (!text.trim()) return "";
-        const res = await fetch("/api/translate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "번역 실패");
-        return data.text as string;
-      };
-      setTitleEn(await tr(title));
-      setContentEn(await tr(content));
+      setTitleEn(await translateKo(title));
+      setContentEn(await translateKo(content));
     } catch (e) {
       alert(e instanceof Error ? e.message : "자동 번역에 실패했습니다.");
     } finally {

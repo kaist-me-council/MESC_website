@@ -11,6 +11,7 @@ import { OrdersTab } from "./orders-tab";
 import { ConfirmTab } from "./confirm-tab";
 import { ImportSection } from "./import-section";
 import { AlertTriangle } from "lucide-react";
+import { QrPanel } from "@/components/admin/qr-panel";
 import type { Campaign, Order } from "./types";
 
 type Tab = "orders" | "confirm" | "settings" | "import";
@@ -122,6 +123,7 @@ export default function AdminCampaignDetailPage() {
         {confirmState && <Badge variant="secondary" className="text-xs">{confirmState}</Badge>}
         <a className="underline text-muted-foreground" href={`/apply/${c.slug}`} target="_blank" rel="noreferrer">{c.enabled ? "공개 페이지 보기" : "미리보기 (비공개 — 관리자만 보임)"}</a>
         {c.confirmEnabled && <a className="underline text-muted-foreground" href={`/apply/${c.slug}/confirm`} target="_blank" rel="noreferrer">수령 확인 페이지</a>}
+        <QrPanel path={`/apply/${c.slug}`} name={c.slug} />
       </div>
 
       {blocker && (

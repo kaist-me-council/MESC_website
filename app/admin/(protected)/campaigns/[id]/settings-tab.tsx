@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Campaign } from "./types";
+import { readQuestions, readRefundPolicy, type Campaign } from "./types";
+import { translateKo } from "@/lib/translate-client";
 import { BasicSection } from "./sections/basic";
 import { ScheduleSection } from "./sections/schedule";
 import { PricingSection } from "./sections/pricing";
@@ -24,7 +25,7 @@ function errorSection(message: string): SectionId {
 }
 export function SettingsTab({ c, setC, onSaved, onDirtyChange }: { c: Campaign; setC: (update: (prev: Campaign) => Campaign) => void; onSaved: () => Promise<void>; onDirtyChange?: (dirty: boolean) => void }) {
   const [baseline, setBaseline] = useState(() => JSON.stringify(c));
-  const [active, setActive] = useState<SectionId>("basic"); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [errorAt, setErrorAt] = useState<SectionId | null>(null);
+  const [active, setActive] = useState<SectionId>("basic"); const [busy, setBusy] = useState(false); const [translating, setTranslating] = useState(false); const [message, setMessage] = useState(""); const [errorAt, setErrorAt] = useState<SectionId | null>(null);
   const dirty = JSON.stringify(c) !== baseline;
   const set = <K extends keyof Campaign>(key: K, value: Campaign[K]) => setC((prev) => ({ ...prev, [key]: value }));
   const props = { c, set, setC };
@@ -50,6 +51,24 @@ export function SettingsTab({ c, setC, onSaved, onDirtyChange }: { c: Campaign; 
     if (!res.ok) { const text = data.error ?? "저장 실패"; const section = errorSection(text); setMessage(text); setErrorAt(section); jump(section); return; }
     setBaseline(JSON.stringify(snapshot)); onDirtyChange?.(false); setMessage("저장되었습니다."); window.setTimeout(() => setMessage(""), 1500); await onSaved();
   }
+  /** 비어 있는 영문 칸만 한국어에서 번역해 채운다 (직접 고친 영문은 건드리지 않음). 저장은 관리자가 확인 후. */
+  async function fillEn() {
+    const tr = async (ko?: string | null, en?: string | null) => (!en?.trim() && ko?.trim() ? translateKo(ko) : en ?? null);
+    setTranslating(true); setMessage(""); setErrorAt(null);
+    try {
+      const qs = readQuestions(c), rs = readRefundPolicy(c);
+      const [titleEn, descriptionEn, afterNoteEn, confirmNoteEn, questions, refundPolicy, options] = await Promise.all([
+        tr(c.title, c.titleEn), tr(c.description, c.descriptionEn), tr(c.afterNote, c.afterNoteEn), tr(c.confirmNote, c.confirmNoteEn),
+        Promise.all(qs.map(async (q) => ({ ...q, labelEn: await tr(q.label, q.labelEn) }))),
+        Promise.all(rs.map(async (r) => ({ ...r, noteEn: await tr(r.note, r.noteEn) }))),
+        Promise.all(c.options.map(async (o) => ({ ...o, nameEn: (await tr(o.name, o.nameEn)) ?? "" }))),
+      ]);
+      setC((prev) => ({ ...prev, titleEn, descriptionEn, afterNoteEn, confirmNoteEn, options, ...(qs.length ? { questions } : {}), ...(rs.length ? { refundPolicy } : {}) }));
+      setMessage("영문 칸을 채웠습니다. 확인 후 저장하세요.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "자동 번역에 실패했습니다.");
+    } finally { setTranslating(false); }
+  }
   const reset = () => { setC(() => JSON.parse(baseline) as Campaign); setMessage(""); setErrorAt(null); };
   const warnings = [c.enabled && !c.options.some((o) => o.enabled) ? "공개 중이지만 사용 가능한 옵션이 없습니다." : null, c.options.some((o) => o.price > 0) && !c.requiresPayment ? "가격이 있는 옵션이 있지만 유료 행사가 꺼져 있습니다." : null].filter(Boolean) as string[];
   const contents: Record<SectionId, ReactNode> = { basic: <BasicSection {...props} />, schedule: <ScheduleSection {...props} />, pricing: <PricingSection {...props} />, refunds: <RefundsSection {...props} />, questions: <QuestionsSection {...props} />, options: <OptionsSection {...props} />, advanced: <AdvancedSection {...props} /> };
@@ -57,6 +76,6 @@ export function SettingsTab({ c, setC, onSaved, onDirtyChange }: { c: Campaign; 
     {!!warnings.length && <div className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">{warnings.map((w) => <p key={w} className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{w}</p>)}</div>}
     <div className="sticky top-0 z-20 -mx-1 overflow-x-auto border-b bg-background/95 px-1 py-3 backdrop-blur"><div className="flex w-max gap-2">{SECTIONS.map(([id, label]) => <button key={id} onClick={() => jump(id)} className={`rounded-full px-4 py-2 text-sm transition-colors ${active === id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{label}</button>)}</div></div>
     <div className="space-y-8">{SECTIONS.map(([id, title]) => <Card id={`settings-${id}`} key={id} className={`scroll-mt-20 rounded-2xl border-border/60 ${errorAt === id ? "border-destructive ring-1 ring-destructive/30" : ""}`}><CardHeader><CardTitle className="text-base font-semibold">{title}{id === "options" ? ` (${c.options.length})` : ""}</CardTitle></CardHeader><CardContent>{errorAt === id && message && <p role="alert" className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{message}</p>}{contents[id]}</CardContent></Card>)}</div>
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pt-3 shadow-[0_-8px_24px_rgba(0,0,0,.08)] backdrop-blur" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}><div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1 text-xs text-muted-foreground"><p>{c.requiresPayment ? "계좌 보임 · 입금 체크 필수" : "무료(계좌 비공개)"}</p><p>{c.showRemaining !== false ? "남은 자리 보임" : "남은 자리 숨김"} · {questions.length ? `추가 문항 ${questions.length}개` : "추가 문항 없음"}</p></div>{message && !errorAt && <span className="text-sm text-primary">{message}</span>}<div className="flex gap-2"><Button variant="outline" disabled={!dirty || busy} onClick={reset}>되돌리기</Button><Button disabled={!dirty || busy} onClick={() => void save()}>{busy ? "저장 중..." : "저장"}</Button></div></div></div>
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pt-3 shadow-[0_-8px_24px_rgba(0,0,0,.08)] backdrop-blur" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}><div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1 text-xs text-muted-foreground"><p>{c.requiresPayment ? "계좌 보임 · 입금 체크 필수" : "무료(계좌 비공개)"}</p><p>{c.showRemaining !== false ? "남은 자리 보임" : "남은 자리 숨김"} · {questions.length ? `추가 문항 ${questions.length}개` : "추가 문항 없음"}</p></div>{message && !errorAt && <span className="text-sm text-primary">{message}</span>}<div className="flex gap-2"><Button variant="outline" disabled={busy || translating} onClick={() => void fillEn()} title="비어 있는 영문(EN) 칸을 한국어에서 자동 번역해 채웁니다">{translating ? "번역 중..." : "🌐 EN 자동 채우기"}</Button><Button variant="outline" disabled={!dirty || busy} onClick={reset}>되돌리기</Button><Button disabled={!dirty || busy} onClick={() => void save()}>{busy ? "저장 중..." : "저장"}</Button></div></div></div>
   </div>;
 }
