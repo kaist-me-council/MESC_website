@@ -1,5 +1,7 @@
 "use client";
 
+import { EnFillButton } from "@/components/admin/en-fill-button";
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +89,7 @@ export default function AdminCoursesPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("삭제하시겠습니까?")) return;
-    await fetch(`/api/courses/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/courses/${id}`, { method: "DELETE" });
     if (editingId === id) reset();
     load();
   }
@@ -140,7 +142,7 @@ export default function AdminCoursesPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="동역학" />
             </div>
             <div className="space-y-2">
-              <Label>영문 과목명 (선택)</Label>
+              <div className="flex items-center justify-between gap-2"><Label>영문 과목명 (선택)</Label><EnFillButton pairs={[[name, nameEn, setNameEn], [description, descriptionEn, setDescriptionEn]]} /></div>
               <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="Dynamics" />
             </div>
             <div className="space-y-2">

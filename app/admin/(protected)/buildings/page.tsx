@@ -1,5 +1,7 @@
 "use client";
 
+import { EnFillButton } from "@/components/admin/en-fill-button";
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,7 +142,7 @@ export default function AdminBuildingsPage() {
   }
 
   async function savePin(professorId: number, posX: number | null, posY: number | null) {
-    await fetch(`/api/professors/${professorId}`, {
+    await adminFetch(`/api/professors/${professorId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ posX, posY }),
@@ -194,7 +196,7 @@ export default function AdminBuildingsPage() {
 
   async function deleteBuilding(id: number) {
     if (!confirm("건물을 삭제하시겠습니까? 포함된 모든 층 정보가 함께 삭제됩니다.")) return;
-    await fetch(`/api/buildings/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/buildings/${id}`, { method: "DELETE" });
     if (selectedBuildingId === id) setSelectedBuildingId(null);
     if (editingId === id) reset();
     load();
@@ -229,7 +231,7 @@ export default function AdminBuildingsPage() {
   }
 
   async function updateFloor(floorId: number, patch: { description?: string; imageUrl?: string }) {
-    await fetch(`/api/buildings/floors/${floorId}`, {
+    await adminFetch(`/api/buildings/floors/${floorId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
@@ -239,7 +241,7 @@ export default function AdminBuildingsPage() {
 
   async function deleteFloor(floorId: number) {
     if (!confirm("층을 삭제하시겠습니까?")) return;
-    await fetch(`/api/buildings/floors/${floorId}`, { method: "DELETE" });
+    await adminFetch(`/api/buildings/floors/${floorId}`, { method: "DELETE" });
     load();
   }
 
@@ -282,7 +284,7 @@ export default function AdminBuildingsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>영문 이름 (선택)</Label>
+              <div className="flex items-center justify-between gap-2"><Label>영문 이름 (선택)</Label><EnFillButton pairs={[[name, nameEn, setNameEn]]} /></div>
               <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="Mechanical Engineering Building" />
             </div>
             <div className="space-y-2">

@@ -1,5 +1,7 @@
 "use client";
 
+import { EnFillButton } from "@/components/admin/en-fill-button";
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,7 +111,7 @@ export default function AdminPopupPage() {
   }
 
   async function toggleLink(id: number, enabled: boolean) {
-    await fetch(`/api/popup/links/${id}`, {
+    await adminFetch(`/api/popup/links/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled }),
@@ -119,7 +121,7 @@ export default function AdminPopupPage() {
 
   async function deleteLink(id: number) {
     if (!confirm("삭제하시겠습니까?")) return;
-    await fetch(`/api/popup/links/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/popup/links/${id}`, { method: "DELETE" });
     if (editingId === id) resetLinkForm();
     load();
   }
@@ -127,7 +129,7 @@ export default function AdminPopupPage() {
   async function changeOrder(id: number, delta: number) {
     const link = links.find((l) => l.id === id);
     if (!link) return;
-    await fetch(`/api/popup/links/${id}`, {
+    await adminFetch(`/api/popup/links/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ order: link.order + delta }),
@@ -216,7 +218,7 @@ export default function AdminPopupPage() {
                 <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="카카오톡 채널" />
               </div>
               <div className="space-y-2">
-                <Label>라벨 (영어, 선택)</Label>
+                <div className="flex items-center justify-between gap-2"><Label>라벨 (영어, 선택)</Label><EnFillButton pairs={[[newLabel, newLabelEn, setNewLabelEn]]} /></div>
                 <Input value={newLabelEn} onChange={(e) => setNewLabelEn(e.target.value)} placeholder="KakaoTalk" />
               </div>
             </div>

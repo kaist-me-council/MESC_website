@@ -1,5 +1,6 @@
 "use client";
 
+import { EnFillButton } from "@/components/admin/en-fill-button";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,7 @@ export default function HoursContactTab({ initial }: { initial: SiteSettingsData
         <CardHeader><CardTitle className="text-base">연락처·위치</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2"><Label>위치 (한국어)</Label><Input value={locationKo} onChange={(e) => setLocationKo(e.target.value)} /></div>
-          <div className="grid gap-2"><Label>위치 (English)</Label><Input value={locationEn} onChange={(e) => setLocationEn(e.target.value)} /></div>
+          <div className="grid gap-2"><div className="flex items-center justify-between gap-2"><Label>위치 (English)</Label><EnFillButton pairs={[[locationKo, locationEn, setLocationEn]]} /></div><Input value={locationEn} onChange={(e) => setLocationEn(e.target.value)} /></div>
           <div className="grid gap-2"><Label>이메일</Label><Input value={email} onChange={(e) => setEmail(e.target.value)} /></div>
           <div className="grid gap-2"><Label>전화번호 (선택)</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
         </CardContent>

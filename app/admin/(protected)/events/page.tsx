@@ -1,5 +1,6 @@
 "use client";
 
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,7 +104,7 @@ export default function AdminEventsPage() {
 
   async function disconnectDrive() {
     if (!confirm("Drive 연결을 끊겠습니까? 기존에 업로드된 사진은 그대로 유지됩니다.")) return;
-    await fetch("/api/auth/drive/status", { method: "DELETE" });
+    await adminFetch("/api/auth/drive/status", { method: "DELETE" });
     loadDriveStatus();
     setDriveMessage({ type: "success", text: "Drive 연결이 해제되었습니다." });
   }
@@ -146,7 +147,7 @@ export default function AdminEventsPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("삭제하시겠습니까?")) return;
-    await fetch(`/api/events/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/events/${id}`, { method: "DELETE" });
     if (editingId === id) reset();
     if (selectedEvent?.id === id) setSelectedEvent(null);
     if (feedbackEvent?.id === id) setFeedbackEvent(null);
@@ -179,7 +180,7 @@ export default function AdminEventsPage() {
 
   async function deletePhoto(photoId: number) {
     if (!selectedEvent) return;
-    await fetch(`/api/events/${selectedEvent.id}/photos`, {
+    await adminFetch(`/api/events/${selectedEvent.id}/photos`, {
       method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ photoId }),
     });
@@ -284,7 +285,7 @@ export default function AdminEventsPage() {
   async function deleteFeedback(feedbackId: number) {
     if (!feedbackEvent) return;
     if (!confirm("피드백을 삭제하시겠습니까?")) return;
-    await fetch(`/api/events/${feedbackEvent.id}/feedback`, {
+    await adminFetch(`/api/events/${feedbackEvent.id}/feedback`, {
       method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ feedbackId }),
     });

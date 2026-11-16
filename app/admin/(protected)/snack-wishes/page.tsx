@@ -1,5 +1,6 @@
 "use client";
 
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +25,7 @@ export default function AdminSnackWishesPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("삭제하시겠습니까?")) return;
-    await fetch("/api/snack-wishes", {
+    await adminFetch("/api/snack-wishes", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),

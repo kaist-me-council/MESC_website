@@ -1,5 +1,7 @@
 "use client";
 
+import { EnFillButton } from "@/components/admin/en-fill-button";
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -172,7 +174,7 @@ export default function AdminBooksPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("삭제하시겠습니까?")) return;
-    await fetch(`/api/books/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/books/${id}`, { method: "DELETE" });
     if (editingId === id) reset();
     load();
   }
@@ -229,7 +231,7 @@ export default function AdminBooksPage() {
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="열역학" />
                   </div>
                   <div className="space-y-2">
-                    <Label>영문 제목 (선택)</Label>
+                    <div className="flex items-center justify-between gap-2"><Label>영문 제목 (선택)</Label><EnFillButton pairs={[[title, titleEn, setTitleEn]]} /></div>
                     <Input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="Thermodynamics" />
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -138,7 +139,7 @@ export default function AdminProfessorsPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("삭제하시겠습니까?")) return;
-    await fetch(`/api/professors/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/professors/${id}`, { method: "DELETE" });
     if (editingId === id) reset();
     load();
   }

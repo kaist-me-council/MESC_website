@@ -1,5 +1,6 @@
 "use client";
 
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,28 +117,27 @@ export default function AdminResourcesPage() {
     if (!title.trim() || !fileUrl.trim()) return;
     setSubmitting(true);
 
-    if (editingId !== null) {
-      await fetch(`/api/resources/${editingId}`, {
+    const res = editingId !== null
+      ? await adminFetch(`/api/resources/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description, fileUrl, category, courseCode: courseCode || null }),
-      });
-    } else {
-      await fetch("/api/resources", {
+      })
+      : await adminFetch("/api/resources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description, fileUrl, category, courseCode: courseCode || null }),
       });
-    }
+    setSubmitting(false);
+    if (!res.ok) return; // 입력 내용 유지 — 다시 저장할 수 있게
 
     resetForm();
-    setSubmitting(false);
     loadResources();
   }
 
   async function handleDelete(id: number) {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await fetch(`/api/resources/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/resources/${id}`, { method: "DELETE" });
     if (editingId === id) resetForm();
     loadResources();
   }

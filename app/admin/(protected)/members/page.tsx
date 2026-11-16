@@ -1,5 +1,6 @@
 "use client";
 
+import { adminFetch } from "@/lib/admin-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,7 +118,7 @@ export default function AdminMembersPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await fetch(`/api/members/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/members/${id}`, { method: "DELETE" });
     if (editingId === id) resetForm();
     loadMembers();
   }

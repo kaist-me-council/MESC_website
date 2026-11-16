@@ -1,5 +1,6 @@
 "use client";
 
+import { EnFillButton } from "@/components/admin/en-fill-button";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -103,7 +104,7 @@ export default function MascotsTab({ initial }: { initial: MascotRow[] }) {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1"><Label>이름</Label><Input value={m.name} onChange={(e) => patch(m.id, { name: e.target.value })} /></div>
-              <div className="space-y-1"><Label>이름 (EN)</Label><Input value={m.nameEn ?? ""} onChange={(e) => patch(m.id, { nameEn: e.target.value })} /></div>
+              <div className="space-y-1"><div className="flex items-center justify-between gap-2"><Label>이름 (EN)</Label><EnFillButton pairs={[[m.name, m.nameEn ?? "", (v) => patch(m.id, { nameEn: v })], [m.tagKo ?? "", m.tagEn ?? "", (v) => patch(m.id, { tagEn: v })], [m.descKo, m.descEn ?? "", (v) => patch(m.id, { descEn: v })]]} /></div><Input value={m.nameEn ?? ""} onChange={(e) => patch(m.id, { nameEn: e.target.value })} /></div>
               <div className="space-y-1"><Label>한 줄 소개</Label><Input value={m.tagKo ?? ""} onChange={(e) => patch(m.id, { tagKo: e.target.value })} placeholder="예: 기계과를 지키는 톱니 요정" /></div>
               <div className="space-y-1"><Label>한 줄 소개 (EN)</Label><Input value={m.tagEn ?? ""} onChange={(e) => patch(m.id, { tagEn: e.target.value })} /></div>
               <div className="space-y-1 sm:col-span-2"><Label>소개</Label><Textarea rows={4} value={m.descKo} onChange={(e) => patch(m.id, { descKo: e.target.value })} placeholder="언제 어떻게 만들어졌는지, 이름의 뜻, 어디에 쓰이는지" /></div>

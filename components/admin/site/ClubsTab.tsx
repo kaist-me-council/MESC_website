@@ -1,5 +1,6 @@
 "use client";
 
+import { EnFillButton } from "@/components/admin/en-fill-button";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ export default function ClubsTab({ initial }: { initial: ClubRow[] }) {
           <CardContent className="p-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1"><Label>이름 (KO)</Label><Input value={c.name} onChange={(e) => patch(c.id, { name: e.target.value })} /></div>
-              <div className="grid gap-1"><Label>이름 (EN)</Label><Input value={c.nameEn ?? ""} onChange={(e) => patch(c.id, { nameEn: e.target.value })} /></div>
+              <div className="grid gap-1"><div className="flex items-center justify-between gap-2"><Label>이름 (EN)</Label><EnFillButton pairs={[[c.name, c.nameEn ?? "", (v) => patch(c.id, { nameEn: v })], [c.tagKo ?? "", c.tagEn ?? "", (v) => patch(c.id, { tagEn: v })], [c.descKo, c.descEn ?? "", (v) => patch(c.id, { descEn: v })], [c.activitiesKo ?? "", c.activitiesEn ?? "", (v) => patch(c.id, { activitiesEn: v })]]} /></div><Input value={c.nameEn ?? ""} onChange={(e) => patch(c.id, { nameEn: e.target.value })} /></div>
               <div className="grid gap-1"><Label>태그 (KO)</Label><Input value={c.tagKo ?? ""} onChange={(e) => patch(c.id, { tagKo: e.target.value })} /></div>
               <div className="grid gap-1"><Label>태그 (EN)</Label><Input value={c.tagEn ?? ""} onChange={(e) => patch(c.id, { tagEn: e.target.value })} /></div>
             </div>

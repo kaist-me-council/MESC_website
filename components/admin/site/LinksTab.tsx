@@ -1,5 +1,6 @@
 "use client";
 
+import { EnFillButton } from "@/components/admin/en-fill-button";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,7 @@ export default function LinksTab({ initial }: { initial: SiteLinkRow[] }) {
               <CardContent className="p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1"><Label>라벨 (KO)</Label><Input value={l.label} onChange={(e) => patch(l.id, { label: e.target.value })} /></div>
-                  <div className="grid gap-1"><Label>라벨 (EN)</Label><Input value={l.labelEn ?? ""} onChange={(e) => patch(l.id, { labelEn: e.target.value })} /></div>
+                  <div className="grid gap-1"><div className="flex items-center justify-between gap-2"><Label>라벨 (EN)</Label><EnFillButton pairs={[[l.label, l.labelEn ?? "", (v) => patch(l.id, { labelEn: v })], [l.description ?? "", l.descriptionEn ?? "", (v) => patch(l.id, { descriptionEn: v })]]} /></div><Input value={l.labelEn ?? ""} onChange={(e) => patch(l.id, { labelEn: e.target.value })} /></div>
                 </div>
                 <div className="grid gap-1"><Label>URL</Label><Input value={l.url} onChange={(e) => patch(l.id, { url: e.target.value })} /></div>
                 <div className="grid grid-cols-2 gap-3">

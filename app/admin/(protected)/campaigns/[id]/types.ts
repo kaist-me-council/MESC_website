@@ -1,3 +1,4 @@
+import { adminFetch } from "@/lib/admin-fetch";
 export interface Option { id?: number; group: string; name: string; nameEn: string; price: number; stock: number | null; order: number; enabled: boolean }
 
 /** 신청 폼에 덧붙이는 추가 문항. 답변·CSV 컬럼이 id 에 묶인다 — 한 번 받은 문항의 id 는 바꾸지 않는다. */
@@ -86,12 +87,13 @@ export const toLocal = (iso: string | null) => {
 export const toIso = (local: string) => (local ? new Date(local).toISOString() : null);
 
 /** 주문 상태·메모 갱신 (단건 또는 일괄). 신청 목록·수령 확인 탭 공용. */
-export async function putOrder(campaignId: number, body: object) {
-  await fetch(`/api/admin/campaigns/${campaignId}/orders`, {
+export async function putOrder(campaignId: number, body: object): Promise<boolean> {
+  const res = await adminFetch(`/api/admin/campaigns/${campaignId}/orders`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  return res.ok;
 }
 
 /** 중복 제거한 이메일을 클립보드로. 복사한 개수를 반환. */
