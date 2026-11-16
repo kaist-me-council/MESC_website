@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAllowedImageUrl, IMAGE_HOST_ERROR } from "@/lib/image-hosts";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { parseId } from "@/lib/validation";
@@ -12,6 +13,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!id) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const body = await req.json();
+  if (typeof body.imageUrl === "string" && body.imageUrl.trim() && !isAllowedImageUrl(body.imageUrl.trim())) return NextResponse.json({ error: IMAGE_HOST_ERROR }, { status: 400 });
   const data: Record<string, unknown> = {};
   if (typeof body.name === "string") data.name = body.name.trim().slice(0, 50);
   if (typeof body.nameEn === "string") data.nameEn = body.nameEn.trim().slice(0, 50) || null;

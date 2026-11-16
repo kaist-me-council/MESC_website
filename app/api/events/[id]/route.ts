@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAllowedImageUrl, IMAGE_HOST_ERROR } from "@/lib/image-hosts";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isValidString, parseId } from "@/lib/validation";
@@ -32,6 +33,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const date = typeof body.date === "string" ? body.date : "";
   const description = typeof body.description === "string" ? body.description.trim() : "";
   const coverImage = typeof body.coverImage === "string" ? body.coverImage.trim() : "";
+  if (coverImage && !isAllowedImageUrl(coverImage)) return NextResponse.json({ error: IMAGE_HOST_ERROR }, { status: 400 });
 
   if (!isValidString(title, 100)) return NextResponse.json({ error: "행사명을 입력해주세요." }, { status: 400 });
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAllowedImageUrl, IMAGE_HOST_ERROR } from "@/lib/image-hosts";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+  if (typeof body.imageUrl === "string" && body.imageUrl.trim() && !isAllowedImageUrl(body.imageUrl.trim())) return NextResponse.json({ error: IMAGE_HOST_ERROR }, { status: 400 });
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 50) : "";
   if (!name) return NextResponse.json({ error: "이름은 필수입니다." }, { status: 400 });
 

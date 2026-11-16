@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedImageUrl, IMAGE_HOST_ERROR } from "@/lib/image-hosts";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { isValidString, isValidUrl } from "@/lib/validation";
+import { isValidString } from "@/lib/validation";
 
 export async function GET() {
   const members = await prisma.member.findMany({
@@ -30,8 +31,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "직책은 1~100자 이내여야 합니다." }, { status: 400 });
   }
   if (b.imageUrl && b.imageUrl !== "") {
-    if (!isValidUrl(String(b.imageUrl))) {
-      return NextResponse.json({ error: "올바른 이미지 URL을 입력해주세요." }, { status: 400 });
+    if (!isAllowedImageUrl(String(b.imageUrl))) {
+      return NextResponse.json({ error: IMAGE_HOST_ERROR }, { status: 400 });
     }
   }
 
