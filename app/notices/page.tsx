@@ -70,10 +70,13 @@ function NoticesContent() {
     return () => { alive = false; };
   }, [retryTick]);
 
-  // 뒤로가기 등으로 URL의 category 쿼리가 바뀌면 탭 상태를 동기화한다.
-  useEffect(() => {
-    setActiveCategory(categoryFromSlug(searchParams.get("category")));
-  }, [searchParams]);
+  // 뒤로가기 등으로 URL의 category 쿼리가 바뀌면 탭 상태를 동기화한다 (렌더 중 비교 — effect 로 하면 한 번 더 그린다).
+  const categorySlug = searchParams.get("category");
+  const [prevCategorySlug, setPrevCategorySlug] = useState(categorySlug);
+  if (categorySlug !== prevCategorySlug) {
+    setPrevCategorySlug(categorySlug);
+    setActiveCategory(categoryFromSlug(categorySlug));
+  }
 
   const handleCategoryChange = (ko: string) => {
     setActiveCategory(ko);

@@ -27,8 +27,6 @@ jobs:
       - name: 단위 테스트
         run: npm test
 
-      # 기존 오류 16건(React hooks 규칙 등)이 남아 있어 아직 차단 조건이 아니다.
-      # 정리되면 continue-on-error 를 지울 것.
-      - name: Lint (경고만)
+      # 오류는 병합을 막는다. 경고(React Compiler 계열 규칙 등)는 막지 않는다 — eslint.config.mjs 참고.
+      - name: Lint
         run: npm run lint
-        continue-on-error: true

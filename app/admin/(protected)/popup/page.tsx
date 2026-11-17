@@ -146,7 +146,7 @@ export default function AdminPopupPage() {
 
       <AdminGuide id="popup" title="홈화면 팝업 사용법">
         <ol className="list-decimal pl-5 space-y-1">
-          <li><strong>활성화 토글</strong>을 ON 으로 하면 홈페이지 방문자에게 팝업이 표시됩니다. "오늘 그만 보기" 누른 사용자에게는 24시간 동안 안 보임.</li>
+          <li><strong>활성화 토글</strong>을 ON 으로 하면 홈페이지 방문자에게 팝업이 표시됩니다. “오늘 그만 보기” 누른 사용자에게는 24시간 동안 안 보임.</li>
           <li>팝업 <strong>제목</strong>과 <strong>메시지</strong>를 입력하고 저장.</li>
           <li>그 아래 <strong>링크 추가</strong>에서 라벨(한/영) · URL · 이모지 아이콘을 입력해 버튼을 만듭니다.</li>
           <li>각 링크는 ↑↓ 로 순서 변경, ON/OFF 토글로 임시 비활성화 가능.</li>
@@ -170,7 +170,7 @@ export default function AdminPopupPage() {
               <Label htmlFor="enabled" className="font-semibold cursor-pointer">팝업 활성화</Label>
               <p className="text-xs text-muted-foreground mt-1">
                 활성화 시 홈화면 첫 방문자에게 자동으로 팝업이 표시됩니다.
-                "오늘 그만 보기"를 누르면 24시간 동안 미표시.
+                “오늘 그만 보기”를 누르면 24시간 동안 미표시.
               </p>
             </div>
           </div>

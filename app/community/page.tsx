@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Camera, MessageSquare, Cookie, Star, ChevronRight, Send } from "lucide-react";
+import { Camera, MessageSquare, Cookie, ChevronRight, Send } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { SuggestionsTab } from "./suggestions-tab";
@@ -95,9 +95,13 @@ function CommunityPageInner() {
     return () => controller.abort();
   }, [retry]);
 
-  useEffect(() => {
-    setActiveTab(tabFromSlug(searchParams.get("tab")));
-  }, [searchParams]);
+  // URL 의 tab 쿼리가 바뀌면(뒤로가기 등) 탭을 맞춘다 — 렌더 중 이전 값 비교
+  const tabSlug = searchParams.get("tab");
+  const [prevTabSlug, setPrevTabSlug] = useState(tabSlug);
+  if (tabSlug !== prevTabSlug) {
+    setPrevTabSlug(tabSlug);
+    setActiveTab(tabFromSlug(tabSlug));
+  }
 
   function selectTab(tab: Tab) {
     setActiveTab(tab);

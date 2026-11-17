@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdminGuide } from "@/components/admin-guide";
-import { Loader2, Upload, FolderUp } from "lucide-react";
+import { Loader2, FolderUp } from "lucide-react";
 
 function DriveDropZone({ courseCode, onUploaded }: { courseCode: string; onUploaded: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
@@ -155,7 +155,7 @@ export default function AdminResourcesPage() {
           <li>파일 URL은 Google Drive · Dropbox · OneDrive 등 <strong>공유 링크</strong>를 그대로 붙여넣어 사용 (사이트가 파일을 직접 저장하지 않음).</li>
           <li>연결할 과목(수업 정보 관리에서 등록된 것) 을 선택하면 해당 과목 페이지에 자동 노출됩니다.</li>
         </ol>
-        <p className="text-xs">💡 Drive 파일은 "링크가 있는 모든 사용자가 보기"로 공유해야 학생들이 접근할 수 있습니다.</p>
+        <p className="text-xs">💡 Drive 파일은 “링크가 있는 모든 사용자가 보기”로 공유해야 학생들이 접근할 수 있습니다.</p>
       </AdminGuide>
 
       <div ref={formRef}>
